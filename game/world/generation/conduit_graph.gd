@@ -82,7 +82,7 @@ func connected() -> bool:
 
 ## Metres along the conduit from a node to every node (INF: unreachable),
 ## through closed edges only with ignore_closed.
-func distances_from(node: int, ignore_closed := false) -> PackedFloat32Array:
+func distances_from(node: int, ignore_closed := false) -> PackedFloat64Array:
 	return search(node, -1, ignore_closed).distance
 
 ## The shortest way between two nodes: {path, length}; an empty path when none.
@@ -100,7 +100,9 @@ func shortest(from: int, to: int, ignore_closed := false) -> Dictionary:
 ## Dijkstra on the instance's own edges (a subclass's added ones included),
 ## with conduit_metres' heap. {distance, parent}; stops early at `goal`.
 func search(from: int, goal: int, ignore_closed: bool) -> Dictionary:
-	var distance := PackedFloat32Array()
+	# Match the heap's precision so a path rounded up in storage cannot be
+	# queued again at the same cost through another edge.
+	var distance := PackedFloat64Array()
 	distance.resize(nodes.size())
 	distance.fill(INF)
 	var parent := PackedInt32Array()
@@ -114,8 +116,7 @@ func search(from: int, goal: int, ignore_closed: bool) -> Dictionary:
 		var top: Array = METRES.heap_pop(heap)
 		var cost := float(top[0])
 		var n := int(top[1])
-		# Kept in 32 bits: a stale entry is one clearly over what is kept.
-		if cost > distance[n] + 0.001: continue
+		if cost > distance[n]: continue
 		if n == goal: break
 		for link in adjacency[n]:
 			if not ignore_closed and edge_closed(int(link[2])): continue
@@ -208,12 +209,14 @@ func sound_route(source: Vector3, near_node: int, listener: Vector3, room_of: Ca
 	var outside := {}
 	if best < 0:
 		# No mouth in that room: the nearest one to the listener, and on by the air.
+		# Enumerate the sounding mouths once. Rebuilding the list for every node
+		# made each route from a duct to a room without a grille stall the game.
+		var candidates := PackedInt32Array(range(nodes.size())) if radiates else mouths_of_all()
 		var nearest := INF
-		for i in nodes.size():
-			if not radiates and mouths_of_all().find(i) < 0: continue
-			if inside[i] > REACH: continue
+		for i: int in candidates:
+			if i >= inside.size() or inside[i] > REACH: continue
 			var d := nodes[i].distance_to(listener)
-			if d < nearest:
+			if d < nearest or (d == nearest and i < best):
 				nearest = d
 				best = i
 		if best < 0: return silent
@@ -228,8 +231,12 @@ func sound_route(source: Vector3, near_node: int, listener: Vector3, room_of: Ca
 ## Every exit's node, once.
 func mouths_of_all() -> PackedInt32Array:
 	var out := PackedInt32Array()
+	var seen := {}
 	for e in exits:
-		if int(e.node) >= 0 and sounding(e) and out.find(int(e.node)) < 0: out.append(int(e.node))
+		var node := int(e.node)
+		if node < 0 or seen.has(node) or not sounding(e): continue
+		seen[node] = true
+		out.append(node)
 	return out
 
 ## A sound made at `point` (heard `radius` out) reaching somebody inside at

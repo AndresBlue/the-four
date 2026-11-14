@@ -339,6 +339,7 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [estantería de estructura de acero con baldas de madera, comercial](https://polyhaven.com/a/steel_frame_shelves_02) | `steel_frame_shelves_02` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [taquilla gris](https://sketchfab.com/3d-models/locker-3ebc5746b7784253bb0ebd151022757b) | `taquilla_zambur` | Zambur | Sketchfab | CC BY 4.0 |
 | [toalla colgada](https://sketchfab.com/3d-models/hanging-towel-2fbb8f56b1ba47bdb6746d95b6fc2242) | `toalla_aprilpolubiec` | aprilpolubiec | Sketchfab | CC BY 4.0 |
+| [máquina de escribir manual de los años 30](https://sketchfab.com/3d-models/1d6009449fe84fd79454c4081eb743bf) | `typewriter_1930s_unbranded_sketchfab` | Kuba Wójcik | Sketchfab | CC BY 4.0 |
 | [ventilador de mesa](https://sketchfab.com/3d-models/vintage-fan-36eaf8bb14eb48b1ac2b5fbf9368dfe2) | `ventilador_joshsmith` | Josh Smith | Sketchfab | CC BY 4.0 |
 | [grapadora de sobremesa de chapa esmaltada turquesa, de los 50 a los 70](https://polyhaven.com/a/vintage_stapler) | `vintage_stapler` | Mateusz Sadek | Poly Haven | CC0 1.0 |
 | [fuente de agua con garrafa](https://sketchfab.com/3d-models/water-cooler-4b88c4c4e94c497ca39f831f374e89fc) | `water_cooler_bottle_tboiston` | tboiston | Sketchfab | CC BY 4.0 |
@@ -369,6 +370,7 @@ Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con
 | `office_teak_veneer` | [Poly Haven](https://polyhaven.com/a/teak_veneer) | Jenelle van Heerden (Poly Haven) | CC0 1.0 | Teca color miel en chapa (mobiliario, hojas de puerta, casilleros, arrimadero de los pasillos) |
 | `office_terrazzo003` | [ambientCG](https://ambientcg.com/a/Terrazzo003) | ambientCG | CC0 1.0 | Terrazo oscuro sal y pimienta pulido (pasillos, vestibulos, archivo) |
 | `office_tiles032` | [ambientCG](https://ambientcg.com/a/Tiles032) | ambientCG | CC0 1.0 | Azulejo oscuro para la franja (aseos) |
+| `office_tiles043` | [ambientCG](https://ambientcg.com/a/Tiles043) | ambientCG | CC0 1.0 | Baldosa de terrazo claro conservada para pruebas de material. La recepción usa Tiles110. |
 | `office_tiles110` | [ambientCG Tiles110](https://ambientcg.com/a/Tiles110) | ambientCG (Lennart Demes) | CC0 1.0 | Loseta vinilica (VCT) beige con motas |
 | `office_walnut_veneer` | [Poly Haven walnut_veneer](https://polyhaven.com/a/walnut_veneer) | Jenelle van Heerden | CC0 1.0 | Paneles de chapa de nogal (direccion, secretaria, aparadores) |
 <!-- /OFFICE_SCANS -->

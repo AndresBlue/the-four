@@ -26,6 +26,8 @@ func run() -> void:
 		print("SHADERS_SKIPPED headless")
 		quit(0)
 		return
+	const BACKGROUND := preload("res://tools/capture/background_window.gd")
+	BACKGROUND.configure()
 	var paths: Array = []
 	collect("res://game", paths)
 	paths.sort()

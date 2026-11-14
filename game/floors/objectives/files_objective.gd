@@ -11,6 +11,7 @@ const ID := &"files"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
 const MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
+const MODELS := preload("res://game/world/office/office_models.gd")
 const WALL := preload("res://game/world/office/pieces/wall.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 const ROOM_LAYERS := preload("res://game/world/hotel/room_layers.gd")
@@ -91,7 +92,7 @@ func place() -> void:
 	var desk_at := v3(desk.point) + facing(float(desk.yaw)) * 0.22
 	add_usable(Transform3D(Basis(Vector3.UP, float(desk.yaw)), desk_at + Vector3(0, 0.9, 0)), "type", v3(stand.point), look_yaw(-facing(float(stand.yaw))))
 	# The typewriter on the window's desk.
-	equipment(MAIL.typewriter(level.hotel, MAIL.TYPEWRITER), Transform3D(Basis(Vector3.UP, float(desk.yaw)), desk_at + Vector3(0, DESK_TOP, 0)))
+	equipment(MODELS.mesh_of(level.hotel, "typewriter"), Transform3D(Basis(Vector3.UP, float(desk.yaw)), desk_at + Vector3(0, DESK_TOP, 0)))
 	for e in station_exits:
 		var at := v3(e.point)
 		var out := facing(float(e.yaw))

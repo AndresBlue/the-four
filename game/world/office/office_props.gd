@@ -264,15 +264,21 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, DESKS.desk_steel(builder, Vector3(1.5, 0.75, 0.75)), Vector3(0, 0, -0.325))
 			chair(builder, holder, Vector3(0, 0, 0.3), -1.0)
 			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_arm", Transform3D(Basis.IDENTITY, Vector3(-0.55, 0.75, -0.5)))
-			# The window's clerk types behind the glass (spec_4e D).
-			if int(room.get("type", -1)) == OFFICE.WINDOW: MODELS.put(builder, holder, "typewriter", Transform3D(Basis.IDENTITY, Vector3(0.2, 0.75, -0.4)))
+			if int(room.type) == OFFICE.SECURITY:
+				for x: float in [-0.22, 0.22]:
+					MODELS.put(builder, holder, "crt_black", Transform3D(Basis(Vector3.UP, -x), Vector3(x, 0.75, -0.44)))
 		"waiting_row", "waiting_row_4":
-			# The chairs its length takes and the low table at its end (spec_rediseno 6.1, 6.8).
-			var seats: int = 4 if size.x >= 3.0 else (3 if size.x >= 2.5 else 2)
 			var t := int(room.get("type", -1))
-			var seat: String = OFFICE.WAITING_CHAIR.get(t, "stacking_chair")
-			for k in seats: chair(builder, holder, Vector3(-size.x * 0.5 + 0.22 + 0.65 * k, 0, 0), 1.0, seat)
-			piece(builder, holder, DESKS.low_table(builder, Vector3(0.6, 0.42, 0.5), "laminate_light"), Vector3(size.x * 0.5 - 0.33, 0, 0))
+			if String(item.kind) == "waiting_row_4" and t == OFFICE.RECEPTION:
+				for x: float in [-1.12, -0.31, 0.55]:
+					chair(builder, holder, Vector3(x, 0, 0), 1.0, "reception_seat", x * 0.07)
+				piece(builder, holder, DESKS.low_table(builder, Vector3(0.48, 0.42, 0.5), "walnut_object"), Vector3(1.28, 0, 0))
+			else:
+				var seats: int = 3 if size.x >= 2.5 else 2
+				var seat: String = OFFICE.WAITING_CHAIR.get(t, "stacking_chair")
+				for k in seats:
+					chair(builder, holder, Vector3(-size.x * 0.5 + 0.30 + 0.65 * k, 0, 0), 1.0, seat)
+				piece(builder, holder, DESKS.low_table(builder, Vector3(0.6, 0.42, 0.5), "laminate_light"), Vector3(size.x * 0.5 - 0.33, 0, 0))
 		"filing":
 			var t := int(room.get("type", -1))
 			var key: String = OFFICE.FILING_FINISH.get(t, "steel_olive")
@@ -389,63 +395,42 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			builder.cylinder(holder, Vector3(0, 0.6, 0.3), 0.17, 0.04, "black")
 			for k in 3: builder.cylinder(holder, Vector3(0.12 * cos(TAU * k / 3.0), 0.29, 0.3 + 0.12 * sin(TAU * k / 3.0)), 0.012, 0.58, "metal")
 
-## The reception's front desk as its reference composes it (the author, 12
-## November 2026: the floor's first view), in a footprint of `size` with its
-## back to the wall: that whole wall in dark walnut panels, floor to ceiling
-## and corner to corner but for its doors and fittings; round the desk a framed
-## niche, its head holding a rail of three cans whose lights leave three
-## warm scallops on the walnut, and RECEPCIÓN in brass letters; the counter
-## with its strip and a light washing its whole front; the clerk's leather
-## chair, and on its tops the lit arm lamp, the terminal turned aside, the
-## keyboard, the phone, a tray, folders and a trailing plant.
+## Reception joinery and its lighting, measured from the counter's footprint.
 const FRONT_DESK := Vector3(3.4, 1.08, 0.8)
-const FRONT_FLOOR := preload("res://game/world/generation/floor_definition.gd")
-const FRONT_LAYOUT := preload("res://game/world/generation/office_layout.gd")
-## The walnut wall: how far its face stands off the wall (clear of the
-## frieze's rail) and how thick; the niche's frame: its jambs' width, how proud,
-## its head's height and depth; what is left round a door or a fitting.
-const BACK_WALL := Vector2(0.075, 0.03)
-const NICHE := Vector4(0.12, 0.05, 2.3, 0.3)
-const BACK_CLEAR := 0.3
-const RAIL_CANS := [-1.1, 0.0, 1.1]
-## The rail's light: where from (up, out from the wall) and where at on it.
-const RAIL_LIGHT := Vector3(0.0, 2.25, 0.18)
-const RAIL_AIM := 0.6
-const RAIL_ENERGY := 7.0
-const RAIL_ANGLE := 32.0
-const WASH_ENERGY := 2.0
+const NICHE_HEIGHT := 2.48
+const NICHE_JAMB := 0.12
+const NICHE_HEAD_DEPTH := 0.17
 static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dictionary, item: Dictionary) -> void:
 	var room_id := int(room.get("id", -1))
-	var wall := -size.y * 0.5 - 0.05
-	var face := wall + BACK_WALL.x
-	var top := float(room.get("height", 2.95))
+	var desk_size := Vector3(size.x, FRONT_DESK.y, FRONT_DESK.z)
+	var face := -size.y * 0.5 + 0.027
 	var desk_z := size.y * 0.5 - FRONT_DESK.z * 0.5
 	var work := desk_z - FRONT_DESK.z * 0.5 + (FRONT_DESK.z - DESKS.FRONT_LEDGE) * 0.5
 	var ledge := desk_z + FRONT_DESK.z * 0.5 - DESKS.FRONT_LEDGE * 0.5
 	# The lamp first: a room lights one lamp of furniture (MODELS.LIT_MOST); on
 	# the ledge's end, its pool on the tops.
 	MODELS.lamp(builder, holder, room_id, "desk_lamp_arm", Transform3D(Basis(Vector3.UP, PI + 0.35), Vector3(size.x * 0.5 - 0.35, FRONT_DESK.y, ledge + 0.05)))
-	# The walnut wall: its spans along the wall in the holder's x.
-	var niche_half := size.x * 0.5 + 0.25
-	for span: Vector2 in back_spans(builder, room, item, niche_half):
-		builder.box(holder, Vector3((span.x + span.y) * 0.5, top * 0.5, face - BACK_WALL.y * 0.5), Vector3(span.y - span.x, top, BACK_WALL.y), "veneer")
-	# The niche: its back, its jambs and its head over the desk, the cans under the head.
-	builder.box(holder, Vector3(0, NICHE.z * 0.5, face - BACK_WALL.y * 0.5), Vector3(niche_half * 2.0, NICHE.z, BACK_WALL.y), "veneer")
-	for x: float in [-1.0, 1.0]: builder.box(holder, Vector3(x * (niche_half + NICHE.x * 0.5), NICHE.z * 0.5, face + NICHE.y * 0.5), Vector3(NICHE.x, NICHE.z, NICHE.y), "walnut_object")
-	builder.box(holder, Vector3(0, (NICHE.z + top) * 0.5, face + NICHE.w * 0.5 - BACK_WALL.y), Vector3(niche_half * 2.0 + NICHE.x * 2.0, top - NICHE.z, NICHE.w), "walnut_object")
-	builder.text(holder, "RECEPCIÓN", Vector3(0, 1.72, face + 0.002), 0.0, 40, 30.0, Color("c9a96a"))
+	var half := size.x * 0.5 + 0.10
+	reserve_niche(builder, room, item, half + NICHE_JAMB)
+	KIT.material(builder, "reception_plaster")
+	builder.box(holder, Vector3(0, NICHE_HEIGHT * 0.5, face - 0.015), Vector3(half * 2.0, NICHE_HEIGHT, 0.03), "reception_plaster")
+	for side: float in [-1.0, 1.0]:
+		var x := side * (half + NICHE_JAMB * 0.5)
+		builder.box(holder, Vector3(x, NICHE_HEIGHT * 0.5, face + 0.022), Vector3(NICHE_JAMB, NICHE_HEIGHT, 0.044), "walnut_object")
+	builder.box(holder, Vector3(0, NICHE_HEIGHT + 0.05, face + NICHE_HEAD_DEPTH * 0.5), Vector3((half + NICHE_JAMB) * 2.0, 0.10, NICHE_HEAD_DEPTH), "walnut_object")
 	KIT.material(builder, "glow_strip")
-	for x: float in RAIL_CANS:
-		builder.box(holder, Vector3(x, NICHE.z - 0.06, face + 0.18), Vector3(0.09, 0.12, 0.09), "black", false, "detail_cylinder")
-		builder.box(holder, Vector3(x, NICHE.z - 0.123, face + 0.18), Vector3(0.07, 0.006, 0.07), "glow_strip", false, "detail_cylinder")
-	# A light from each can, grazing the walnut down: the scallop is its cone's
-	# edge on the wall. No shadow: the reception's lamps are many (RECEPTION_ACCENTS).
-	for x: float in RAIL_CANS: builder.accent_spot(holder, room_id, Vector3(x, NICHE.z - 0.14, face + RAIL_LIGHT.z), Vector3(x, RAIL_AIM, face + 0.01), Color(1.0, 0.8, 0.58), RAIL_ENERGY, 2.6, RAIL_ANGLE, false)
-	# The counter, its strip, and a light out before it washing its whole front.
-	piece(builder, holder, DESKS.front_desk(builder, FRONT_DESK), Vector3(0, 0, desk_z))
-	var front := desk_z + FRONT_DESK.z * 0.5 - DESKS.FRONT_OVER
-	builder.accent_spot(holder, room_id, Vector3(0, FRONT_DESK.y - 0.1, front + 0.55), Vector3(0, 0.35, front), Color(1.0, 0.78, 0.52), WASH_ENERGY, 2.2, 72.0, false)
-	chair(builder, holder, Vector3(0.2, 0, desk_z - FRONT_DESK.z * 0.5 - 0.28), 1.0, "exec_chair")
+	for x: float in [-1.14, 0.0, 1.14]:
+		var can := Vector3(x, NICHE_HEIGHT - 0.042, face + 0.126)
+		builder.box(holder, can, Vector3(0.084, 0.084, 0.084), "black", false, "detail_cylinder")
+		builder.box(holder, can - Vector3.UP * 0.044, Vector3(0.06, 0.005, 0.06), "glow_strip", false, "detail_cylinder")
+		var beam := can - Vector3.UP * 0.05
+		builder.accent_spot(holder, room_id, beam, Vector3(x, 0.75, face), Color(1.0, 0.84, 0.66), 3.6, 2.7, 32.0, false)
+	var mesh := DESKS.front_desk(builder, desk_size)
+	piece(builder, holder, mesh, Vector3(0, 0, desk_z))
+	var strip: Array = mesh.get_meta("light_strip")
+	var strip_at: Vector3 = strip[0] + Vector3(0, 0, desk_z)
+	builder.accent_spot(holder, room_id, strip_at + Vector3(0, 0.13, 0.82), strip_at + Vector3(0, -0.55, -0.12), Color(1.0, 0.85, 0.68), 1.6, 2.2, 67.0, false)
+	chair(builder, holder, Vector3(0.2, 0, desk_z - FRONT_DESK.z * 0.5 - 0.28), 1.0, "office_chair", -0.14)
 	# The terminal turned aside, its side to who comes in.
 	MODELS.put(builder, holder, "crt", Transform3D(Basis(Vector3.UP, PI - 1.0), Vector3(-0.55, DESKS.FRONT_WORK, work + 0.02)))
 	MODELS.put(builder, holder, "keyboard", Transform3D(Basis(Vector3.UP, PI - 0.5), Vector3(-0.35, DESKS.FRONT_WORK, work - 0.16)))
@@ -454,58 +439,14 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 	MODELS.put(builder, holder, "folders", Transform3D(Basis(Vector3.UP, -0.15), Vector3(0.2, FRONT_DESK.y + 0.0015, ledge)))
 	MODELS.put(builder, holder, "plant_small", Transform3D(Basis(Vector3.UP, 0.7), Vector3(-size.x * 0.5 + 0.3, FRONT_DESK.y, ledge + 0.05)))
 
-## The walnut wall's spans in a front desk's holder (its x along its wall):
-## the wall's whole length a little short of its corners, less its doorways,
-## its lockers and its systems' spots with BACK_CLEAR, and less the niche
-## (`niche_half` either side), which the desk's own frame fills. Each noted on
-## the wall (dressing_log.walls), so nothing else hangs there.
-static func back_spans(builder: Node3D, room: Dictionary, item: Dictionary, niche_half: float) -> Array[Vector2]:
-	var turn := int(item.turn) % 4
-	var side: String = ["north", "west", "south", "east"][turn]
-	var spin := float(turn) * PI / 2.0
-	var x_dir := Vector2(cos(spin), -sin(spin))
-	var at := Vector2(float(item.at[0]), float(item.at[1]))
-	var along_x: bool = side == "north" or side == "south"
-	var to_local := func(u: float) -> float: return ((Vector2(u, at.y) if along_x else Vector2(at.x, u)) - at).dot(x_dir)
-	var reach := FRONT_LAYOUT.wall_length(room, side) * 0.5 - 0.06
-	var a: float = to_local.call(-reach)
-	var b: float = to_local.call(reach)
-	var spans: Array[Vector2] = [Vector2(minf(a, b), maxf(a, b))]
-	var cuts: Array[Vector2] = [Vector2(-niche_half - NICHE.x, niche_half + NICHE.x)]
-	for way in FRONT_FLOOR.doorways(room):
-		if String(way.wall) == side: cuts.append(local_span(to_local, float(way.along), FRONT_FLOOR.PORTAL * 0.5 + BACK_CLEAR))
-	for h in room.get("hides", []):
-		var hw: Dictionary = FRONT_LAYOUT.hide_wall(h)
-		if String(hw.wall) == side: cuts.append(local_span(to_local, float(hw.along), FRONT_LAYOUT.LOCKER.x * 0.5 + BACK_CLEAR))
-	for fx in FRONT_LAYOUT.fixtures(builder.manifest, int(room.get("id", -1))):
-		if String(fx.wall) == side: cuts.append(local_span(to_local, float(fx.along), float(fx.half) + BACK_CLEAR))
-	for cut in cuts:
-		var kept: Array[Vector2] = []
-		for span in spans:
-			if cut.y <= span.x or cut.x >= span.y:
-				kept.append(span)
-				continue
-			if cut.x - span.x > 0.1: kept.append(Vector2(span.x, cut.x))
-			if span.y - cut.y > 0.1: kept.append(Vector2(cut.y, span.y))
-		spans = kept
-	# On the wall's own x (office_walls.to_wall()), the niche with them.
+## Keep the wall dressing off the actual plaster and joinery.
+static func reserve_niche(builder: Node3D, room: Dictionary, item: Dictionary, half: float) -> void:
+	var side: String = ["north", "west", "south", "east"][int(item.turn) % 4]
 	var walls := load("res://game/world/office/office_walls.gd")
-	var height := float(room.get("height", 2.95))
-	var noted: Array[Vector2] = spans.duplicate()
-	noted.append(Vector2(-niche_half - NICHE.x, niche_half + NICHE.x))
-	for span: Vector2 in noted:
-		var p0 := at + x_dir * span.x
-		var p1 := at + x_dir * span.y
-		var e0: float = walls.to_wall(side, p0.x if along_x else p0.y)
-		var e1: float = walls.to_wall(side, p1.x if along_x else p1.y)
-		builder.dressing_log.walls.append({"room": int(room.get("id", -1)), "side": side, "kind": "panel", "from": minf(e0, e1), "to": maxf(e0, e1), "low": 0.0, "high": height, "depth": BACK_WALL.x})
-	return spans
-
-## A span `half` either side of `u` along a wall, in a front desk's holder x.
-static func local_span(to_local: Callable, u: float, half: float) -> Vector2:
-	var a: float = to_local.call(u - half)
-	var b: float = to_local.call(u + half)
-	return Vector2(minf(a, b), maxf(a, b))
+	var at := float(item.at[0] if side == "north" or side == "south" else item.at[1])
+	var first: float = walls.to_wall(side, at - half)
+	var last: float = walls.to_wall(side, at + half)
+	builder.dressing_log.walls.append({"room": int(room.id), "side": side, "kind": "panel", "from": minf(first, last), "to": maxf(first, last), "low": 0.0, "high": NICHE_HEIGHT + 0.1, "depth": 0.027 + NICHE_HEAD_DEPTH})
 
 ## The hotel's bins and potted plants, for the corridors and the lobbies.
 const BIN_MODELS := ["res://assets/props/hotel/metal_trash_can_clean.res", "res://assets/props/hotel/metal_trash_can_rust.res"]

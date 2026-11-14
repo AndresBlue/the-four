@@ -51,6 +51,7 @@ extends Node
 ## Only where the creature drives itself (offline and the co-op host); never
 ## in versus. Quiet during its grace, while it rides after the survivors to
 ## another wing, and while nobody alive is out in the wing it is in.
+const PERF_TRACE := preload("res://game/app/session_perf.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 enum Phase { BUILD, PEAK, RELIEF }
 const PHASE_NAMES := ["acecho", "pico", "respiro"]
@@ -240,7 +241,10 @@ func tune(profile: Dictionary) -> void:
 
 func _physics_process(delta: float) -> void:
 	if level == null or level.session.state != level.session.State.PLAYING: return
+	var trace: PERF_TRACE = level.perf if "perf" in level else null
+	var started := Time.get_ticks_usec() if trace != null else 0
 	tick(delta)
+	if trace != null: trace.timed(&"director.physics", started)
 
 ## The floor's creature (game/enemies/creature.gd), asked only what that
 ## contract answers; null when there is none.

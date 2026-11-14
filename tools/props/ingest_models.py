@@ -106,6 +106,11 @@ CLEAR_GLASS = {"vintage_grandfather_clock_01"}
 ## given after them (r, g, b), or with what lies an offset (dx, dy) away: wood
 ## keeps its grain.
 PATCHES = {
+    # Four labelled function keys on the manual typewriter; keep the character keys.
+    ("typewriter_1930s_unbranded_sketchfab", "Material.003_baseColor.png"): [
+        (121, 2174, 188, 2284, (51, 50, 49)), (258, 2194, 332, 2284, (55, 54, 53)),
+        (106, 2334, 196, 2420, (53, 52, 51)), (260, 2328, 338, 2425, (57, 56, 55)),
+    ],
     # The maker's emblem in the middle of the dial.
     ("rotary_phone_black_sketchfab", "aiStandardSurface3_baseColor.png"): [(770, 3525, 935, 3700)],
     # The maker's name on the side and the model's number under the screen;

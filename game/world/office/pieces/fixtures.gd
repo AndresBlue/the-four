@@ -104,12 +104,14 @@ static func make_rug(builder: Node3D, size: Vector3, key: String) -> ArrayMesh:
 	var w := size.x
 	var h := size.y
 	var d := size.z
-	KIT.block(p, key, Vector3(0.0, h * 0.5, 0.0), Vector3(w - 0.06, h, d), minf(0.004, h * 0.4))
-	# The fringe: thin linen strands in a row at each end, outside the body;
-	# none on a ribbed door mat.
-	for s: float in ([] if key.begins_with("mat") else [-1.0, 1.0]):
-		for k in int(d / 0.02):
-			KIT.block(p, "linen", Vector3(s * (w * 0.5 - 0.015), 0.001, -d * 0.5 + 0.01 + k * 0.02), Vector3(0.03, 0.002, 0.006))
+	if key.begins_with("mat"):
+		KIT.block(p, "black", Vector3(0, h * 0.32, 0), Vector3(w, h * 0.64, d), 0.002)
+		KIT.block(p, key, Vector3(0, h * 0.7, 0), Vector3(w - 0.04, h * 0.6, d - 0.04), 0.002)
+	else:
+		KIT.block(p, key, Vector3(0.0, h * 0.5, 0.0), Vector3(w - 0.06, h, d), minf(0.004, h * 0.4))
+		for s: float in [-1.0, 1.0]:
+			for k in int(d / 0.02):
+				KIT.block(p, "linen", Vector3(s * (w * 0.5 - 0.015), 0.001, -d * 0.5 + 0.01 + k * 0.02), Vector3(0.03, 0.002, 0.006))
 	return KIT.finish(builder, p, "rug_" + key, size, {"solid": false})
 
 ## A pleated velvet curtain on its rod, standing from the floor: no wall piece.

@@ -1,4 +1,5 @@
 ﻿extends Node3D
+const PERF_TRACE := preload("res://game/app/session_perf.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 var materials := {}
@@ -380,6 +381,7 @@ var door_halves: Array = []
 ## Bounce light round each lit room (preset bounce): bounce_light.gd.
 const BOUNCE := preload("res://game/world/hotel/bounce_light.gd")
 var bounce := BOUNCE.new()
+var perf: PERF_TRACE
 ## Reflection probes made at once, the nearest (update_visibility), and how
 ## far down that order a made one is kept: never more than PROBES_KEPT, well
 ## under the 64 places of Godot's reflection atlas.
@@ -2368,6 +2370,7 @@ var eye_planta := 0
 ## update_visibility() asks for the planta the eye goes to.
 func start_bounce(planta: int) -> void:
 	if planta == bounce_planta or bounce.baking(): return
+	var started := perf.begin(&"bounce.prepare", {"planta": planta + 1}) if perf != null else 0
 	bounce_planta = planta
 	bounce.release(planta)
 	var wanted := []
@@ -2395,6 +2398,7 @@ func start_bounce(planta: int) -> void:
 		var root: Node3D = room_nodes[cells[0]]
 		wanted.append({"room": cells[0], "node": root, "centre": middle - root.position, "size": size, "height": height, "parts": cells.map(func(i): return [room_nodes[i], room_nodes[i].position - middle])})
 	bounce.start(wanted, unit_mesh)
+	if perf != null: perf.end(&"bounce.prepare", started)
 
 ## Which cells of a planta share a volume: {"halls": first cell -> its cells
 ## (a hall's, or a stretch of corridor's with the cells it runs on into, even
@@ -2541,12 +2545,14 @@ func make_probe(slot: Dictionary) -> void:
 	slot.parent.add_child(probe)
 	slot.probe = probe
 	probes_made += 1
+	if perf != null: perf.event(&"geometry.probe_created", {"room": slot.room})
 
 ## Freeing it is what gives its place in the atlas back.
 func drop_probe(slot: Dictionary) -> void:
 	slot.probe.queue_free()
 	slot.probe = null
 	probes_made -= 1
+	if perf != null: perf.event(&"geometry.probe_dropped", {"room": slot.room})
 
 ## Rendered with shadows at probes 2, and there, without bounce light, its
 ## capture is also its room's ambient light (the bounce volumes would be
@@ -2830,7 +2836,9 @@ func build_navigation() -> void:
 	for planta in plantas:
 		var mesh: NavigationMesh = nav.duplicate()
 		mesh.filter_baking_aabb = AABB(Vector3(low.x - 2.0, FLOOR.planta_y(planta) - 0.5, low.y - 2.0), Vector3(high.x - low.x + 4.0, 3, high.y - low.y + 4.0))
+		var started := perf.begin(&"geometry.navmesh", {"planta": int(planta) + 1}) if perf != null else 0
 		NavigationServer3D.bake_from_source_geometry_data(mesh, source)
+		if perf != null: perf.end(&"geometry.navmesh", started)
 		keep_floor(mesh, FLOOR.planta_y(planta))
 		var region := NavigationRegion3D.new()
 		region.name = "Navigation_%d" % planta
@@ -2979,12 +2987,14 @@ var probes_at_once := 0
 
 func update_part(part: int, player_position: Vector3, shadows: bool, reach_over := 0.0, show_all := false, planta := -1) -> void:
 	if building: return
+	if part != 0 and round_at.is_empty(): return
+	var started := perf.begin(&"geometry.visibility", {"part": part}) if perf != null else 0
 	if part == 0:
 		round_at = {"position": player_position, "shadows": shadows and not static_light, "show_all": show_all, "reach": 100000.0 if show_all else maxf(preset.room_reach, reach_over), "here": planta if planta >= 0 else FLOOR.planta_of(player_position.y)}
 		round_rooms()
-	elif round_at.is_empty(): return
 	elif part == 1: round_probes()
 	else: round_lamps()
+	if perf != null: perf.end(&"geometry.visibility", started, {"probes": probes_made})
 
 ## The rooms, their ceiling lamps and their doors.
 func round_rooms() -> void:

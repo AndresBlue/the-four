@@ -990,6 +990,10 @@ func post_desk(node: Node3D, spot: Dictionary, size := POST_DESK) -> void:
 	holder.rotation.y = yaw
 	node.add_child(holder)
 	place(holder, DESKS.desk_steel(self, size), Transform3D.IDENTITY)
+	if int(building_room.get("type", -1)) == OFFICE.WINDOW:
+		var room_id := int(building_room.id)
+		PROPS.MODELS.lamp(self, holder, room_id, "desk_lamp_arm", Transform3D(Basis(Vector3.UP, 0.42), Vector3(-0.44, size.y, -0.04)))
+		PROPS.MODELS.put(self, holder, "folders", Transform3D(Basis(Vector3.UP, 0.21), Vector3(0.38, size.y, 0.06)))
 
 ## The battery units (spec_f1_geometry 7.2): how high, how far they are lit
 ## from the player, how many of the nearest cast (on Compatibility, fewer),
@@ -1111,6 +1115,16 @@ func emergency_on() -> StandardMaterial3D:
 ## (an unshadowed lamp would shine through the walls).
 func round_lamps() -> void:
 	super()
+	if not lift_glass_sources.is_empty():
+		var reception_id := int(manifest.start)
+		for lamp in lift_glass_sources: refresh_lift_glass(lamp, reception_id)
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
+		# Fill the two public rooms on their own layers. They rely on bounce
+		# in Forward+, where the direct light can stay shadowed.
+		var reception := int(manifest.get("start", -1))
+		var window := int(manifest.get("mail", {}).get("window", -1))
+		for id: int in [reception, window]:
+			if id >= 0 and id < lights.size() and lights[id].visible: cast_or_fill(lights[id], false)
 	round_accents()
 	if emergency.is_empty() or round_at.is_empty(): return
 	var at: Vector3 = round_at.position
@@ -1353,11 +1367,15 @@ func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner:
 	var both: Array = [int(building_room.type), int(room_across(boundary).get("type", -1))]
 	box(boundary, Vector3(x, GLASS_SILL + band * 0.5, 0), Vector3(length, band, 0.06), "", true)
 	box(boundary, Vector3(x, GLASS_SILL + band * 0.5, 0), Vector3(length, band, GLASS_THICK), "wired_glass" if OFFICE.SECURITY in both else "clear_glass")
-	var count := maxi(1, roundi(length / MULLION_PITCH))
+	var count := maxi(1, roundi(length / (1.55 if at_counter else MULLION_PITCH)))
 	for k in count + 1:
 		var at := x - length * 0.5 + length * k / count
 		box(boundary, Vector3(at, GLASS_SILL + band * 0.5, 0), Vector3(MULLION, band, 0.06), "walnut")
 	for y in [GLASS_SILL, GLASS_HEAD]: box(boundary, Vector3(x, y, 0), Vector3(length, MULLION, 0.07), "walnut")
+	if at_counter:
+		for face: float in [-1.0, 1.0]:
+			var edge := face * (0.09 + ledge_proud - 0.014)
+			box(boundary, Vector3(x, GLASS_SILL + SILL_OVER - 0.027, edge), Vector3(length, 0.028, 0.028), "walnut_object")
 	if OFFICE.SECURITY in both or OFFICE.WINDOW in both: return
 	# Blinds on the office side of each pane (6.4), not the corridor's.
 	var office_side: int = -inner if int(building_room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY] else inner
@@ -1509,50 +1527,61 @@ func lift_casing_material() -> String:
 const LIFT_SCONCE := Vector2(0.35, 1.75)
 ## The reception's accents (office_accents.caps): its rail's three cans, the
 ## counter's lamp, the wash on its front and the lift's two lamps, all lit at
-## once and none of its spots with a shadow (the wall lamps' are the hotel's round).
+## once. Only the task lamp casts among the spots.
 const RECEPTION_ACCENTS := 7
 ## The lift's wall lamps (pieces/fixtures.gd box_sconce()).
 const LIFT_LAMP := Vector3(0.13, 0.32, 0.09)
+const LIFT_GLASS_REFLECTION := 1.6
+var lift_glass_sources: Array[OmniLight3D] = []
 ## The lift's walnut casing: its width round the leaves and how proud.
 const LIFT_ARCHITRAVE := Vector2(0.16, 0.05)
 
-## The lift the floor is come down by (7.7): on the reception's wall that
-## arrival_lift names, the hotel lift's front, shut, in a steel casing; its
-## screen dark, no car behind it and nothing to use (phase 5's).
+## The closed arrival lift, set in front of the continuous reception wall.
 func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	var back := Vector3(float(manifest.arrival_lift[0]), 0, float(manifest.arrival_lift[1]))
 	var span := FLOOR.size_of(room)
 	var half: float = span.x * 0.5 if back.x != 0 else span.y * 0.5
 	var front := Node3D.new()
 	front.name = "ArrivalLift"
-	# Clear of the frieze's rail; the casing reaches back to the wall.
-	var proud: float = RAIL.y if OFFICE.wall_trim(room) == "frieze" else 0.0
-	front.position = back * (half - 0.09 - LIFT_PROUD - proud)
+	const REVEAL := 0.055
+	front.position = back * (half - OFFICE.WALL_HALF - REVEAL)
+	var along := float(manifest.get("arrival_lift_along", 0.0))
+	front.position += (Vector3.BACK if back.x != 0.0 else Vector3.RIGHT) * along
 	front.rotation.y = atan2(-back.x, -back.z)
 	node.add_child(front)
-	var bounds := AABB()
-	for k in LIFT_LEAVES.size():
-		var leaf := MeshInstance3D.new()
-		leaf.name = "Leaf"
-		leaf.mesh = LIFT_LEAVES[k]
-		front.add_child(leaf)
-		bounds = LIFT_LEAVES[k].get_aabb() if k == 0 else bounds.merge(LIFT_LEAVES[k].get_aabb())
-	for part in [[LIFT_CALL, Vector3(CALL_AT.x, CALL_AT.y, 0.0)], [LIFT_SCREEN, Vector3(0, SCREEN_AT, 0.0)]]:
-		var piece := MeshInstance3D.new()
-		piece.mesh = part[0]
-		piece.position = part[1]
-		front.add_child(piece)
-	# The casing round the leaves: a steel reveal and a broad walnut
-	# architrave, as a lobby's lift is framed (the reception's reference).
+	var bounds: AABB = LIFT_LEAVES[0].get_aabb()
+	for k in range(1, LIFT_LEAVES.size()): bounds = bounds.merge(LIFT_LEAVES[k].get_aabb())
+	KIT.material(self, "reception_steel")
+	box(front, Vector3(bounds.get_center().x, bounds.get_center().y, -0.012), Vector3(bounds.size.x, bounds.size.y, 0.01), "black")
+	var mid := bounds.get_center()
+	var panel_width := (bounds.size.x - 0.014) * 0.5
+	for side: float in [-1.0, 1.0]:
+		var at := Vector3(mid.x + side * (panel_width * 0.5 + 0.004), mid.y, -0.005)
+		box(front, at, Vector3(panel_width, bounds.size.y - 0.012, 0.014), "reception_steel")
+	var call := MeshInstance3D.new()
+	call.name = "CallButtons"
+	call.mesh = LIFT_CALL
+	call.position = Vector3(CALL_AT.x, CALL_AT.y, -REVEAL + 0.017)
+	front.add_child(call)
 	var x0 := bounds.position.x - 0.04
 	var x1 := bounds.end.x + 0.04
 	var top := bounds.end.y + 0.04
-	for x in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.02 - proud * 0.5), Vector3(0.08, top, 0.04 + proud), "steel_frame")
-	box(front, Vector3((x0 + x1) * 0.5, top, 0.02 - proud * 0.5), Vector3(x1 - x0 + 0.08, 0.08, 0.04 + proud), "steel_frame")
+	var depth := REVEAL + 0.028
+	for x: float in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.028 - depth * 0.5), Vector3(0.08, top, depth), "reception_steel")
+	box(front, Vector3((x0 + x1) * 0.5, top, 0.028 - depth * 0.5), Vector3(x1 - x0 + 0.08, 0.08, depth), "reception_steel")
 	var wide := LIFT_ARCHITRAVE.x
-	var z := LIFT_ARCHITRAVE.y * 0.5 - proud * 0.5
-	for x: float in [x0 - 0.04 - wide * 0.5, x1 + 0.04 + wide * 0.5]: box(front, Vector3(x, (top + 0.04 + wide) * 0.5, z), Vector3(wide, top + 0.04 + wide, LIFT_ARCHITRAVE.y + proud), "walnut")
-	box(front, Vector3((x0 + x1) * 0.5, top + 0.04 + wide * 0.5, z), Vector3(x1 - x0 + 0.08 + wide * 2.0, wide, LIFT_ARCHITRAVE.y + proud), "walnut")
+	var z := LIFT_ARCHITRAVE.y * 0.5 - REVEAL * 0.5
+	for x: float in [x0 - 0.04 - wide * 0.5, x1 + 0.04 + wide * 0.5]: box(front, Vector3(x, (top + 0.04 + wide) * 0.5, z), Vector3(wide, top + 0.04 + wide, LIFT_ARCHITRAVE.y + REVEAL), "walnut")
+	box(front, Vector3((x0 + x1) * 0.5, top + 0.04 + wide * 0.5, z), Vector3(x1 - x0 + 0.08 + wide * 2.0, wide, LIFT_ARCHITRAVE.y + REVEAL), "walnut")
+	var display_at := Vector3(0, top + 0.04 + wide * 0.5, LIFT_ARCHITRAVE.y + 0.001)
+	box(front, display_at, Vector3(0.24, 0.105, 0.018), "reception_steel")
+	box(front, display_at + Vector3(0, 0, 0.011), Vector3(0.193, 0.075, 0.006), "black")
+	car_digits(front, display_at + Vector3(0, 0, 0.026), 0.0)
+	var digits := front.get_node("Digits") as Label3D
+	digits.text = "2"
+	digits.pixel_size = 0.00117
+	digits.modulate = Color(2.4, 0.27, 0.09)
+	digits.outline_size = 0
 	x0 -= 0.04 + wide
 	x1 += 0.04 + wide
 	# Two wall lamps flanking it (spec_rediseno 6) on the wall's paint, clear
@@ -1561,7 +1590,36 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	# Opal glass boxes on brass, not the hotel's cloth shades.
 	KIT.material(self, "glow_strip")
 	var lamp := FIXTURES.box_sconce(self, LIFT_LAMP)
-	for x: float in [-flank, flank]: accent_sconce(front, int(room.id), Vector3(x, LIFT_SCONCE.y, -LIFT_PROUD - proud + LINING), 0.0, lamp)
+	for x: float in [-flank, flank]:
+		var at := Vector3(x, LIFT_SCONCE.y, -REVEAL + LINING)
+		var sconce := accent_sconce(front, int(room.id), at, 0.0, lamp)
+		if sconce != null and RenderingServer.get_rendering_device() != null and RenderingServer.get_current_rendering_method() == "forward_plus":
+			lift_glass_light(front, at, sconce_lights.back())
+
+## The shape of the opal glass in the floor's highlight, paired with its wall lamp.
+func lift_glass_light(parent: Node3D, at: Vector3, wall_light: OmniLight3D) -> void:
+	var glass := AreaLight3D.new()
+	glass.position = at + Vector3.BACK * (LIFT_LAMP.z + 0.015)
+	glass.rotation.y = PI
+	glass.area_size = Vector2(LIFT_LAMP.x - 0.03, LIFT_LAMP.y - 0.05)
+	glass.area_range = 5.0
+	glass.light_color = LIGHTING.light_color(2850.0)
+	glass.light_specular = 1.5
+	glass.light_bake_mode = Light3D.BAKE_DISABLED
+	glass.light_volumetric_fog_energy = 0.0
+	glass.light_cull_mask = FLOOR_LAYER
+	glass.visible = false
+	parent.add_child(glass)
+	wall_light.set_meta("lift_glass", glass)
+	lift_glass_sources.append(wall_light)
+
+func refresh_lift_glass(wall_light: Light3D, room_id: int) -> void:
+	var glass := wall_light.get_meta("lift_glass") as AreaLight3D
+	var nearby := not round_at.is_empty() and (round_at.position as Vector3).distance_squared_to(wall_light.global_position) < 49.0
+	var shown: bool = nearby and wall_light.is_visible_in_tree() and lit(room_id) and not echo_view and int(preset.probes) >= 2
+	if glass.visible != shown: glass.visible = shown
+	var energy := LIFT_GLASS_REFLECTION * (1.0 - drained(room_id))
+	if not is_equal_approx(glass.light_energy, energy): glass.light_energy = energy
 
 ## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
 ## at either end, so it files the empty entries the hotel's own branches do and
@@ -1875,32 +1933,24 @@ func door_leaf_mesh(steel: bool, vision: bool) -> ArrayMesh:
 ## proud and its outer one lower, round the jambs and the head (the stop the
 ## leaf shuts against is the hotel's door_stop()).
 func door_frame_mesh() -> ArrayMesh:
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var parts := KIT.begin()
 	var half := FLOOR.PORTAL * 0.5
-	var wall := 0.18
+	var wall := OFFICE.WALL_HALF * 2.0
 	var inner := JAMB_WIDE * 0.6
 	var outer := JAMB_WIDE - inner
-	var parts := []
 	for side: float in [-1.0, 1.0]:
-		parts.append([Vector3(JAMB_WIDE, OPENING_HIGH, wall), Vector3(side * (half + JAMB_WIDE * 0.5), OPENING_HIGH * 0.5, 0)])
-	parts.append([Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, JAMB_WIDE, wall), Vector3(0, OPENING_HIGH + JAMB_WIDE * 0.5, 0)])
+		KIT.block(parts, "walnut_object", Vector3(side * (half + JAMB_WIDE * 0.5), OPENING_HIGH * 0.5, 0), Vector3(JAMB_WIDE, OPENING_HIGH, wall), 0.003)
+	KIT.block(parts, "walnut_object", Vector3(0, OPENING_HIGH + JAMB_WIDE * 0.5, 0), Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, JAMB_WIDE, wall), 0.003)
 	for face: float in [-1.0, 1.0]:
-		for step in [[inner, 0.0, JAMB_PROUD], [outer, inner, JAMB_PROUD * 0.6]]:
+		for step in [[inner, 0.0, JAMB_PROUD], [outer, inner, JAMB_PROUD * 0.57]]:
 			var wide: float = step[0]
 			var from: float = step[1]
 			var proud: float = step[2]
 			var z := face * (wall * 0.5 + proud * 0.5)
 			for side: float in [-1.0, 1.0]:
-				parts.append([Vector3(wide, OPENING_HIGH + from + wide, proud), Vector3(side * (half + from + wide * 0.5), (OPENING_HIGH + from + wide) * 0.5, z)])
-			parts.append([Vector3(FLOOR.PORTAL + (from + wide) * 2.0, wide, proud), Vector3(0, OPENING_HIGH + from + wide * 0.5, z)])
-	for part in parts:
-		var box_mesh := BoxMesh.new()
-		box_mesh.size = part[0]
-		tool.append_from(box_mesh, 0, Transform3D(Basis.IDENTITY, part[1]))
-	var mesh := tool.commit()
-	mesh.surface_set_material(0, materials.walnut_object)
-	return mesh
+				KIT.block(parts, "walnut_object", Vector3(side * (half + from + wide * 0.5), (OPENING_HIGH + from) * 0.5, z), Vector3(wide, OPENING_HIGH + from, proud), 0.0025)
+			KIT.block(parts, "walnut_object", Vector3(0, OPENING_HIGH + from + wide * 0.5, z), Vector3(FLOOR.PORTAL + (from + wide) * 2.0, wide, proud), 0.0025)
+	return KIT.finish(self, parts, "office_jamb", Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, OPENING_HIGH + JAMB_WIDE, wall + JAMB_PROUD * 2.0), {"solid": false})
 
 ## The office's corner pieces first (9.3); the hotel's own kinds as the hotel.
 func build_prop(node: Node3D, kind: String) -> void:
@@ -2040,8 +2090,12 @@ func nav_agent_radius() -> float: return 0.3
 
 ## Each room's halo follows its lamp, every frame (spec_rediseno 4).
 func _process(delta: float) -> void:
+	var started := Time.get_ticks_usec() if perf != null else 0
 	super(delta)
+	if perf != null: perf.timed(&"geometry.base_process", started)
+	if perf != null: started = Time.get_ticks_usec()
 	glow_halos()
+	if perf != null: perf.timed(&"geometry.halos", started)
 
 ## The halos of the planta looked from, at their lamp's energy now over its
 ## energy as built (her drain, a failing tube), nothing while the lamp is out
@@ -2090,7 +2144,9 @@ const PROBE_STEP := 0.05
 func probe_strength(slot: Dictionary, room_id: int) -> void:
 	var probe: ReflectionProbe = slot.probe
 	var wanted := float(slot.intensity) * (1.0 - drained(room_id))
-	if absf(probe.intensity - wanted) >= PROBE_STEP or (wanted == 0.0) != (probe.intensity == 0.0): probe.intensity = wanted
+	if absf(probe.intensity - wanted) >= PROBE_STEP or (wanted == 0.0) != (probe.intensity == 0.0):
+		probe.intensity = wanted
+		if perf != null: perf.event(&"geometry.probe_intensity", {"room": room_id})
 
 ## A room's probe slot (probe_slots), {} when it has none; indexed once.
 var slot_of := {}
@@ -2109,6 +2165,8 @@ func make_probe(slot: Dictionary) -> void:
 	slot["intensity"] = PROBE_INTENSITY
 	probe.size.y = float(slot.height) + PROBE_PAST * 2.0
 	probe.reflection_mask = FLOOR_LAYER
+	if int(slot.room) == int(manifest.get("start", -1)):
+		slot["intensity"] = 1.35
 	var ground := (slot.parent as Node3D).get_node_or_null("Mesh_" + OFFICE.floor_look(manifest.rooms[int(slot.room)])) as GeometryInstance3D
 	# Hidden while its layers change, as room_layers.put_on() does it.
 	if ground != null and (ground.layers & FLOOR_LAYER) == 0:
@@ -2160,7 +2218,7 @@ func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colou
 	accent_fade(lamp)
 	lamp.visible = false
 	parent.add_child(lamp)
-	accents.add(room_id, {"light": lamp, "energy": energy, "sconce": -1, "mesh": null, "glowing": true})
+	accents.add(room_id, {"light": lamp, "energy": energy, "sconce": -1, "mesh": null, "glowing": true, "casts": casts})
 	settle_accent(room_id, [lamp])
 	return lamp
 
@@ -2217,6 +2275,7 @@ func refresh_accents(room_id: int) -> void:
 			lamp.light_energy = (SCONCE_ENERGY if casting else SCONCE_ENERGY * SCONCE_FILL_ENERGY) * left
 		else: lamp.light_energy = float(entry.energy) * left
 		if not on and lamp.visible: lamp.visible = false
+		if lamp.has_meta("lift_glass"): refresh_lift_glass(lamp, room_id)
 		var mesh: MeshInstance3D = entry.mesh
 		if mesh != null and bool(entry.glowing) != on:
 			entry.glowing = on
@@ -2230,15 +2289,17 @@ func round_accents() -> void:
 	var at: Vector3 = round_at.position
 	var shadows: bool = round_at.shadows
 	var show_all: bool = round_at.show_all
-	var allowed: bool = not echo_view and RenderingServer.get_current_rendering_method() != "gl_compatibility"
+	var compatibility := RenderingServer.get_current_rendering_method() == "gl_compatibility"
+	var reception := int(manifest.get("start", -1))
 	for room_id: int in accents.rooms:
-		var on: bool = allowed and lit(room_id)
+		var on: bool = not echo_view and (not compatibility or room_id == reception) and lit(room_id)
 		for entry: Dictionary in accents.of_room(room_id):
 			if int(entry.sconce) >= 0: continue
 			var lamp: Light3D = entry.light
 			var shown: bool = on and (show_all or lamp.global_position.distance_to(at) < float(preset.furniture_lamps))
 			if lamp.visible != shown: lamp.visible = shown
-			if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
+			var casts := shadows and (room_id != reception or (not compatibility and bool(entry.get("casts", false))))
+			if lamp.shadow_enabled != casts: lamp.shadow_enabled = casts
 
 ## Her drain dims a room's accents with its lamp.
 func drain(room_id: int, amount: float) -> void:

@@ -22,6 +22,7 @@ const MODELS := {
 	"stacking_chair": {"paths": ["res://assets/props/hotel/SchoolChair_01.res"], "scale": 0.8, "seat": true},
 	# The hotel's carved chair read out of its time in a 1990 office: the walnut and leather stand-in.
 	"waiting_chair": {"paths": []},
+	"reception_seat": {"paths": ["res://assets/props/office/butaca_madera_renend.res"], "height": 0.83, "seat": true},
 	"armchair": {"paths": ["res://assets/props/hotel/ArmChair_01.res"], "seat": true},
 	"dining_chair": {"paths": ["res://assets/props/hotel/dining_chair_02.res"], "seat": true},
 	# sofa_02 is baked facing +Z, its arms reaching out past its back: backed() would turn it round.
@@ -70,6 +71,7 @@ const MODELS := {
 	"binders": {"paths": ["res://assets/props/office/archivadores_palanca_janexx.res"]},
 	"step_ladder": {"paths": ["res://assets/props/office/wooden_ladder_02.res"]},
 	"dot_matrix_printer": {"paths": ["res://assets/props/office/impresora_okidata_papaj.res"]},
+	"typewriter": {"paths": ["res://assets/props/office/typewriter_1930s_unbranded_sketchfab.res"]},
 	"bookcase_model": {"paths": ["res://assets/props/office/libreria_libros_collings.res"]},
 	"desk_walnut_suite": {"paths": ["res://assets/props/office/escritorio_madera_collings.res"]},
 	"vending": {"paths": ["res://assets/props/office/expendedora_attheseedof.res"]},
@@ -207,7 +209,7 @@ static func stand_in(builder: Node3D, kind: String) -> Mesh:
 	match kind:
 		"office_chair": return STAND.office_chair(builder, Vector3(0.6, 0.95, 0.6))
 		"exec_chair": return STAND.exec_chair(builder, Vector3(0.68, 1.15, 0.66))
-		"visitor_chair", "stacking_chair", "waiting_chair", "armchair", "dining_chair", "sofa", "lounge_chair": return STAND.visitor_chair(builder, Vector3(0.56, 0.88, 0.56))
+		"visitor_chair", "stacking_chair", "waiting_chair", "reception_seat", "armchair", "dining_chair", "sofa", "lounge_chair": return STAND.visitor_chair(builder, Vector3(0.56, 0.88, 0.56))
 		"plant", "plant_bare", "plant_tall", "plant_small": return STAND.plant_stand_in(builder, Vector3(0.6, 0.9, 0.6))
 		"desk_lamp_banker": return STAND.desk_lamp(builder, Vector3(0.36, 0.42, 0.22), "banker")
 		"desk_lamp_arm": return STAND.desk_lamp(builder, Vector3(0.3, 0.5, 0.36), "arm")
@@ -233,6 +235,7 @@ static func stand_in(builder: Node3D, kind: String) -> Mesh:
 		"paper_scatter": return THINGS.paper_scatter(builder, Vector3(0.9, 0.01, 0.7))
 		"cable": return THINGS.cable_run(builder, Vector3(1.2, 0.012, 0.3))
 		"crt": return MACHINES.crt_monitor(builder, Vector3(0.38, 0.36, 0.4), "plastic_beige")
+		"crt_black": return MACHINES.crt_monitor(builder, Vector3(0.34, 0.32, 0.35), "black")
 		"keyboard": return MACHINES.keyboard(builder, Vector3(0.46, 0.035, 0.17))
 		"tray": return STATIONERY.tray(builder, Vector3(0.26, 0.07, 0.34), false)
 		"tray_wire": return STATIONERY.tray(builder, Vector3(0.26, 0.07, 0.34), true)
@@ -259,5 +262,4 @@ static func light(builder: Node3D, parent: Node3D, room_id: int, kind: String, x
 	if lit.size() >= LIT_MOST: return
 	var at: Vector3 = spec.at
 	var aim: Vector3 = spec.aim
-	# In the reception no spot casts (office_geometry RECEPTION_ACCENTS).
-	builder.accent_spot(parent, room_id, xform * at, xform * aim, spec.colour, float(spec.energy), float(spec.reach), float(spec.angle), room_id != int(builder.manifest.get("start", -1)))
+	builder.accent_spot(parent, room_id, xform * at, xform * aim, spec.colour, float(spec.energy), float(spec.reach), float(spec.angle))

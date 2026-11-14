@@ -445,7 +445,7 @@ const FURNITURE := {
 	# The reception's front desk with the walnut wall behind it, its back to that
 	# wall (office_props.front_desk()): straight, not the L it was, so it fits
 	# the small receptions too.
-	"reception_counter_l": {"size": Vector2(3.4, 1.7), "height": 2.15},
+	"reception_counter_l": {"size": Vector2(3.4, 1.7), "compact": Vector2(2.9, 1.42), "height": 2.15},
 	"waiting_row_4": {"size": Vector2(3.2, 0.8), "height": 0.9},
 	"office_suite": {"size": Vector2(2.0, 2.7), "height": 1.3},
 	"meeting_table_s": {"size": Vector2(3.6, 1.85), "height": 0.9},
@@ -504,13 +504,13 @@ const CORNER_SIZES := {
 const ROOM_FURNITURE := {
 	# The desk, a big plant by it and the waiting row on beyond, the second
 	# plant closing the row: what the first view takes in (the author, 12 November 2026).
-	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["waiting_row_4", "side", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["waiting_row", "spare", 0, 0, 1]],
 	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["printer_cart", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 2, 1], ["bin_floor", "spare", 1, 1, 1]],
 	CUBICLES: [["desk", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	OFFICE: [["office_suite", "center", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["printer_cart", "spare", 0, 1, 1]],
 	TOILETS: [["cubicles", "wall", 1, 1, 1], ["locker_bank", "run", 1, 1, 1], ["locker_bank", "spare", 1, 1, 1], ["bench_slat", "middle", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["sideboard", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["tv_cart", "spare", 1, 1, 1]],
-	COPY_ROOM: [["copier", "wall", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "run", 1, 1, 1], ["reader_table", "wall", 1, 1, 2], ["reader_table", "spare", 0, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2]],
+	COPY_ROOM: [["copier", "back", 1, 1, 1], ["copier", "side", 1, 1, 1], ["reader_table", "run", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "side", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2]],
 	STORE: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1], ["shelving", "spare", 1, 2, 1]],
 	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "spare", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "run", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]],
 	BREAK_ROOM: [["kitchen", "wall", 1, 1, 1], ["vending", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["dining_set", "middle", 3, 4, 1], ["filing", "spare", 1, 1, 2], ["work_desk", "spare", 0, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["tv_cart", "spare", 1, 1, 1]],

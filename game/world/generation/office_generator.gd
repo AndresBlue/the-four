@@ -516,9 +516,7 @@ func along_span(room: Dictionary, way: Vector2i) -> float:
 func across_span(room: Dictionary, way: Vector2i) -> float:
 	return float(room.span_z) if way.x != 0 else float(room.span_x)
 
-## The floor opens looking at the reception's front desk (the author, 12
-## November 2026: its first view), from the middle the bodies start round;
-## at its door, as the hotel's, where no desk was laid.
+## The first view frames the counter and the arrival lift from the spawn.
 func facing(f: Dictionary, start: int) -> float:
 	for item in f.rooms[start].get("furniture", []):
 		if String(item.kind) != "reception_counter_l": continue
@@ -526,8 +524,9 @@ func facing(f: Dictionary, start: int) -> float:
 		# Between the desk and the arrival lift where both fit the lens (the
 		# camera takes some 100 degrees across).
 		if f.has("arrival_lift"):
-			var lift := Vector2(float(f.arrival_lift[0]), float(f.arrival_lift[1]))
-			if look.angle_to(lift) != 0.0 and absf(look.angle_to(lift)) <= deg_to_rad(FIRST_VIEW_SPREAD): look = (look + lift).normalized()
+			var way := Vector2i(int(f.arrival_lift[0]), int(f.arrival_lift[1]))
+			var lift := RECIPES.wall_front(f.rooms[start], LAYOUT.wall_of(way), float(f.get("arrival_lift_along", 0.0)), 0.0)
+			if absf(look.angle_to(lift)) <= deg_to_rad(FIRST_VIEW_SPREAD): look = (look + lift.normalized()).normalized()
 		return atan2(-look.x, -look.y)
 	return super(f, start)
 ## The widest angle between the desk and the lift the first view takes both in.
@@ -1723,6 +1722,8 @@ func furnish_furniture(job: Dictionary) -> String:
 		var first_wall := ""
 		var once: Array = palette.ONE_PER_HALL.get(t, []) if head >= 0 and head != int(room.id) else []
 		var chain := {}
+		var reception_lift := Vector2i.ZERO
+		if t == palette.RECEPTION and f.has("arrival_lift"): reception_lift = Vector2i(int(f.arrival_lift[0]), int(f.arrival_lift[1]))
 		for entry in recipe:
 			if once.has(String(entry[0])): continue
 			var how := String(entry[1])
@@ -1736,7 +1737,21 @@ func furnish_furniture(job: Dictionary) -> String:
 			else:
 				# The director's lounge first where its corner stood (spec_4e D).
 				if RECIPES.lay_corner(room, walk, gone, String(entry[0])): continue
-				for run in RECIPES.lay(room, walk, entry, rng, chain):
+				var runs: Array = []
+				if String(entry[0]) == "reception_counter_l" and reception_lift != Vector2i.ZERO:
+					var counter := RECIPES.reception_counter(room, walk, reception_lift, float(f.get("arrival_lift_along", 0.0)))
+					if not counter.is_empty():
+						runs.append(counter)
+						room.feature = String(counter.wall)
+						chain = counter.duplicate()
+						rng.randi_range(int(entry[2]), int(entry[3]))
+				if String(entry[0]) == "waiting_row_4" and reception_lift != Vector2i.ZERO:
+					var wait := RECIPES.reception_wait(room, walk, chain, reception_lift)
+					if not wait.is_empty():
+						runs.append(wait)
+						rng.randi_range(int(entry[2]), int(entry[3]))
+				if runs.is_empty(): runs = RECIPES.lay(room, walk, entry, rng, chain)
+				for run in runs:
 					if first_wall == "": first_wall = String(run.wall)
 					if not job.wall_items.has(int(room.id)): job.wall_items[int(room.id)] = []
 					job.wall_items[int(room.id)].append(run)
@@ -2725,9 +2740,29 @@ func furnish_lobby(job: Dictionary) -> String:
 		if reception.get("open_sides", []).has(wall) or doors.has(wall): continue
 		var way := LAYOUT.way_of(wall)
 		job.out["arrival_lift"] = [way.x, way.y]
-		# For facing(): the floor's first view takes the lift in with the desk.
 		f["arrival_lift"] = [way.x, way.y]
-		register(job, start, wall, 0.0, 1.5)
+		# Try both sides of the same wall before keeping the lift centred.
+		var span := LAYOUT.wall_length(reception, String(wall))
+		var right := Vector2i(-way.y, way.x)
+		var along := 0.0
+		if span >= 7.6:
+			var left := -float(right.x + right.y) * (span * 0.5 - 2.16)
+			var taken: Array = job.taken.get(start, [])
+			var probe := reception.duplicate()
+			probe["props"] = []
+			probe["furniture"] = []
+			for trial: float in [left, -left]:
+				if not spot_free(job, reception, String(wall), trial, 1.75): continue
+				var reserved: Array = taken + [{"wall": wall, "along": trial, "half": 1.75}]
+				var zones := RECIPES.keep_clear(working(job), probe, reserved) + RECIPES.ways_in(probe, reserved)
+				var counter := RECIPES.reception_counter(probe, zones, way, trial)
+				if not counter.is_empty() and String(counter.wall) == wall:
+					along = trial
+					break
+				probe.furniture.clear()
+		job.out["arrival_lift_along"] = along
+		f["arrival_lift_along"] = along
+		register(job, start, wall, along, 1.75)
 		break
 	return ""
 

@@ -1226,6 +1226,18 @@
    }
   ]
  },
+ "typewriter_1930s_unbranded_sketchfab": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/typewriter.gltf",
+  "parts": [
+   {
+    "name": "typewriter",
+    "objects": ".",
+    "box": [null, [0.0, 0.17], null],
+    "shrink": {".": 0.45}
+   }
+  ]
+ },
  "toalla_aprilpolubiec": {
   "in": "_zip/scene.gltf",
   "out": "_gltf/toalla.gltf",

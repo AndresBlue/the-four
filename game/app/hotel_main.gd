@@ -1,6 +1,10 @@
 extends Node3D
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const HIDE := preload("res://game/world/interactables/hiding_place.gd")
+const PERF := preload("res://game/app/session_perf.gd")
+var perf: PERF
+var perf_path := ""
+var perf_seed := -1
 ## Kept loaded, so the hotel's creature is not read from disk as a floor is put up; which creature a floor has is its kind's (CREATURE).
 const LOCUST := preload("res://game/enemies/locust/locust.tscn")
 var world_audio
@@ -187,6 +191,8 @@ func _enter_tree() -> void:
 	session = $Services/GameSession
 	player = $Player
 	ui = $Interface
+	var user_args := OS.get_cmdline_user_args()
+	var test_profile := user_args.has("--test-profile")
 	var test_name := "default"
 	var scripted := false
 	for argument in OS.get_cmdline_args():
@@ -195,7 +201,7 @@ func _enter_tree() -> void:
 			scripted = true
 	# Several runs of one script at once (tools/bots.ps1 -Parallel) each keep
 	# their own files: sharing them, each overwrote the others' settings.
-	for argument in OS.get_cmdline_user_args():
+	for argument in user_args:
 		if argument.begins_with("--profile-tag="): test_name += "_" + argument.trim_prefix("--profile-tag=").validate_filename()
 	# A floor a script runs -- a test, a probe, a capture, a bench -- is
 	# nobody's game, flag or no flag: it has files of its own. Without the flag
@@ -203,10 +209,17 @@ func _enter_tree() -> void:
 	# tools/verify.ps1 did, every time it ran, and what it left to go on with
 	# was its own floor, with the survivor where the probe keeps them, two
 	# hundred metres under the hotel. And the tests emptied the player's board.
-	var own_files: bool = scripted or OS.get_cmdline_user_args().has("--test-profile")
+	var own_files: bool = scripted or test_profile
 	if own_files:
 		settings.save_path = "user://test_hotel_%s_settings.json" % test_name
 		session.checkpoint_path = "user://test_hotel_%s_checkpoint.json" % test_name
+	if test_profile:
+		for argument in user_args:
+			if argument.begins_with("--perf-log="): perf_path = argument.trim_prefix("--perf-log=")
+			elif argument.begins_with("--perf-seed="):
+				var wanted := argument.trim_prefix("--perf-seed=")
+				if wanted.is_valid_int() and int(wanted) >= 0 and int(wanted) <= 2147483647: perf_seed = int(wanted)
+		settings.trace_display = not scripted and not perf_path.is_empty() and not user_args.has("--automation")
 	# The floor every start_floor() builds until another is chosen (--floor=N).
 	set_floor(floor_asked())
 	discoveries = DISCOVERIES.new()
@@ -275,6 +288,11 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if not perf_path.is_empty():
+		var trace := PERF.new()
+		if trace.start(perf_path, get_window()):
+			perf = trace
+			get_tree().process_frame.connect(capture_perf_frame)
 	automation = DisplayServer.get_name() == "headless" or OS.get_cmdline_user_args().has("--automation")
 	world_audio.enabled = not automation and not OS.get_cmdline_user_args().has("--silent")
 	ui.sounds_enabled = world_audio.enabled
@@ -615,7 +633,7 @@ func unlock_floor2() -> void:
 ## A new game opens with the bedroom scene; its floor is built when it ends.
 func start_intro(seed_value: int) -> void:
 	if session.state in [session.State.LOADING, session.State.CUTSCENE]: return
-	intro_seed = seed_value
+	intro_seed = perf_seed if perf != null and perf_seed >= 0 else seed_value
 	skip_time = 0.0
 	intro = INTRO.new()
 	intro.motion = 0.0 if settings.values.reduced else clampf(settings.values.bob / 0.1, 0.0, 3.0)
@@ -794,7 +812,11 @@ func can_keep() -> bool:
 
 func keep_floor() -> bool:
 	keep_clock = 0.0
-	return can_keep() and session.write_state(SAVE.take(self))
+	if not can_keep(): return false
+	var started := perf.begin(&"checkpoint") if perf != null else 0
+	var kept: bool = session.write_state(SAVE.take(self))
+	if perf != null: perf.end(&"checkpoint", started, {"saved": kept})
+	return kept
 
 ## Generates, builds and validates a floor. False (back in the menu) when it
 ## could not be made playable. `survivors`: how many play it, which decides
@@ -810,6 +832,7 @@ var drawn_for := 0
 func build_floor(seed_value: int, force_fallback := false, survivors := 1, difficulty_id := "") -> bool:
 	if session.state == session.State.LOADING: return false
 	session.set_state(session.State.LOADING)
+	var load_trace := perf.begin(&"floor.load", {"seed": seed_value, "floor": session.floor_number}) if perf != null else 0
 	await get_tree().process_frame
 	await get_tree().process_frame
 	world_audio.reset()
@@ -838,20 +861,16 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1, diffi
 		remove_child(hotel)
 		hotel.queue_free()
 	if match_net != null: match_net.floor_building()
+	var started := perf.begin(&"floor.generate", {"seed": seed_value, "survivors": survivors, "difficulty": difficulty_id}) if perf != null else 0
 	manifest = kind.GENERATOR.new().generate(seed_value, drawn_for if drawn_for > 0 else survivors)
 	if force_fallback:
 		manifest = kind.GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
+	if perf != null: perf.end(&"floor.generate", started, {"seed": manifest.get("seed"), "fallback": manifest.get("fallback", false)})
 	build_objectives()
 	tv_sets = settle_objectives(survivors).get("televisions", {})
-	hotel = kind.GEOMETRY.new()
-	hotel.name = "GeneratedHotel"
-	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
-	if "difficulty_id" in hotel: hotel.difficulty_id = DIFFICULTY.valid(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
-	add_child(hotel)
-	await hotel.build(manifest)
-	configure_hotel()
+	await mount_geometry(difficulty_id)
 	player.spawn = Vector3(0, 0.04, 0)
 	player.position = player.spawn
 	player.velocity = Vector3.ZERO
@@ -872,7 +891,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1, diffi
 	get_tree().paused = false
 	await get_tree().physics_frame
 	await get_tree().physics_frame
-	physical_errors = kind.VALIDATOR.new().validate_physics(get_world_3d(), manifest)
+	validate_floor_physics()
 	if not physical_errors.is_empty():
 		push_warning("Physical map rejection: %s" % str(physical_errors))
 		remove_child(hotel)
@@ -881,18 +900,14 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1, diffi
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
 		tv_sets = settle_objectives(survivors).get("televisions", {})
-		hotel = kind.GEOMETRY.new()
-		hotel.name = "GeneratedHotel"
-		hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
-		add_child(hotel)
-		await hotel.build(manifest)
-		configure_hotel()
+		await mount_geometry("", true)
 		await get_tree().physics_frame
 		await get_tree().physics_frame
-		physical_errors = kind.VALIDATOR.new().validate_physics(get_world_3d(), manifest)
+		validate_floor_physics()
 		if not physical_errors.is_empty():
 			save_error = "El mapa de respaldo no superó la validación física. No se inició la partida."
 			session.set_state(session.State.MENU)
+			if perf != null: perf.end(&"floor.load", load_trace, {"ok": false})
 			return false
 	# Wait for the new static floor's navigation to be queryable before playing.
 	var exit_room: Dictionary = manifest.rooms[manifest.exit]
@@ -912,6 +927,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1, diffi
 	if not navigation_ready:
 		save_error = "No se pudo validar la ruta de salida. El nivel no se inició."
 		session.set_state(session.State.MENU)
+		if perf != null: perf.end(&"floor.load", load_trace, {"ok": false})
 		return false
 	# The floor starts with its bounce light in place, not popping in.
 	await bounce_ready()
@@ -920,8 +936,29 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1, diffi
 	# leaves them to be built during play, which is what it cost before.
 	# Nothing to warm up where nothing is drawn (headless tests).
 	if DisplayServer.get_name() != "headless" and not OS.get_cmdline_user_args().has("--no-warmup"):
+		started = perf.begin(&"floor.shader_warmup") if perf != null else 0
 		await WARMUP.run(self)
+		if perf != null: perf.end(&"floor.shader_warmup", started)
+	if perf != null: perf.end(&"floor.load", load_trace, {"ok": true})
 	return true
+
+func mount_geometry(difficulty_id := "", fallback := false) -> void:
+	var started := perf.begin(&"floor.geometry", {"fallback": manifest.get("fallback", false)}) if perf != null else 0
+	hotel = kind.GEOMETRY.new()
+	hotel.name = "GeneratedHotel"
+	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
+	hotel.perf = perf
+	hotel.bounce.perf = perf
+	if not fallback and "difficulty_id" in hotel: hotel.difficulty_id = DIFFICULTY.valid(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
+	add_child(hotel)
+	await hotel.build(manifest)
+	configure_hotel()
+	if perf != null: perf.end(&"floor.geometry", started)
+
+func validate_floor_physics() -> void:
+	var started := perf.begin(&"floor.validate_physics") if perf != null else 0
+	physical_errors = kind.VALIDATOR.new().validate_physics(get_world_3d(), manifest)
+	if perf != null: perf.end(&"floor.validate_physics", started, {"errors": physical_errors.size()})
 
 ## Waits for the bounce light, which bakes on worker threads after a floor is
 ## built or a preset first asks for it (hotel_geometry.start_bounce).
@@ -1139,7 +1176,8 @@ func on_state() -> void:
 	# The keypad as well: left open under the pause it still took digits, and
 	# Escape shut it instead of resuming.
 	if not playing and lock_open: close_lock()
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible else Input.MOUSE_MODE_VISIBLE
+	var background_capture := automation and OS.get_cmdline_user_args().has("--background")
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible and not background_capture else Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
 	if session.state in [session.State.MENU, session.State.LOADING, session.State.CUTSCENE]: clear_screen_cues()
 	if is_instance_valid(hotel) and not manifest.is_empty():
@@ -1489,6 +1527,7 @@ func spawn_locust() -> void: spawn_creature()
 func spawn_creature() -> void:
 	if creature_scene == "": creature_scene = creature_asked()
 	var scene: String = CREATURE_SCENES[creature_scene] if CREATURE_SCENES.has(creature_scene) else kind.CREATURE
+	var started := perf.begin(&"floor.spawn_creature", {"scene": scene}) if perf != null else 0
 	locust = (load(scene) as PackedScene).instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -1510,6 +1549,7 @@ func spawn_creature() -> void:
 		locust.set_physics_process(false)
 		locust.collision_layer = 0
 		locust.collision_mask = 0
+	if perf != null: perf.end(&"floor.spawn_creature", started)
 
 func on_peek(point: Vector3) -> void:
 	world_audio.play_at(world_audio.choose("open_slow"), point, -25.0, RID(), 0.4)
@@ -1553,6 +1593,11 @@ func catch_up_progress(progress: Dictionary) -> void:
 		lifts.pending_brief = stage
 
 func _physics_process(delta: float) -> void:
+	var started := Time.get_ticks_usec() if perf != null else 0
+	step_physics(delta)
+	if perf != null: perf.timed(&"game.physics", started)
+
+func step_physics(delta: float) -> void:
 	# Watching a recording: what moves is what was recorded (bot_replay.gd).
 	if replaying: return
 	# Watching: the floor runs itself (online it is the host's, alone it is the
@@ -1596,14 +1641,21 @@ func _physics_process(delta: float) -> void:
 	# The notice of the sector waits for the card to be gone and for the lift
 	# to have opened its doors: it is what the picture comes back to.
 	lifts.announce_sector(delta)
+	var started := Time.get_ticks_usec() if perf != null else 0
 	drive_local(delta)
+	if perf != null:
+		perf.timed(&"game.interaction", started)
+		started = Time.get_ticks_usec()
 	sanity.tick(delta)
+	if perf != null: perf.timed(&"game.sanity", started)
 	# Whoever is in charge counts the hold at the exit once a frame, whatever
 	# its own player happens to be doing. It used to be called from inside the
 	# branches below, and the one for a dead player had no call: with the host
 	# dead, its guests could hold at the refuge for ever and never leave.
 	if not net.is_client():
+		if perf != null: started = Time.get_ticks_usec()
 		host_gate(delta)
+		if perf != null: perf.timed(&"game.objectives", started)
 		ledger.tick(delta)
 
 ## Who of the survivors is in the refuge of the stage in hand, for the
@@ -1720,6 +1772,11 @@ func host_gate(delta: float) -> void:
 	lifts.ride_lifts()
 
 func _process(delta: float) -> void:
+	var started := Time.get_ticks_usec() if perf != null else 0
+	step_frame(delta)
+	if perf != null: perf.timed(&"game.process", started)
+
+func step_frame(delta: float) -> void:
 	update_menu_scene(delta)
 	# The hotel's clocks keep the camcorder's time, and go back with its tape.
 	if is_instance_valid(hotel) and is_instance_valid(camcorder): hotel.tell_time(int(camcorder.start_seconds) + int(tape_seconds()))
@@ -1795,6 +1852,13 @@ func _process(delta: float) -> void:
 	if due:
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, FLOOR.planta_y(FLOOR.planta_of(player.position.y)) + 2.8, round(player.position.z / 12) * 12)
 
+func capture_perf_frame() -> void:
+	perf.frame(self)
+
+func _input(event: InputEvent) -> void:
+	if perf != null and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F8:
+		perf.event(&"player_mark")
+
 func _unhandled_input(event: InputEvent) -> void:
 	# Watching: the keys belong to the observer's own camera and panels.
 	if observer: return
@@ -1852,6 +1916,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_instance_valid(session) and is_instance_valid(net): keep_floor()
 
 func _exit_tree() -> void:
+	var started := perf.begin(&"session.shutdown") if perf != null else 0
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	# The camera's compositor effects free their GPU resources while the
@@ -1860,6 +1925,11 @@ func _exit_tree() -> void:
 	if is_instance_valid(lens_material): lens_material.set_shader_parameter("gain_map", null)
 	for effect in [blur_effect, camera_effect]:
 		if is_instance_valid(effect): effect.release()
+	if perf != null:
+		get_tree().process_frame.disconnect(capture_perf_frame)
+		perf.end(&"session.shutdown", started)
+		perf.stop()
+		perf = null
 
 const LOOK := preload("res://game/presentation/camcorder_look.gd")
 const WARMUP := preload("res://game/presentation/shader_warmup.gd")

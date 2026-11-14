@@ -8,6 +8,19 @@ extends SceneTree
 const GEN := preload("res://game/world/generation/office_generator.gd")
 const GRAPH := preload("res://game/world/generation/conduit_graph.gd")
 const DUCTS := preload("res://game/enemies/lurker/duct_graph.gd")
+
+class CountedDucts extends "res://game/enemies/lurker/duct_graph.gd":
+	var mouth_scans := 0
+	var edge_checks := 0
+
+	func mouths_of_all() -> PackedInt32Array:
+		mouth_scans += 1
+		return super()
+
+	func edge_closed(edge: int) -> bool:
+		edge_checks += 1
+		return super(edge)
+
 var checks: Array = []
 var failed := 0
 
@@ -60,5 +73,40 @@ func run() -> void:
 		var before_top: int = hers.nearest_exits(top, 3).size()
 		hers.closed_wings[2] = 1
 		check("%s: los ventiladores cierran los ductos de su planta y no los de otra" % tag, hers.nearest_exits(low, 3).size() <= 1 and hers.nearest_exits(top, 3).size() == before_top and hers.nearest_exits(low, 3, Callable(), true).size() == 3)
+	check_sound_outside()
+	check_equal_paths()
 	print("CONDUIT_GRAPH_RESULT ", checks.size() - failed, "/", checks.size())
 	quit(1 if failed > 0 else 0)
+
+func check_sound_outside() -> void:
+	var graph := CountedDucts.new()
+	graph.fill({
+		"nodes": [[0, 2, 0], [-2, 2, 0], [2, 2, 0], [0, 2, 1]],
+		"edges": [[0, 1, 2.0, "duct"], [0, 2, 2.0, "duct"], [0, 3, 1.0, "duct"]],
+		"exits": [
+			{"node": 2, "room": 2, "kind": "ceiling"},
+			{"node": 1, "room": 1, "kind": "ceiling"},
+			{"node": 1, "room": 1, "kind": "gap"},
+			{"node": 3, "room": 0, "kind": "tile"},
+		],
+	}, false)
+	# The listener's only outlet is a closed tile. The real grilles are tied
+	# by air distance and listed in reverse order.
+	var listener := Vector3(0, 1.5, 1)
+	var room_of := func(_point: Vector3) -> int: return 0
+	var route := graph.sound_route(graph.nodes[0], 0, listener, room_of, null)
+	check("Sin rejilla propia, el sonido sale por la rejilla más cercana y desempata por nodo",
+		route.audible and route.position == graph.nodes[1] and is_equal_approx(route.distance, 2.0))
+	check("La ruta sin rejilla propia enumera las salidas una sola vez", graph.mouth_scans == 1)
+	check("La lista de rejillas excluye las placas cerradas y omite nodos repetidos",
+		graph.mouths_of_all() == PackedInt32Array([2, 1]))
+
+func check_equal_paths() -> void:
+	var graph := CountedDucts.new()
+	graph.fill({
+		"nodes": [[0, 2, 0], [0.1, 2, 0], [0.2, 2, 0]],
+		"edges": [[0, 1, 0.1, "duct"], [0, 1, 0.1, "duct"], [1, 2, 0.1, "duct"]],
+	}, false)
+	var distances := graph.distances_from(0)
+	check("Dos caminos del mismo coste solo expanden su destino una vez",
+		graph.edge_checks == graph.edges.size() * 2 and is_equal_approx(distances[2], 0.2))

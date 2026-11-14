@@ -126,7 +126,7 @@ const PLATE_DARK := Color("1c1b19")
 
 ## A piece at `xform` in `parent` (the floor when none), on the light layer of
 ## the room it stands in. No collider: nothing used is in its way.
-func equipment(mesh: ArrayMesh, xform: Transform3D, parent: Node3D = null) -> MeshInstance3D:
+func equipment(mesh: Mesh, xform: Transform3D, parent: Node3D = null) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.mesh = mesh
 	node.transform = xform

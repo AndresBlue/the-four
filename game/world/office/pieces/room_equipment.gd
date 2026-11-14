@@ -46,8 +46,19 @@ static func make_fan_unit(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var top := h - 0.2
 	KIT.block(p, "steel_dark", Vector3(0.0, 0.06, 0.0), Vector3(w - 0.06, 0.12, d - 0.06))
 	KIT.block(p, "steel_grey", Vector3(0.0, (0.12 + top) * 0.5, 0.0), Vector3(w, top - 0.12, d - 0.02), 0.004)
-	KIT.block(p, "steel_grey", Vector3(0.0, (top + h) * 0.5, -0.1), Vector3(w * 0.5, 0.2, d * 0.45), 0.003)
+	KIT.block(p, "steel_plate", Vector3(0.0, (top + h) * 0.5, -0.1), Vector3(w * 0.5, 0.18, d * 0.45), 0.004)
+	for y: float in [top + 0.025, h - 0.008]:
+		KIT.block(p, "steel_dark", Vector3(0, y, -0.1), Vector3(w * 0.52, 0.015, d * 0.47), 0.002)
 	var y := (0.12 + top) * 0.5
-	KIT.cylinder(p, "black", Vector3(0.0, y, d * 0.5 - 0.015), minf(w, top) * 0.36, 0.02, 24, KIT.along_z())
-	for k in 6: KIT.block(p, "metal", Vector3(0.0, y, d * 0.5 - 0.003), Vector3(minf(w, top) * 0.7, 0.012, 0.006), 0.0, Basis(Vector3.BACK, float(k) * PI / 6.0))
+	var radius := minf(w, top) * 0.32
+	var face := d * 0.5 - 0.018
+	KIT.cylinder(p, "steel_plate", Vector3(0.0, y, face), radius + 0.035, 0.026, 32, KIT.along_z())
+	KIT.cylinder(p, "black", Vector3(0.0, y, face + 0.013), radius, 0.004, 32, KIT.along_z())
+	for k in range(-8, 9):
+		var dy := float(k) * radius / 9.0
+		var chord := 2.0 * sqrt(radius * radius - dy * dy)
+		KIT.block(p, "steel_dark", Vector3(0, y + dy, face + 0.0145), Vector3(chord, 0.012, 0.006), 0.001)
+	for x: float in [-0.44, 0.44]:
+		for bolt_y: float in [0.18, top - 0.07]:
+			KIT.cylinder(p, "metal", Vector3(x * w, bolt_y, d * 0.5 - 0.009), 0.012, 0.005, 6, KIT.along_z())
 	return KIT.finish(builder, p, "fan_unit", size)

@@ -6,6 +6,7 @@ extends "res://game/enemies/creature.gd"
 ## shelves of an archive, and through her ducts, where she is heard and not
 ## seen. She never opens a door. What she wants is the brain's (2b); how she
 ## gets there is lurker_motion.gd's (spec_f2_movement 8).
+const PERF_TRACE := preload("res://game/app/session_perf.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
 const DUCTS := preload("res://game/enemies/lurker/duct_graph.gd")
 const ROUTES := preload("res://game/enemies/lurker/lurker_routes.gd")
@@ -433,7 +434,10 @@ func duct_route(point: Vector3, near: int, listener: Vector3, audio) -> Dictiona
 	var now := Time.get_ticks_msec() / 1000.0
 	var kept = route_memo.get(key)
 	if kept != null and now - float(kept[0]) < ROUTE_MEMO: return kept[1]
+	var trace: PERF_TRACE = level.perf if "perf" in level else null
+	var started := Time.get_ticks_usec() if trace != null else 0
 	var route: Dictionary = ducts.sound_route(point, near, listener, room_of_point, audio)
+	if trace != null: trace.timed(&"audio.duct_route", started)
 	if bool(route.audible): route["bus"] = audio.DUCT_BUS
 	if route_memo.size() > 64: route_memo = {}
 	route_memo[key] = [now, route]
@@ -527,6 +531,12 @@ func follow_state(delta: float) -> void:
 # --- The frame ---------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
+	var trace: PERF_TRACE = level.perf if is_instance_valid(level) and "perf" in level else null
+	var started := Time.get_ticks_usec() if trace != null else 0
+	step_physics(delta)
+	if trace != null: trace.timed(&"lurker.physics", started)
+
+func step_physics(delta: float) -> void:
 	grace = maxf(0.0, grace - delta)
 	match control:
 		"ai":
@@ -881,13 +891,20 @@ func think_setup() -> void:
 
 func think(delta: float) -> void:
 	if control != "ai" or not thinking or brain == null: return
+	var trace: PERF_TRACE = level.perf if "perf" in level else null
+	var started := Time.get_ticks_usec() if trace != null else 0
 	var p = senses.perceive(delta, brain.clock, brain.prey_seat())
+	if trace != null: trace.timed(&"lurker.senses", started)
 	for click in senses.clicks: brain.on_heard(click.route, click.point)
 	senses.clicks = []
 	watch_systems(delta, p.face)
+	if trace != null: started = Time.get_ticks_usec()
 	intent = brain.tick(delta, p)
+	if trace != null: trace.timed(&"lurker.brain", started)
 	senses.listening = brain.listening
+	if trace != null: started = Time.get_ticks_usec()
 	apply_intent(intent)
+	if trace != null: trace.timed(&"lurker.intent", started)
 	word = brain.activity()
 	if int(brain.state) != tally_state:
 		tally_state = int(brain.state)
@@ -1465,6 +1482,8 @@ func drain_step(delta: float) -> void:
 ## effects.
 func _process(delta: float) -> void:
 	if level == null or level.get("hotel") == null: return
+	var trace: PERF_TRACE = level.perf if "perf" in level else null
+	var started := Time.get_ticks_usec() if trace != null else 0
 	drain_time += delta
 	var hotel = level.hotel
 	var reduced: bool = bool(hotel.get("reduced"))
@@ -1499,6 +1518,7 @@ func _process(delta: float) -> void:
 		drained[r] = now
 	draining = not drained.is_empty()
 	torch_step(delta, reduced)
+	if trace != null: trace.timed(&"lurker.drain", started)
 
 ## A fright by torch drinks it (iteration 2, G1): on every machine, from her
 ## event. Its click where it is; no caption, nothing on screen.

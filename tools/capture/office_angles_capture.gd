@@ -14,6 +14,7 @@ extends SceneTree
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FRAMING := preload("res://tools/capture/room_framing.gd")
+const BACKGROUND := preload("res://tools/capture/background_window.gd")
 const ANGLES := ["puerta", "rincon", "mueble", "techo", "suelo"]
 const SEATED := 1.15
 const STANDING := 1.6
@@ -24,6 +25,7 @@ const EYE_ROOM := 0.22
 var level
 var out_dir := "res://evidence/rediseno/rev1"
 var index: Array = []
+var pose := {}
 
 func _initialize() -> void: run.call_deferred()
 
@@ -62,19 +64,20 @@ func look(from: Vector3, at: Vector3) -> void:
 	var flat := Vector2(at.x - from.x, at.z - from.z)
 	level.player.rotation.y = atan2(-flat.x, -flat.y)
 	level.player.camera.rotation.x = atan2(at.y - from.y, maxf(flat.length(), 0.001))
+	pose = {"eye": [from.x, from.y, from.z], "target": [at.x, at.y, at.z]}
 
-func shot(room: Dictionary, angle: String, n: int, name := "") -> void:
+func shot(room: Dictionary, angle: String, n: int, name := "", settle_ms := 1200) -> void:
 	level.hotel.update_visibility(level.player.global_position, true)
 	level.hotel.flicker_clock = 0.4
 	level.hotel._process(0.0)
 	await level.bounce_ready()
 	level.hotel.update_visibility(level.player.global_position, true)
 	var started := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - started < 1200: await process_frame
+	while Time.get_ticks_msec() - started < settle_ms: await process_frame
 	await RenderingServer.frame_post_draw
 	var file := "%s_%d.png" % [slug(room) if name.is_empty() else name, n]
 	root.get_texture().get_image().save_png(out_dir + "/" + file)
-	index.append({"tipo": OFFICE.label(room), "angulo": angle, "sala": int(room.id), "archivo": file})
+	index.append({"tipo": OFFICE.label(room), "angulo": angle, "sala": int(room.id), "archivo": file, "pose": pose})
 	print("ANGLES %s %s room=%d" % [file, angle, int(room.id)])
 
 ## The room's light on, as capture_rooms' light_all() does it.
@@ -140,8 +143,51 @@ func frames(room: Dictionary) -> Array:
 
 ## --types=a,b: only those types (their files' names, slug()).
 var only := PackedStringArray()
+var doors := false
+var triplets := false
+
+func door_views() -> void:
+	var examples := {}
+	for door in level.hotel.doors:
+		var leaf := door.get_node_or_null("Leaf") as MeshInstance3D
+		if leaf == null or door.locked: continue
+		for family: String in level.hotel.DOOR_MODELS:
+			if leaf.mesh.resource_path == String(level.hotel.DOOR_MODELS[family]) and not examples.has(family):
+				examples[family] = door
+		if examples.size() == level.hotel.DOOR_MODELS.size(): break
+	for family: String in examples:
+		var door = examples[family]
+		var normal: Vector3 = door.across()
+		var along: Vector3 = door.along()
+		var portal: Vector3 = door.doorway
+		var was_open: bool = door.opened
+		for face: float in [-1.0, 1.0]:
+			var room := FLOOR.room_at(level.manifest.rooms, portal + normal * face * 0.7)
+			if room.is_empty(): continue
+			light(room, true)
+			var from := portal + normal * face * 1.65 + along * 0.46 + Vector3.UP * STANDING
+			var aim := portal + Vector3.UP * 1.38
+			var name := "puerta_%s_%s" % [family, "a" if face < 0.0 else "b"]
+			door.set_state(false)
+			look(from, aim)
+			await shot(room, "cerrada", 1, name)
+			door.swing_to(true, true, false)
+			door.motion.pause()
+			door.motion.custom_step(door.SLOW_SWING * 0.5)
+			await shot(room, "giro", 2, name, 0)
+			door.set_state(true)
+			await shot(room, "abierta", 3, name)
+			door.set_state(false)
+			level.hotel.dark_ids[int(room.id)] = true
+			level.hotel.set_room_power(int(room.id), false)
+			level.player.torch.visible = true
+			await shot(room, "cerrada_linterna", 4, name)
+			level.player.torch.visible = false
+			light(room, true)
+		door.set_state(was_open)
 
 func run() -> void:
+	BACKGROUND.configure()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.ui.finish_intro()
@@ -152,14 +198,18 @@ func run() -> void:
 		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
 		if argument.begins_with("--prefix="): out_dir = "res://evidence/rediseno/" + argument.trim_prefix("--prefix=")
 		if argument.begins_with("--types="): only = argument.trim_prefix("--types=").split(",")
+		if argument == "--doors": doors = true
+		if argument == "--triplets": triplets = true
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	level.settings.values = level.settings.DEFAULTS.duplicate()
 	level.settings.set_designed(quality)
 	level.creature_scene = "none"
 	await level.start_floor(seed_value, false, [1], "apacible", 2)
+	BACKGROUND.release_input(level)
 	level.apply_settings()
 	await level.bounce_ready()
 	DisplayServer.window_set_size(Vector2i(1280, 800))
+	BACKGROUND.configure()
 	for i in 30: await process_frame
 	level.player.set_physics_process(false)
 	level.player.torch.visible = false
@@ -190,6 +240,7 @@ func run() -> void:
 		light(room, true)
 		var views := frames(room)
 		for n in views.size():
+			if triplets and n >= 3 and type != OFFICE.RECEPTION: continue
 			look(views[n][0], views[n][1])
 			await shot(room, ANGLES[n], n + 1)
 	# Dark, with the torch.
@@ -197,7 +248,8 @@ func run() -> void:
 		if not chosen.has(kind): continue
 		var room: Dictionary = chosen[kind]
 		if not only.is_empty() and not only.has(slug(room)): continue
-		light(room, false)
+		level.hotel.dark_ids[int(room.id)] = true
+		level.hotel.set_room_power(int(room.id), false)
 		level.player.torch.visible = true
 		var views := frames(room)
 		for n in 2:
@@ -205,6 +257,7 @@ func run() -> void:
 			await shot(room, ANGLES[n] + "_linterna", 6 + n)
 		level.player.torch.visible = false
 		light(room, true)
+	if doors: await door_views()
 	var file := FileAccess.open(out_dir + "/indice.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(index, "\t"))
 	file.close()

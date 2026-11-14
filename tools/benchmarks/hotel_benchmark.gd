@@ -60,6 +60,8 @@ var process_spent := 0
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
+	const BACKGROUND := preload("res://tools/capture/background_window.gd")
+	BACKGROUND.configure()
 	var qualities := range(PRESETS.count())
 	var seed_value := 81
 	var difficulty := ""
@@ -93,12 +95,14 @@ func run() -> void:
 	if not difficulty.is_empty(): level.settings.values.difficulty = difficulty
 	var load_start := Time.get_ticks_msec()
 	await level.start_floor(seed_value)
+	if OS.get_cmdline_user_args().has("--background"): BACKGROUND.release_input(level)
 	var load_ms := Time.get_ticks_msec() - load_start
 	# Floor 2: the walk and the third view end in the room of its first planta
 	# furthest from the start by doors (farthest_on_first()), not at manifest.exit.
 	var far: int = int(level.manifest.exit) if level.session.floor_number == 1 else farthest_on_first(level.manifest)
 	var from: Vector3 = Vector3(0, 0.04, 0) if level.session.floor_number == 1 else FLOOR.position_of(level.manifest.rooms[int(level.manifest.start)]) + Vector3(0, 0.04, 0)
 	DisplayServer.window_set_size(window)
+	BACKGROUND.configure()
 	if pixels > 1.0:
 		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE

@@ -36,6 +36,7 @@ extends RefCounted
 ## Detached, the baker reads every global transform as the identity and
 ## complains about each one: the stand-in is given in the volume's own frame,
 ## and error printing is off while the bake runs.
+const PERF_TRACE := preload("res://game/app/session_perf.gd")
 const ALBEDO := preload("res://game/world/hotel/material_albedo.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const STAND_IN := preload("res://game/world/hotel/stand_in_mesh.gd")
@@ -54,6 +55,8 @@ var groups := {}
 var volumes: Array[VoxelGI] = []
 var jobs: Array = []
 var task := -1
+var perf: PERF_TRACE
+var submitted_us := 0
 ## Unit shapes' triangles by group suffix, read on the main thread before
 ## the workers start: [vertices, normals].
 var shapes := {}
@@ -94,11 +97,15 @@ func start(volumes_wanted: Array, unit_mesh: Callable) -> void:
 	stand_in_colours()
 	Engine.print_error_messages = false
 	# Half the cores at most: the main thread keeps drawing meanwhile.
-	task = WorkerThreadPool.add_group_task(bake, jobs.size(), clampi(OS.get_processor_count() / 2, 1, 8), false, "Bounce light")
+	var workers := clampi(OS.get_processor_count() / 2, 1, 8)
+	if perf != null: submitted_us = perf.begin(&"bounce.group", {"jobs": jobs.size(), "workers": workers})
+	task = WorkerThreadPool.add_group_task(bake, jobs.size(), workers, false, "Bounce light")
+	if perf != null: perf.event(&"bounce.queued", {"group_us": submitted_us, "task": task})
 
 ## One room, on a worker thread.
 func bake(k: int) -> void:
 	var job: Dictionary = jobs[k]
+	var started := perf.begin(&"bounce.room", {"group_us": submitted_us, "index": k, "room": job.room}) if perf != null else 0
 	var holder := Node3D.new()
 	var stand_in := MeshInstance3D.new()
 	stand_in.mesh = stand_in_mesh(job.boxes, Vector3(0, -job.height * 0.5, 0), job.size * 0.5)
@@ -110,6 +117,7 @@ func bake(k: int) -> void:
 	volume.bake(stand_in)
 	job["data"] = volume.data
 	holder.free()
+	if perf != null: perf.end(&"bounce.room", started, {"group_us": submitted_us, "index": k, "room": job.room})
 
 ## Floor and ceiling faces just inside the volume.
 static func volume_size(job: Dictionary) -> Vector3:
@@ -127,7 +135,12 @@ func poll() -> void:
 ## before it is done).
 func finish() -> void:
 	if not baking(): return
+	var started := perf.begin(&"bounce.wait", {"group_us": submitted_us, "task": task}) if perf != null else 0
 	WorkerThreadPool.wait_for_group_task_completion(task)
+	if perf != null:
+		perf.end(&"bounce.wait", started)
+		perf.end(&"bounce.group", submitted_us, {"task": task})
+		started = perf.begin(&"bounce.attach", {"group_us": submitted_us, "jobs": jobs.size()})
 	task = -1
 	Engine.print_error_messages = true
 	for job in jobs:
@@ -146,6 +159,7 @@ func finish() -> void:
 		volumes.append(volume)
 	print_verbose("Bounce light: %d volumes baked" % volumes.size())
 	jobs.clear()
+	if perf != null: perf.end(&"bounce.attach", started)
 
 ## Lets go of every volume that is not on `planta`, and what it baked.
 func release(planta: int) -> void:

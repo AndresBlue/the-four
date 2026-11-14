@@ -71,6 +71,7 @@ const CREDITS := [
 		"«Vintage Fan», de Josh Smith (Sketchfab, CC BY 4.0): el ventilador, simplificado.",
 		"«Wooden Office Chair», de Zamzam2003 (Sketchfab, CC BY 4.0): una silla giratoria de madera, simplificada.",
 		"«Retro antique desk clock», de Sousinho (Sketchfab, CC BY 4.0): el reloj de mesa.",
+		"«1930s style typewriter - w/o branding», de Kuba Wójcik (Sketchfab, CC BY 4.0): la máquina manual de la ventanilla, ajustada a escala, simplificada y con los rótulos de función retocados.",
 		"«Dirty, damaged, fatigued Cardboard Box», de SusanKing (Sketchfab, CC BY 4.0): la caja de cartón, simplificada y sin su etiqueta.",
 		"«Extension Cord Scan MEDPOLY», de EFX (Sketchfab, CC BY 4.0): el alargador, simplificado.",
 		"«Several Folders», de janexx (Sketchfab, CC BY 4.0): los archivadores de palanca, sin etiquetas.",

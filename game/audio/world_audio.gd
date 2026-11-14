@@ -1,5 +1,6 @@
 extends Node
 ## Local presentation only: never changes AI hearing or consumes map RNG.
+const PERF_TRACE := preload("res://game/app/session_perf.gd")
 const BASE := "res://assets/audio/sfx/"
 const TIMING := preload("res://game/audio/cue_timing.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -493,7 +494,10 @@ func walked_route(from: Vector3, to: Vector3) -> PackedVector3Array:
 	var b := FLOOR.floor_point(to)
 	var now := Time.get_ticks_msec() / 1000.0
 	if not route_memo.is_empty() and now - float(route_memo.at) < ROUTE_MEMO and a.distance_to(route_memo.from) < ROUTE_NEAR and b.distance_to(route_memo.to) < ROUTE_NEAR: return route_memo.path
+	var trace: PERF_TRACE = level.perf if "perf" in level else null
+	var started := trace.begin(&"audio.nav_path") if trace != null else 0
 	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, from, to)
+	if trace != null: trace.end(&"audio.nav_path", started, {"points": path.size()})
 	route_memo = {"at": now, "from": a, "to": b, "path": path}
 	return path
 
@@ -655,6 +659,12 @@ func duck_db() -> float:
 
 func _physics_process(delta: float) -> void:
 	if level == null: return
+	var trace: PERF_TRACE = level.perf if "perf" in level else null
+	var started := Time.get_ticks_usec() if trace != null else 0
+	step_physics(delta)
+	if trace != null: trace.timed(&"audio.physics", started)
+
+func step_physics(delta: float) -> void:
 	duck_hold = maxf(0.0, duck_hold - delta)
 	duck = move_toward(duck, 1.0 if duck_hold > 0.0 else 0.0, delta / (DUCK_ATTACK if duck_hold > 0.0 else DUCK_RELEASE))
 	caption_time = maxf(0, caption_time - delta)

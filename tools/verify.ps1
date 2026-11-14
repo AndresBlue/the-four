@@ -101,10 +101,10 @@ Add-Check 'dev/hearing_probe' 'hearing_probe' (Godot-Arguments 'res://tools/dev/
 # layers (game/world/hotel/room_layers.gd): over these seeds none may be left
 # sharing a layer with a room one of its lamps reaches.
 $log = Join-Path $evidence 'verify_light_layers.log'
-Add-Check 'dev/light_layers_scan' 'light_layers' @('--headless','--path',$projectPath,'--script','res://tools/dev/light_layers_scan.gd','--log-file',$log,'--','40') 360 'layers' 1 $log
+Add-Check 'dev/light_layers_scan' 'light_layers' @('--headless','--path',$projectPath,'--script','res://tools/dev/light_layers_scan.gd','--log-file',$log,'--','--test-profile','40') 360 'layers' 1 $log
 # The same on floor 2 (spec_proporcion D10): smaller rooms, the same reaches.
 $log = Join-Path $evidence 'verify_light_layers_office.log'
-Add-Check 'dev/light_layers_scan --floor=2' 'light_layers_office' @('--headless','--path',$projectPath,'--script','res://tools/dev/light_layers_scan.gd','--log-file',$log,'--','40','--floor=2') 360 'layers' 1 $log
+Add-Check 'dev/light_layers_scan --floor=2' 'light_layers_office' @('--headless','--path',$projectPath,'--script','res://tools/dev/light_layers_scan.gd','--log-file',$log,'--','--test-profile','40','--floor=2') 360 'layers' 1 $log
 # Shaders: only a real device compiles them, so this one runs with a window and
 # is judged by its log. On a machine without a GPU it reports SHADERS_SKIPPED
 # and counts as passed, because a skipped check is not a failed one.
@@ -112,11 +112,11 @@ Add-Check 'dev/light_layers_scan --floor=2' 'light_layers_office' @('--headless'
 # is what modest machines get and compiles its own GLSL.
 foreach ($renderer in @('forward_plus','gl_compatibility')) {
     $log = Join-Path $evidence "verify_shaders_$renderer.log"
-    Add-Check "dev/check_shaders ($renderer)" "shaders_$renderer" @('--path',$projectPath,'--rendering-method',$renderer,'--script','res://tools/dev/check_shaders.gd','--log-file',$log) 360 'shaders' 1 $log
+    Add-Check "dev/check_shaders ($renderer)" "shaders_$renderer" @('--path',$projectPath,'--rendering-method',$renderer,'--script','res://tools/dev/check_shaders.gd','--log-file',$log,'--','--test-profile','--background') 360 'shaders' 1 $log
 }
 # Online play: real host and guest processes over 127.0.0.1 (tools/net_test.ps1,
 # which keeps its own time limit and kills what it started).
-$powershell = Join-Path $PSHOME 'powershell.exe'
+$powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
 foreach ($scenario in @('coop', 'versus', 'late', 'observer', 'office_coop')) {
     $port = @{ coop = 24600; versus = 24610; late = 24620; observer = 24630; office_coop = 24650 }[$scenario]
     Add-Check "net/$scenario" "net_$scenario" @('-NoProfile','-File',(Join-Path $PSScriptRoot 'net_test.ps1'),'-GodotPath',$GodotPath,'-Scenario',$scenario,'-Port',$port) 540 'net' 2 '' $powershell
@@ -186,8 +186,8 @@ function Invoke-Batch($batch, [int]$limit) {
 $clock = Get-Date
 Write-Output "Comprobando con $Jobs a la vez."
 Invoke-Batch ($checks | Where-Object { $_.batch -eq 1 }) $Jobs
-Invoke-Batch ($checks | Where-Object { $_.batch -eq 2 }) 4
-Invoke-Batch ($checks | Where-Object { $_.batch -eq 3 }) 2
+Invoke-Batch ($checks | Where-Object { $_.batch -eq 2 }) ([Math]::Min($Jobs, 4))
+Invoke-Batch ($checks | Where-Object { $_.batch -eq 3 }) ([Math]::Min($Jobs, 2))
 Write-Output ("Hecho en {0:N0} s." -f ((Get-Date) - $clock).TotalSeconds)
 $results = $checks | Sort-Object order | ForEach-Object { [PSCustomObject]@{ test = $_.test; passed = $_.passed; exit_code = $_.exit_code; seconds = $_.seconds } }
 $results | ConvertTo-Json | Set-Content -LiteralPath $lastResults -Encoding UTF8

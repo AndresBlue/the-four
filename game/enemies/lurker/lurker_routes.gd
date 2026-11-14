@@ -8,6 +8,7 @@ extends RefCounted
 ## into a grille. She never opens a door: one that shuts on her route sends her
 ## another way (spec_f2_movement 6). The level, its hotel and its doors are
 ## read by duck typing, so a stub stands in for them in the tests.
+const PERF_TRACE := preload("res://game/app/session_perf.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -443,6 +444,8 @@ func wing_of_start(start: Dictionary) -> int:
 ## (via: the edge record each node was reached by).
 func search(start: Dictionary, goal_node: int, factors: PackedFloat32Array, surface := false) -> Dictionary:
 	var count := graph.size()
+	var trace: PERF_TRACE = level.perf if is_instance_valid(level) and "perf" in level else null
+	var started := trace.begin(&"lurker.route_search", {"nodes": count, "goal": goal_node}) if trace != null else 0
 	var g := PackedFloat64Array()
 	g.resize(count)
 	g.fill(INF)
@@ -480,6 +483,7 @@ func search(start: Dictionary, goal_node: int, factors: PackedFloat32Array, surf
 				parent[to] = n
 				via[to] = link
 				METRES.heap_push(heap, next + (positions[to].distance_to(target) / fastest if goal_node >= 0 else 0.0), to)
+	if trace != null: trace.end(&"lurker.route_search", started)
 	return {"g": g, "parent": parent, "via": via}
 
 ## start: {"room": r} on a surface, or {"duct": [a, b], "metres": [ma, mb],
@@ -863,6 +867,8 @@ func travel_metres(room: int) -> Dictionary:
 	var wing := int(rooms[room].get("wing", -1))
 	var key := [door_signature(wing), door_epoch, Array(ducts.closed_wings), cross_shut]
 	if travel_cache.has(room) and travel_cache[room][0] == key: return travel_cache[room][1]
+	var trace: PERF_TRACE = level.perf if is_instance_valid(level) and "perf" in level else null
+	var started := trace.begin(&"lurker.travel_cache_miss", {"room": room, "nodes": graph.size()}) if trace != null else 0
 	var count := graph.size()
 	var metres := PackedFloat64Array()
 	metres.resize(count)
@@ -886,6 +892,7 @@ func travel_metres(room: int) -> Dictionary:
 	for r in room_count:
 		if metres[r] < INF: out[r] = metres[r]
 	travel_cache[room] = [key, out]
+	if trace != null: trace.end(&"lurker.travel_cache_miss", started)
 	return out
 
 ## The cost of going into each exit from the start (INF: none), by exit.

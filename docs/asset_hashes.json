@@ -532,8 +532,8 @@
     "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
   },
   "assets/props/office/sources.json": {
-    "bytes": 5602,
-    "sha256": "114ca81004b84f1a694a53e4bfb4d238f83604c8fa08a304269ff9fd445b2d99"
+    "bytes": 5726,
+    "sha256": "cfdebcc9a18490bf578b4a525e90eb78c37375165699fffcef2fa4104beb6808"
   },
   "assets/paintings/office/11766.jpg": {
     "bytes": 405762,
@@ -2222,5 +2222,49 @@
   "assets/textures/office_rug_met452567/rug.tres": {
     "bytes": 312,
     "sha256": "b3fe3111ca77d7d92b9156e32fcf738a9396f11570f3c1faf395c9e2b01dd880"
+  },
+  "assets/props/office/typewriter_1930s_unbranded_sketchfab/Material_003.tres": {
+    "bytes": 729,
+    "sha256": "ac9d69e2604828d1a3661945d05aab173882ede2c2299c741dc0d1e9ee60ef94"
+  },
+  "assets/props/office/typewriter_1930s_unbranded_sketchfab/Material_003_baseColor.png": {
+    "bytes": 1137156,
+    "sha256": "eac4f8a6286284dc05853f2a9c7d2d0c292871afe459621a290e7700ff821cf5"
+  },
+  "assets/props/office/typewriter_1930s_unbranded_sketchfab/Material_003_metallicRoughness.jpg": {
+    "bytes": 222979,
+    "sha256": "b097f37bcfb4ca5aea7f90512f37239747e1b07440a041673fe5f3bd31074e64"
+  },
+  "assets/props/office/typewriter_1930s_unbranded_sketchfab/Material_003_normal.jpg": {
+    "bytes": 177709,
+    "sha256": "e6582d3541efcc8c079b2aa08254445f2a42799a47521e14d4549f775806ba4f"
+  },
+  "assets/props/office/typewriter_1930s_unbranded_sketchfab.res": {
+    "bytes": 374587,
+    "sha256": "ce09eaf4dca5a5a449bc145963c4904e6e2a40a226b4b81653482ed7fa9e75c0"
+  },
+  "assets/textures/office_tiles043/albedo.jpg": {
+    "bytes": 1295308,
+    "sha256": "e34578bed9588f35787a1a1907b87b56af003dda4c4168d8781de7cc961baa8b"
+  },
+  "assets/textures/office_tiles043/albedo_1k.jpg": {
+    "bytes": 459668,
+    "sha256": "a83495d708ef7a7add7383ddd4e4dac527b198897eb23e9b0124ab7914d2a6f4"
+  },
+  "assets/textures/office_tiles043/normal.jpg": {
+    "bytes": 1250371,
+    "sha256": "c086235a346cae83e001c6c09757cb2c1ff17c3c60200f0241df90058e885886"
+  },
+  "assets/textures/office_tiles043/normal_1k.jpg": {
+    "bytes": 296654,
+    "sha256": "224b9a993e17f023444fc5ba6bfaa2e9302b3db0040f5a8b5eba917fa3ed3e73"
+  },
+  "assets/textures/office_tiles043/orm.jpg": {
+    "bytes": 1262861,
+    "sha256": "44dae64f162e4692d6bf4681cb01e126a02d8398cdaa6192882355789b2cae3b"
+  },
+  "assets/textures/office_tiles043/orm_1k.jpg": {
+    "bytes": 374834,
+    "sha256": "03d6ba697eb4b74bfd9f7113fd3448f34d1a1539504a4a206e59c96a10719e93"
   }
 }

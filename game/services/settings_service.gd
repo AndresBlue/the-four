@@ -76,6 +76,7 @@ const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1
 var values := DEFAULTS.duplicate()
 var bindings := KEYS.duplicate()
 var save_path := "user://hotel_settings.json"
+var trace_display := false
 var previous_display := {}
 var countdown := 0.0
 ## First start on an integrated GPU (or none): the game starts on Bajo and
@@ -459,7 +460,7 @@ var fullscreen := true
 ## centred on it.
 func apply_display() -> void:
 	if DisplayServer.get_name() == "headless": return
-	if not manages_window():
+	if not trace_display and not manages_window():
 		if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		return
 	if values.window_mode != WINDOWED and not force_window:

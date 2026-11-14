@@ -25,9 +25,11 @@ assets/props/**/*.zip
 
 # Benchmark reports and captures (tools/benchmarks/run_bench.ps1)
 evidence/bench/
+evidence/perf/
 evidence/lookdev/
 evidence/lurker/
 evidence/reference/
+evidence/rediseno/vuelta_*/
 
 # Bot matches: their summaries, recordings and batches (tools/bots.ps1)
 evidence/bots/

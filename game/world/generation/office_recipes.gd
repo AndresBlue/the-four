@@ -404,6 +404,47 @@ static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberG
 		if not chain.get("center", false): chain.merge(placed, true)
 	return out
 
+## Frame the lift and the counter together from the middle of the room.
+static func reception_counter(room: Dictionary, zones: Array, lift: Vector2i, lift_along: float) -> Dictionary:
+	const KIND := "reception_counter_l"
+	const FRAME_CLEAR := 0.22
+	var size: Vector2 = OFFICE.FURNITURE[KIND].size
+	var right := Vector2i(-lift.y, lift.x)
+	var group: int = room.furniture.size()
+	var walls: Array[Vector2i] = [right, -right]
+	if lift_along != 0.0: walls.push_front(lift)
+	for direction: Vector2i in walls:
+		var wall := LAYOUT.wall_of(direction)
+		if not usable(room, wall): continue
+		var along_axis := Vector2.DOWN if direction.x != 0 else Vector2.RIGHT
+		var toward := along_axis.dot(Vector2(lift if direction != lift else right))
+		if direction == lift: toward = -signf(lift_along)
+		var reach := LAYOUT.wall_length(room, wall) * 0.5
+		for footprint: Vector2 in [size, OFFICE.FURNITURE[KIND].compact]:
+			var edge := reach - footprint.x * 0.5 - FRAME_CLEAR
+			for step in 15:
+				var offset := float(step) * 0.15
+				if edge <= offset: break
+				var along := toward * (edge - offset)
+				var point := wall_front(room, wall, along, WALL_GAP + footprint.y * 0.5)
+				var piece := item(KIND, point, int(TURNS[wall]), group)
+				piece.size = [footprint.x, footprint.y]
+				var frame := LAYOUT.wall_rect(room, wall, along, footprint.x * 0.5 + FRAME_CLEAR, 0.2)
+				if hits(frame, zones) or not fits(room, zones, piece): continue
+				room.furniture.append(piece)
+				return {"wall": wall, "along": along, "half": footprint.x * 0.5 + FRAME_CLEAR, "group": group}
+	return {}
+
+static func reception_wait(room: Dictionary, zones: Array, counter: Dictionary, lift: Vector2i) -> Dictionary:
+	var side := Vector2i(lift.y, -lift.x)
+	for direction: Vector2i in [side, -side, -lift]:
+		var wall := LAYOUT.wall_of(direction)
+		if wall == String(counter.get("wall", "")) or not usable(room, wall): continue
+		for kind: String in ["waiting_row_4", "waiting_row"]:
+			var run := lay_wall(room, zones, kind, 1, wall)
+			if not run.is_empty(): return run
+	return {}
+
 ## A run of `row` pieces with their backs to a wall, WALL_GAP off its face, at
 ## the first place that fits (ALONG, or corner_first()); {wall, along, half,
 ## group}, or {} where none does. On a wall beside the feature wall (`toward`,
