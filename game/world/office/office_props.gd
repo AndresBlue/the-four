@@ -13,6 +13,8 @@ const BACK := -0.7
 ## tiles' face 0.1 off it (office_fittings.gd).
 const BASIN_Z := -0.973
 const MIRROR_Z := -1.183
+## The hand dryer's middle along the wall, beside the mirror, and its bottom.
+const DRYER := Vector2(0.55, 1.0)
 const HOTEL_KINDS := ["bin", "cart"]
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## The pieces made in code (area 4a) that build_item() places.
@@ -112,9 +114,14 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 			# The copy room's copier when the recipe's own did not fit (4b).
 			piece(builder, node, MACHINES.copier(builder, Vector3(1.1, 1.05, 0.7)), at(0.0, 0.7))
 		"basin":
-			# Against the washroom's tiled panel, its mirror over it (6.11).
-			piece(builder, node, FIXTURES.basin(builder, Vector3(0.55, 0.92, 0.45)), Vector3(0, 0, BASIN_Z))
+			# Against the washroom's tiled panel (the download, at its corner's
+			# measure), its mirror over it and the hand dryer beside it (6.11).
+			var basin := MODELS.size_of(builder, "basin")
+			builder.box(node, Vector3(0, basin.y * 0.5, BASIN_Z), basin, "", true)
+			MODELS.put(builder, node, "basin", Transform3D(Basis.IDENTITY, Vector3(0, 0, BASIN_Z)))
 			builder.place(node, WALL.mirror(builder, Vector3(0.6, 0.8, 0.03)), Transform3D(Basis.IDENTITY, Vector3(0, 1.1, MIRROR_Z)))
+			var dryer := MODELS.size_of(builder, "hand_dryer")
+			MODELS.put(builder, node, "hand_dryer", Transform3D(Basis.IDENTITY, Vector3(DRYER.x, DRYER.y, MIRROR_Z - 0.015 + dryer.z * 0.5)))
 		"vending":
 			vending(builder, node, at(0.0, 0.8), int(builder.building_room.get("id", -1)))
 		"plant":
@@ -387,7 +394,11 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			else:
 				piece(builder, holder, ROOM_EQUIPMENT.locker_bank(builder, Vector3(2.7, 1.9, 0.45)), Vector3.ZERO)
 		"fan_unit":
-			piece(builder, holder, ROOM_EQUIPMENT.fan_unit(builder, Vector3(1.5, 1.6, 1.2)), Vector3.ZERO)
+			# The download, its back to the wall of its footprint, its box its collider.
+			var unit := MODELS.size_of(builder, "fan_unit")
+			var spot := Vector3(0, 0, (unit.z - float(OFFICE.FURNITURE.fan_unit.size.y)) * 0.5)
+			builder.box(holder, spot + Vector3(0, unit.y * 0.5, 0), unit, "", true)
+			MODELS.put(builder, holder, "fan_unit", Transform3D(Basis.IDENTITY, spot))
 		"air_desk":
 			piece(builder, holder, DESKS.desk_steel(builder, Vector3(1.5, 0.75, 0.75)), Vector3(0, 0, -0.325))
 			# A stool at it (spec_rediseno 6.14): no piece of its own.

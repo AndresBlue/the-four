@@ -1258,5 +1258,227 @@
     }
    }
   ]
+ },
+ "ventila_techo_ahmagh2e": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/ventila.gltf",
+  "parts": [
+   {
+    "name": "diffuser",
+    "objects": "^03_",
+    "tilt": 180,
+    "box": [
+     [
+      -0.2975,
+      0.2975
+     ],
+     null,
+     [
+      -0.2975,
+      0.2975
+     ]
+    ]
+   }
+  ]
+ },
+ "rociador_tashakosaykina": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/rociador.gltf",
+  "parts": [
+   {
+    "name": "sprinkler",
+    "objects": "^Object_(2|4)$",
+    "tilt": 180,
+    "box": [
+     [
+      -0.035,
+      0.035
+     ],
+     null,
+     [
+      -0.035,
+      0.035
+     ]
+    ],
+    "shrink": {
+     "^Object_4$": 0.35,
+     "^Object_2$": 0.6
+    }
+   }
+  ]
+ },
+ "luz_emergencia_sousinho": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/emergencia.gltf",
+  "turn": -90,
+  "parts": [
+   {
+    "name": "body",
+    "objects": "^(Cube|Cylinder|light frame)",
+    "fit": ".",
+    "box": [
+     [
+      -0.18,
+      0.18
+     ],
+     null,
+     null
+    ],
+    "shrink": {
+     "^Cylinder": 0.1,
+     "^light frame": 0.25,
+     "^Cube\\.001": 0.5,
+     "^Cube\\.003": 0.5
+    }
+   },
+   {
+    "name": "glass",
+    "objects": "^light glass",
+    "fit": ".",
+    "box": [
+     [
+      -0.18,
+      0.18
+     ],
+     null,
+     null
+    ]
+   }
+  ]
+ },
+ "armario_manguera_red2000": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/armario.gltf",
+  "turn": -90,
+  "parts": [
+   {
+    "name": "cabinet",
+    "objects": ".",
+    "box": [
+     [
+      -0.35,
+      0.35
+     ],
+     [
+      0.0,
+      0.7
+     ],
+     [
+      -0.1,
+      0.1
+     ]
+    ],
+    "shrink": {
+     "^Hose": 0.5,
+     "^Roller": 0.5
+    }
+   }
+  ]
+ },
+ "termostato_alarma_ladylionstudios": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/termostato.gltf",
+  "parts": [
+   {
+    "name": "thermostat",
+    "objects": "Collection\\.001_",
+    "box": [
+     [
+      -0.0425,
+      0.0425
+     ],
+     null,
+     null
+    ]
+   }
+  ]
+ },
+ "camara_cctv_smoggybeard": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/camara.gltf",
+  "parts": [
+   {
+    "name": "camera",
+    "objects": ".",
+    "tilt": 180,
+    "box": [
+     null,
+     null,
+     [
+      -0.17,
+      0.17
+     ]
+    ]
+   }
+  ]
+ },
+ "unidad_hvac_kubassa": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/hvac.gltf",
+  "parts": [
+   {
+    "name": "unit",
+    "objects": "^polymsh16",
+    "box": [
+     [
+      -0.75,
+      0.75
+     ],
+     null,
+     null
+    ],
+    "shrink": {
+     "material39": 0.5
+    }
+   }
+  ]
+ },
+ "lavabo_juang3d": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/lavabo.gltf",
+  "parts": [
+   {
+    "name": "basin",
+    "objects": ".",
+    "box": [
+     [
+      -0.275,
+      0.275
+     ],
+     [
+      0.0,
+      0.79
+     ],
+     [
+      -0.225,
+      0.225
+     ]
+    ],
+    "shrink": {
+     "^Cylinder01": 0.15,
+     "^Cylinder02": 0.06,
+     "^Cylinder04": 0.1,
+     "^Cylinder_0$": 0.3
+    }
+   }
+  ]
+ },
+ "secamanos_ladylionstudios": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/secamanos.gltf",
+  "parts": [
+   {
+    "name": "dryer",
+    "objects": ".",
+    "box": [
+     [
+      -0.14,
+      0.14
+     ],
+     null,
+     null
+    ]
+   }
+  ]
  }
 }

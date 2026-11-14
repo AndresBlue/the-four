@@ -66,6 +66,9 @@ const TUBE_RADIUS := 0.055
 const PIPE_MODEL := "res://assets/props/hotel/modular_pipes_straight.res"
 ## The window desk's top (office_geometry.gd POST_DESK).
 const DESK_TOP := 0.755
+## The ceiling camera's lens in the download as baked (office_models "cctv_camera"):
+## put on the eye the card's photo is taken from, the camera wholly behind it.
+const CAMERA_LENS := Vector3(0, 0.1, -0.175)
 
 func manifest() -> Dictionary: return level.manifest
 
@@ -122,7 +125,7 @@ func place() -> void:
 	# Wholly behind the eye the card's photo is taken from (snap()): its lens
 	# just in front of that eye, looking where the photo looks.
 	var cam_basis := Basis.looking_at(v3(m.mail.camera_target) - eye, Vector3.UP)
-	equipment(MAIL.ceiling_camera(level.hotel, MAIL.CAMERA), Transform3D(cam_basis, eye - cam_basis * Vector3(0, 0.04, -0.125)))
+	equipment(MODELS.mesh_of(level.hotel, "cctv_camera"), Transform3D(cam_basis, eye - cam_basis * CAMERA_LENS))
 	# The network's map on the wall beside the window (read, nothing asked).
 	var map_spot: Dictionary = m.mail.map
 	var map_at := v3(map_spot.point) + facing(float(map_spot.yaw)) * 0.01

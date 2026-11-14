@@ -83,9 +83,9 @@ const PIECES := {
 	"directory": [Vector3(0.9, 0.7, 0.05), 1.1],
 	"central": [Vector3(0.56, 1.15, 0.2), 0.85],
 	"extinguisher": [Vector3(0.2, 0.62, 0.18), 0.3],
-	"hose": [Vector3(0.65, 0.75, 0.16), 1.0],
+	"hose": [Vector3(0.7, 0.7, 0.2), 1.0],
 	"fountain": [Vector3(0.4, 0.4, 0.2), 0.75],
-	"thermostat": [Vector3(0.09, 0.13, 0.03), 1.5],
+	"thermostat": [Vector3(0.085, 0.085, 0.037), 1.5],
 	"alarm": [Vector3(0.14, 0.2, 0.08), 1.3],
 	"socket": [Vector3(0.09, 0.09, 0.01), 0.25],
 }
@@ -333,9 +333,9 @@ static func draw(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 			# Its wall bracket: a steel plate on the wall and a strap round the bottle.
 			builder.box(boundary, at * Vector3(0, 0.44, -size.z * 0.5 + 0.006), Vector3(0.07, 0.16, 0.012), "metal", false, "box", at.basis.get_euler())
 			builder.box(boundary, at * Vector3(0, 0.42, 0.0), Vector3(0.17, 0.025, 0.17), "metal", false, "box", at.basis.get_euler())
-		"hose": builder.place(boundary, STAND.hose_cabinet(builder, size), at, false)
+		"hose": MODELS.put(builder, boundary, "hose", at)
 		"fountain": builder.place(boundary, STAND.wall_fountain(builder, size), at, false)
-		"thermostat": builder.place(boundary, STAND.thermostat(builder, size), at, false)
+		"thermostat": MODELS.put(builder, boundary, "thermostat", at)
 		"alarm": MODELS.put(builder, boundary, "fire_alarm", Transform3D(at.basis, Vector3(x, mount, inner * (face + 0.018))))
 		"socket":
 			builder.box(boundary, Vector3(x, mount + 0.045, inner * (face + 0.004)), Vector3(0.09, 0.09, 0.008), "switch", false, "detail")

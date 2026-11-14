@@ -101,6 +101,22 @@ const MODELS := {
 	"filing_grey": {"paths": ["res://assets/props/office/archivador_gris_ahmagh2e_shut4.res"]},
 	"filing_grey_body": {"paths": ["res://assets/props/office/archivador_gris_ahmagh2e_body4.res"]},
 	"filing_grey_drawer": {"paths": ["res://assets/props/office/archivador_gris_ahmagh2e_drawer.res"]},
+	# The building's fittings and the washroom's (tools/props/fit_models.json), baked
+	# at their place's measure; no stand-in.
+	# The ceiling's square diffuser, on its tiles and over her duct exits alike (office_fittings.gd, office_geometry.gd).
+	"ceiling_diffuser": {"paths": ["res://assets/props/office/ventila_techo_ahmagh2e.res"]},
+	"sprinkler": {"paths": ["res://assets/props/office/rociador_tashakosaykina.res"]},
+	# The battery unit and its heads' glass, baked in register (office_geometry.emergency_unit()).
+	"emergency_unit": {"paths": ["res://assets/props/office/luz_emergencia_sousinho_body.res"]},
+	"emergency_glass": {"paths": ["res://assets/props/office/luz_emergencia_sousinho_glass.res"]},
+	"hose": {"paths": ["res://assets/props/office/armario_manguera_red2000.res"]},
+	"thermostat": {"paths": ["res://assets/props/office/termostato_alarma_ladylionstudios.res"]},
+	# The mail window's camera, hung upside down, its lens to -Z (files_objective.gd).
+	"cctv_camera": {"paths": ["res://assets/props/office/camara_cctv_smoggybeard.res"]},
+	# The air rooms' units (office_props.gd).
+	"fan_unit": {"paths": ["res://assets/props/office/unidad_hvac_kubassa.res"]},
+	"basin": {"paths": ["res://assets/props/office/lavabo_juang3d.res"]},
+	"hand_dryer": {"paths": ["res://assets/props/office/secamanos_ladylionstudios.res"]},
 }
 ## The grey cabinet's drawers stand GREY_PITCH apart up from the lowest, as
 ## its drawer is baked; one left out stands GREY_OUT before the rest.
@@ -234,7 +250,6 @@ static func stand_in(builder: Node3D, kind: String) -> Mesh:
 		"extinguisher": return STAND.extinguisher(builder, Vector3(0.2, 0.62, 0.18))
 		"work_light": return STAND.work_light(builder, Vector3(0.4, 1.5, 0.4))
 		"step_ladder": return STAND.step_ladder(builder, Vector3(0.5, 1.4, 0.6))
-		"fire_alarm": return STAND.thermostat(builder, Vector3(0.09, 0.13, 0.03))
 		"wall_clock": return WALL.clock_square(builder, Vector3(0.3, 0.3, 0.06))
 		"phone": return THINGS.phone(builder, Vector3(0.22, 0.1, 0.24), false)
 		"phone_off": return THINGS.phone(builder, Vector3(0.22, 0.1, 0.24), true)

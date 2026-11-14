@@ -1,5 +1,5 @@
 extends RefCounted
-## Washroom cubicles and basin, rugs, curtain and blind (spec_rediseno.md 5.1,
+## Washroom cubicles, the lift's wall lamp, rugs, curtain and blind (spec_rediseno.md 5.1,
 ## area 4a): KIT's frame, cache and materials (pieces/kit.gd).
 const KIT := preload("res://game/world/office/pieces/kit.gd")
 
@@ -8,7 +8,6 @@ const KIT := preload("res://game/world/office/pieces/kit.gd")
 static func samples(builder: Node3D) -> Array:
 	return [
 		["toilet_cubicles_3", toilet_cubicles(builder, Vector3(2.7, 2.0, 1.5), 3)],
-		["basin", basin(builder, Vector3(0.55, 0.92, 0.45))],
 		["rug_carpet_exec", rug(builder, Vector3(3.0, 0.012, 2.0), "carpet_exec")],
 		["rug_black", rug(builder, Vector3(1.2, 0.012, 0.8), "black")],
 		["curtain", curtain(builder, Vector3(1.4, 2.1, 0.12))],
@@ -51,33 +50,6 @@ static func make_toilet_cubicles(builder: Node3D, size: Vector3, count: int) -> 
 	# The head rail, along the top of the cabins.
 	KIT.block(p, "metal", Vector3(0.0, h - 0.02, z_f), Vector3(w, 0.04, 0.03))
 	return KIT.finish(builder, p, "toilet_cubicles_%d" % count, size)
-
-## A standing washbasin with its tap, for the washroom wall.
-static func basin(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("basin", size), func() -> ArrayMesh: return make_basin(builder, size))
-
-static func make_basin(builder: Node3D, size: Vector3) -> ArrayMesh:
-	var p := KIT.begin()
-	var w := size.x
-	var h := size.y
-	var d := size.z
-	var r_y := h - 0.1
-	var z_c := 0.02
-	# The rim: front, back and the two sides of the basin's top.
-	KIT.block(p, "ceramic", Vector3(0.0, r_y - 0.04, d * 0.5 - 0.04), Vector3(w, 0.08, 0.08), 0.012)
-	KIT.block(p, "ceramic", Vector3(0.0, r_y - 0.04, -d * 0.5 + 0.06), Vector3(w, 0.08, 0.12), 0.012)
-	for s: float in [-1.0, 1.0]:
-		KIT.block(p, "ceramic", Vector3(s * (w * 0.5 - 0.04), r_y - 0.04, z_c), Vector3(0.08, 0.08, d - 0.2))
-	# The bowl, its pedestal and the drain.
-	KIT.block(p, "ceramic", Vector3(0.0, r_y - 0.14, 0.0), Vector3(w - 0.02, 0.12, d - 0.02), 0.02)
-	KIT.cylinder(p, "metal", Vector3(0.0, r_y - 0.0795, z_c), 0.02, 0.001, 12)
-	KIT.cylinder(p, "ceramic", Vector3(0.0, (r_y - 0.2) / 2.0, -d * 0.5 + 0.12), 0.09, r_y - 0.2, 16)
-	# The tap: its base, its spout and two handles.
-	KIT.cylinder(p, "metal", Vector3(0.0, r_y + 0.04, -d * 0.5 + 0.06), 0.014, 0.08, 10)
-	KIT.cylinder(p, "metal", Vector3(0.0, r_y + 0.075, -d * 0.5 + 0.11), 0.01, 0.1, 10, KIT.along_z())
-	for s: float in [-1.0, 1.0]:
-		KIT.cylinder(p, "metal", Vector3(s * 0.08, r_y + 0.02, -d * 0.5 + 0.06), 0.018, 0.04, 8)
-	return KIT.finish(builder, p, "basin", size)
 
 ## An office wall lamp of 1987: an opal glass box between brass caps on a
 ## brass back plate, its back at z 0 and its middle at y 0 (the reception's

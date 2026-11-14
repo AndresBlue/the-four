@@ -1,5 +1,5 @@
 extends RefCounted
-## Mail equipment: the pneumatic central, a station's receiver, the typewriter, the card reader, the ceiling camera, the tube's collar, a lamp's lens, the network map and an instruction plate (spec_rediseno.md 6, area 5): KIT's frame,
+## Mail equipment: the pneumatic central, a station's receiver, the typewriter, the card reader, the tube's collar, a lamp's lens, the network map and an instruction plate (spec_rediseno.md 6, area 5): KIT's frame,
 ## cache and materials (pieces/kit.gd).
 const KIT := preload("res://game/world/office/pieces/kit.gd")
 ## The sizes the handlers place these at (files_objective.gd, air_objective.gd,
@@ -13,7 +13,6 @@ const RECEIVER_MOUTH := 0.3
 const RECEIVER_LENS := 0.43
 const TYPEWRITER := Vector3(0.46, 0.3, 0.38)
 const READER := Vector3(0.2, 0.28, 0.09)
-const CAMERA := Vector3(0.12, 0.12, 0.26)
 const COLLAR := Vector3(0.14, 0.06, 0.14)
 const LENS := Vector3(0.05, 0.05, 0.02)
 const MAP := Vector3(0.9, 0.62, 0.025)
@@ -27,7 +26,6 @@ static func samples(builder: Node3D) -> Array:
 		["station_receiver", station_receiver(builder, RECEIVER)],
 		["typewriter", typewriter(builder, TYPEWRITER)],
 		["card_reader", card_reader(builder, READER)],
-		["ceiling_camera", ceiling_camera(builder, CAMERA)],
 		["tube_collar", tube_collar(builder, COLLAR)],
 		["lamp_glow_amber", lamp_lens(builder, LENS, "glow_amber")],
 		["lamp_lamp_off", lamp_lens(builder, LENS, "lamp_off")],
@@ -148,23 +146,6 @@ static func make_card_reader(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.cylinder(p, "metal", Vector3(0, 0.075, d * 0.5 - 0.004), 0.01, 0.008, 10, KIT.along_z())
 	KIT.block(p, "metal", Vector3(0, 0.035, d * 0.5 - 0.005), Vector3(0.07, 0.022, 0.004))
 	return KIT.finish(builder, p, "card_reader", size, {"wall": true, "mount": 1.06})
-
-## A ceiling camera: a beige body on a stem, its lens at -Z, where
-## Basis.looking_at() points (the objective aims it).
-static func ceiling_camera(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("ceiling_camera", size), func() -> ArrayMesh: return make_ceiling_camera(builder, size))
-
-static func make_ceiling_camera(builder: Node3D, size: Vector3) -> ArrayMesh:
-	var p := KIT.begin()
-	var w := size.x
-	var h := size.y
-	KIT.block(p, "steel_grey", Vector3(0, h - 0.005, 0.07), Vector3(0.08, 0.01, 0.08))
-	KIT.block(p, "steel_grey", Vector3(0, h - 0.035, 0.07), Vector3(0.02, 0.05, 0.02))
-	KIT.block(p, "plastic_beige", Vector3(0, 0.04, 0), Vector3(0.1, 0.08, 0.24), 0.01)
-	KIT.block(p, "plastic_beige", Vector3(0, 0.082, -0.01), Vector3(w, 0.004, 0.24))
-	KIT.cylinder(p, "black", Vector3(0, 0.04, -0.115), 0.03, 0.01, 12, KIT.along_z())
-	KIT.cylinder(p, "screen", Vector3(0, 0.04, -0.1195), 0.022, 0.001, 12, KIT.along_z())
-	return KIT.finish(builder, p, "ceiling_camera", size)
 
 ## A brass collar at a tube's joint, its axis up.
 static func tube_collar(builder: Node3D, size: Vector3) -> ArrayMesh:

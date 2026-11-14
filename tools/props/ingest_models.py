@@ -98,7 +98,12 @@ GLOW_WHITE = {"Chandelier_02": ((1.0, 0.76, 0.46), 2.6)}
 ## what is on the screen (tools/dev/mirror_look.gd).
 NO_HIGHLIGHT = {"ornate_mirror_01"}
 ## Models whose glass has to be made clear here (material_tres()).
-CLEAR_GLASS = {"vintage_grandfather_clock_01"}
+CLEAR_GLASS = {"vintage_grandfather_clock_01", "armario_manguera_red2000"}
+## A blended material is a pane by its name (glass; the hose cabinet's "Cristal").
+GLASS_WORDS = ("glass", "cristal")
+## The least roughness a model's plain materials take: the basin came polished
+## to 0, and every lamp made a hard spark on its glaze and its tap.
+LEAST_ROUGH = {"lavabo_juang3d": 0.2}
 ## What is painted over on an office download's images before they are
 ## brought in (docs/OFICINAS.md 12: no lettering in another language, no
 ## makers' marks): by model and image, rectangles in the image's own pixels
@@ -154,6 +159,14 @@ PATCHES = {
     # The microfiche reader's screen: a chart with figures, made a grey glass, off.
     ("microfichas_maxdragonn", "filmscreen_baseColor.png"): [(0, 0, 512, 512, (48, 52, 52))],
     ("boombox", "boombox_diff_1k.jpg"): [(553, 389, 680, 502), (747, 512, 840, 625), (727, 788, 819, 891), (10, 80, 410, 230)],
+    # The emergency unit's two stickers of symbols and its maker's stamp.
+    ("luz_emergencia_sousinho", "emergency_lights_UV_baseColor.png"): [(455, 1615, 512, 1795), (528, 1615, 675, 1795), (680, 2135, 750, 2340)],
+    # PUSH moulded on the hand dryer's button.
+    ("secamanos_ladylionstudios", "HandDryerClean_baseColor.png"): [(1572, 1778, 1862, 1897)],
+    ("secamanos_ladylionstudios", "HandDryerClean_normal.png"): [(1572, 1778, 1862, 1897)],
+    # The air unit's warning labels in English, and the words over its high
+    # voltage sign and on its pipe (their pictograms stay).
+    ("unidad_hvac_kubassa", "material39_baseColor.png"): [(420, 170, 635, 325), (2170, 473, 2410, 600), (3485, 1125, 3725, 1250), (2552, 2686, 2733, 2716, (157, 157, 17)), (3436, 2096, 3644, 2159)],
 }
 ## Images multiplied by a colour as they are brought in: the archive box's
 ## white board turned to kraft.
@@ -163,6 +176,10 @@ TINT = {("cajas_archivo_cozmoth", "material_baseColor.png"): (0.8, 0.64, 0.44),
     # The wall rack: its wood lighter, and no metal in it (its map gave the wood a quarter of it).
     ("perchero_pared_ehnri", "Scene_-_Root_baseColor.png"): (1.9, 1.8, 1.7),
     ("perchero_pared_ehnri", "Scene_-_Root_metallicRoughness.png"): (1.0, 1.15, 0.0),
+    # The ceiling diffuser painted as the tiles round it, not bare metal (its map
+    # made it half metal, a dark mirror of the ceiling), and lighter: off-white.
+    ("ventila_techo_ahmagh2e", "material_baseColor.png"): (1.7, 1.65, 1.55),
+    ("ventila_techo_ahmagh2e", "material_metallicRoughness.png"): (1.0, 1.0, 0.0),
     ("silla_tela_projectkaizen", "chairobjfinal_chair_sitting_and_back_pillow_Metallic_png-chairobjfinal_chair_sitting_and_back_pillow_Roughness_png.png"): (1.0, 2.4, 1.0),
     ("silla_tela_projectkaizen", "chairobjfinal_seat_back_Metallic-chairobjfinal_seat_back_Roughness.png"): (1.0, 2.5, 1.0),
     ("silla_tela_projectkaizen", "chairobjfinal_seat_rest_Metallic-chairobjfinal_seat_rest_Roughness.png"): (1.0, 1.6, 1.0),
@@ -322,7 +339,7 @@ def material_tres(model, gltf, material, textures):
         lines.append(f'{key} = ExtResource("{len(resources)}")')
 
     colour = list(pbr.get("baseColorFactor", [1, 1, 1, 1]))
-    glass = material.get("alphaMode") == "BLEND" and "glass" in material["name"].lower()
+    glass = material.get("alphaMode") == "BLEND" and any(word in material["name"].lower() for word in GLASS_WORDS)
     if albedo: texture(albedo, "albedo_texture")
     # A pane whose glTF kept neither an alpha in its colour nor one in its
     # image (the transmission it had in Blender is not exported) comes out as
@@ -334,7 +351,7 @@ def material_tres(model, gltf, material, textures):
         texture(mr, "orm_texture")
     else:
         lines.append("metallic = %g" % pbr.get("metallicFactor", 1.0 if mr else 0.0))
-        lines.append("roughness = %g" % pbr.get("roughnessFactor", 1.0))
+        lines.append("roughness = %g" % max(pbr.get("roughnessFactor", 1.0), LEAST_ROUGH.get(model, 0.0)))
         if mr:
             texture(mr, "metallic_texture")
             lines.append("metallic_texture_channel = 2")
@@ -354,7 +371,7 @@ def material_tres(model, gltf, material, textures):
     if mode == "MASK":
         lines.append("transparency = 2")
         lines.append("alpha_scissor_threshold = %g" % material.get("alphaCutoff", 0.5))
-    elif mode == "BLEND" and "glass" in material["name"].lower():
+    elif glass:
         lines.append("transparency = 1")
     elif mode == "BLEND":
         # Cut-out cloth fringes and crate holes: scissored, so they stay in

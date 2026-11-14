@@ -31,7 +31,7 @@ const CAR_KICK := 0.15
 const CAR_RAIL := Vector2(0.95, 0.04)
 ## Finishes that stand in as a plain colour until their own material is made
 ## (MATERIAL_DIR): the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("b9ad96"), "office_paint_kept": Color("b9ad96"), "vinyl_polished": Color("a99f88"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74"), "duct_back": Color("2f302e")}
+const PLAIN := {"office_paint": Color("b9ad96"), "office_paint_kept": Color("b9ad96"), "vinyl_polished": Color("a99f88"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74")}
 ## Where the office's own materials are (spec_rediseno 8): a key's <key>.tres
 ## there takes the place of its stand-in, or of the hotel material of the same
 ## name (OWN_OVER: the carpet, the ceiling tile).
@@ -234,24 +234,17 @@ const PROBE_ONLY := 2
 ## lifts): deeper than HALO_BELOW, so the halo is depth-tested behind it and
 ## shows no glow in the hole.
 const HOLE_CAP := 0.01
-## A ceiling exit's grille and the dark over it: the opening between the
-## T-grid's flanges (OFFICE.TILE less TEE.x), a little less.
+## The dark over a ceiling exit: the opening between the T-grid's flanges
+## (OFFICE.TILE less TEE.x), a little less.
 const EXIT_CLEAR := 0.57
-## The slats across a duct's grille, and how far under a gap's dark its
-## slats' middle sits (its back just clear of that dark).
-const GRILLE_SLATS := 9
-const GAP_GRILLE := 0.019
+## A gap's diffuser hangs this much under the plenum's dark (its flange's top clear of it).
+const GAP_GRILLE := 0.002
 
-## A louvred grille centred on its slats' middle: painted slats in a frame
-## over a dark grey back. One flat plate in the dark of the duct read as a hole.
-func duct_grille(node: Node3D, at: Vector3) -> void:
-	box(node, at + Vector3(0, 0.015, 0), Vector3(EXIT_CLEAR, 0.006, EXIT_CLEAR), "duct_back")
-	var inner := EXIT_CLEAR - 0.04
-	for k in GRILLE_SLATS:
-		box(node, at + Vector3((k + 0.5) / GRILLE_SLATS * inner - inner * 0.5, 0, 0), Vector3(0.012, 0.024, inner), "tgrid")
-	for side: float in [-1.0, 1.0]:
-		box(node, at + Vector3(side * (EXIT_CLEAR * 0.5 - 0.01), 0, 0), Vector3(0.02, 0.024, EXIT_CLEAR), "tgrid")
-		box(node, at + Vector3(0, 0, side * (EXIT_CLEAR * 0.5 - 0.01)), Vector3(inner, 0.024, 0.02), "tgrid")
+## A duct exit's diffuser (the tiles' own download) over the tile's middle `at`, its
+## flange hung under the plane at `face` as the tiles' diffusers are, its neck
+## up into the dark. A flat plate in the dark of the duct read as a hole.
+func duct_grille(node: Node3D, at: Vector3, face: float) -> void:
+	place(node, PROPS.MODELS.mesh_of(self, "ceiling_diffuser"), Transform3D(Basis.IDENTITY, at + Vector3(0, face - FITTINGS.DIFFUSER_DROP, 0)), false)
 const HALO_SHADER := preload("res://game/presentation/materials/office/ceiling_halo.gdshader")
 ## Room id -> its halo: {"material": ShaderMaterial, "base": float (its lamp's
 ## energy as room_lamp() made it), "energy": float (as last set)}.
@@ -400,21 +393,19 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 	for e in exits:
 		var at := OFFICE.tile_centre(OFFICE.tile_of(Vector3(float(e.point[0]), 0, float(e.point[2]))), 0.0) - origin
 		if String(e.kind) == "ceiling":
-			# Inside the grid's flanges (EXIT_CLEAR) and off their plane: a
-			# grille as wide as the tile shared the flanges' underside and its
-			# edge fought them.
-			# The duct's dark over the grille's back, not round its slats.
+			# The duct's dark over the diffuser's neck, inside the grid's
+			# flanges (EXIT_CLEAR); the diffuser hangs as the tiles' own do.
 			box(node, at + Vector3(0, h + 0.04 + 0.15, 0), Vector3(EXIT_CLEAR, 0.3, EXIT_CLEAR), "black")
-			duct_grille(node, at + Vector3(0, h + 0.018, 0))
+			duct_grille(node, at, h + FITTINGS.FACE)
 		else:
 			box(node, at + Vector3(0, h + 0.6 - HOLE_CAP * 0.5, 0), Vector3(0.6, 1.2 + HOLE_CAP, 0.6), "plenum_dark")
 			# Its tile (5.4): hanging from one edge of the hole, or down on
 			# the floor below; no collider either way.
 			var spot: Vector3 = node.position + at
 			var hanging := vary(spot, 161) < HANGING
-			# Where no tile hangs, the duct's grille in its place, just under
-			# the plenum's dark: a bare hole read as pure black beside each lamp.
-			if not hanging: duct_grille(node, at + Vector3(0, h - HOLE_CAP - GAP_GRILLE, 0))
+			# Where no tile hangs, the duct's diffuser in its place, its flange
+			# just under the plenum's dark: a bare hole read as pure black beside each lamp.
+			if not hanging: duct_grille(node, at, h - HOLE_CAP - GAP_GRILLE)
 			if hanging:
 				var yaw := floori(vary(spot, 166) * 4.0) * PI * 0.5
 				var drop := lerpf(HANG_ANGLE.x, HANG_ANGLE.y, vary(spot, 167))
@@ -1044,8 +1035,8 @@ func emergency_room(room: Dictionary) -> bool:
 	var t := int(room.type)
 	return (t in [OFFICE.LANDING, OFFICE.LOBBY, OFFICE.CORRIDOR, OFFICE.GALLERY, OFFICE.ELECTRICAL]) and String(OFFICE.POWER[int(room.get("wing", 0))]) != "none"
 
-## The unit of a room, on its plain run nearest the room's middle: an enamel
-## box with two heads, a lens that lights when the room has no power, a red
+## The unit of a room, on its plain run nearest the room's middle: a battery
+## box with two heads whose glass lights when the room has no power, a red
 ## charge pip, and a spot light along the wall, down.
 func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	var runs := emergency_runs
@@ -1072,22 +1063,23 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	unit.name = "EmergencyUnit"
 	unit.transform = wall.transform * Transform3D(Basis(Vector3.UP, 0.0 if inner > 0 else PI), Vector3(float(best[1]), EMERGENCY_Y, inner * 0.09))
 	node.add_child(unit)
-	unit_box(unit, Vector3(0, 0, 0.05), Vector3(0.32, 0.18, 0.10), plain_material(Color("e6e1d3")))
+	# The download (its body and its heads' glass, baked in register): its back
+	# on the wall and its middle at EMERGENCY_Y; the glass is the lens that lights.
+	var body := MeshInstance3D.new()
+	body.mesh = PROPS.MODELS.mesh_of(self, "emergency_unit")
+	var bounds := body.mesh.get_aabb()
+	body.position = Vector3(0, -bounds.size.y * 0.5, -bounds.position.z)
+	unit.add_child(body)
 	var lens := MeshInstance3D.new()
-	var lens_mesh := BoxMesh.new()
-	lens_mesh.size = Vector3(0.24, 0.04, 0.012)
-	lens.mesh = lens_mesh
-	lens.position = Vector3(0, -0.05, 0.105)
+	lens.mesh = PROPS.MODELS.mesh_of(self, "emergency_glass")
+	lens.position = body.position
 	unit.add_child(lens)
-	for side: float in [-1.0, 1.0]:
-		var head := unit_box(unit, Vector3(side * 0.11, -0.11, 0.08), Vector3(0.07, 0.07, 0.08), plain_material(Color("d9d3c3")))
-		head.rotation = Vector3(deg_to_rad(-35.0), side * deg_to_rad(30.0), 0)
 	var pip_material := StandardMaterial3D.new()
 	pip_material.albedo_color = Color(0.5, 0.02, 0.02)
 	pip_material.emission_enabled = true
 	pip_material.emission = Color(1.0, 0.05, 0.03)
 	pip_material.emission_energy_multiplier = 2.0
-	unit_box(unit, Vector3(0.13, 0.05, 0.102), Vector3(0.004, 0.004, 0.004), pip_material)
+	unit_box(unit, Vector3(0.13, -0.02, 0.075), Vector3(0.004, 0.004, 0.004), pip_material)
 	var light := SpotLight3D.new()
 	light.name = "EmergencyLight"
 	light.light_color = LIGHTING.light_color(EMERGENCY_KELVIN)
@@ -1098,8 +1090,8 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	light.shadow_bias = 0.04
 	light.light_bake_mode = Light3D.BAKE_DISABLED
 	light.light_volumetric_fog_energy = 0.0
-	# Out of the wall and 35 degrees down: -Z of the light along +Z of the unit.
-	light.transform = Transform3D(Basis.looking_at(Vector3(0, -sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)))), Vector3(0, -0.1, 0.15))
+	# From before its heads and 35 degrees down: -Z of the light along +Z of the unit.
+	light.transform = Transform3D(Basis.looking_at(Vector3(0, -sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)))), Vector3(0, 0.1, 0.16))
 	light.visible = false
 	unit.add_child(light)
 	emergency.append({"light": light, "lens": lens, "room": int(room.id), "planta": int(room.get("wing", 0)), "spot": node.position + unit.transform.origin})

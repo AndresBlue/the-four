@@ -14,7 +14,6 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 const KIT := preload("res://game/world/office/pieces/kit.gd")
-const STAND := preload("res://game/world/office/pieces/stand_ins.gd")
 const THINGS := preload("res://game/world/office/pieces/desk_things.gd")
 const FIXTURES := preload("res://game/world/office/pieces/fixtures.gd")
 const MODELS := preload("res://game/world/office/office_models.gd")
@@ -28,7 +27,9 @@ const POST_CLEAR := 0.45
 const APART := 1.8
 ## A diffuser to every two troffers, at most this many.
 const DIFFUSERS := 4
-const DIFFUSER := Vector3(0.6, 0.05, 0.6)
+## A diffuser's flange hangs this far under its tile; its neck rises into the
+## plenum (also the exit grilles', office_geometry.duct_grille()).
+const DIFFUSER_DROP := 0.017
 ## The rug leaves this much hard floor round it, and is not laid smaller.
 const RUG_MARGIN := 0.9
 ## The oriental rug's material and its picture's length over its width.
@@ -107,11 +108,11 @@ static func ceiling(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 					builder.box(node, at + Vector3(0, h + FACE - 0.006, 0), Vector3(0.14, 0.012, 0.14), "ceramic", false, "detail_cylinder")
 					builder.box(node, at + Vector3(0, h + FACE - 0.026, 0), Vector3(0.11, 0.03, 0.11), "ceramic", false, "detail_cylinder")
 			"sprinkler":
-				builder.box(node, at + Vector3(0, h + FACE - 0.004, 0), Vector3(0.07, 0.008, 0.07), "metal", false, "detail_cylinder")
-				builder.box(node, at + Vector3(0, h + FACE - 0.03, 0), Vector3(0.022, 0.05, 0.022), "gold", false, "detail_cylinder")
-				builder.box(node, at + Vector3(0, h + FACE - 0.058, 0), Vector3(0.05, 0.004, 0.05), "gold", false, "detail_cylinder")
+				# Hung by its rosette, where it is baked.
+				var sprinkler := MODELS.mesh_of(builder, "sprinkler")
+				builder.place(node, sprinkler, Transform3D(Basis.IDENTITY, at + Vector3(0, h + FACE - sprinkler.get_aabb().size.y, 0)), false)
 			"diffuser":
-				builder.place(node, STAND.ceiling_diffuser(builder, DIFFUSER), Transform3D(Basis.IDENTITY, at + Vector3(0, h + FACE - DIFFUSER.y, 0)), false)
+				builder.place(node, MODELS.mesh_of(builder, "ceiling_diffuser"), Transform3D(Basis.IDENTITY, at + Vector3(0, h + FACE - DIFFUSER_DROP, 0)), false)
 		builder.dressing_log.ceiling.append({"room": int(room.id), "tile": entry.tile, "what": String(entry.what)})
 
 ## A tile's centre in world x and z.

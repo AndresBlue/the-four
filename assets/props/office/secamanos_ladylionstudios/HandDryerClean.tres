@@ -1,0 +1,14 @@
+[gd_resource type="StandardMaterial3D" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/props/office/secamanos_ladylionstudios/HandDryerClean_baseColor.jpg" id="1"]
+[ext_resource type="Texture2D" path="res://assets/props/office/secamanos_ladylionstudios/HandDryerClean_normal.jpg" id="2"]
+
+[resource]
+resource_name = "HandDryerClean"
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("1")
+metallic = 0
+roughness = 0.4
+normal_enabled = true
+normal_texture = ExtResource("2")
+cull_mode = 2

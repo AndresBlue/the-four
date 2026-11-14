@@ -64,11 +64,13 @@ const PARTS := {
 	"retro_oficina_yj": {"desk": "^desk_", "chair": "^chair_"},
 	# Four rows of books stood up, two with a pair laid on top (shelves where the bookcase model is not).
 	"libros_frodoundead": {"row_a": "^row_a_", "row_b": "^row_b_", "row_c": "^row_c_", "row_d": "^row_d_"},
+	# The emergency unit and its heads' glass, which glows apart (office_geometry.emergency_unit()).
+	"luz_emergencia_sousinho": {"body": "^body_", "glass": "^glass_"},
 }
 ## Downloads baked where fit_model.py put them, not centred and set on the
 ## floor: a leaf about its hinge (hotel_geometry.gd set_door()), a casing on
-## its doorway, a drawer in its cabinet.
-const PLACED := ["puerta_oficina_sousinho", "puerta_lisa_sousinho", "puerta_metal_tboiston", "archivador_gris_ahmagh2e"]
+## its doorway, a drawer in its cabinet, the emergency unit's glass in its heads.
+const PLACED := ["puerta_oficina_sousinho", "puerta_lisa_sousinho", "puerta_metal_tboiston", "archivador_gris_ahmagh2e", "luz_emergencia_sousinho"]
 ## Clocks, whose hands turn in the game (hotel_geometry.gd, tell_time): each
 ## hand is baked apart, as <id>_<hand>.res -- pointing at twelve, turning
 ## about +Z at its own origin, with where that origin is in the body's mesh

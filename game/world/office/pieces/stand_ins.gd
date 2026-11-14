@@ -26,10 +26,7 @@ static func samples(builder: Node3D) -> Array:
 		["plant_pot_steel_dark", plant_pot(builder, Vector3(0.4, 0.38, 0.4), "steel_dark")],
 		["plant_pot_ceramic", plant_pot(builder, Vector3(0.2, 0.16, 0.2), "ceramic")],
 		["plant_stand_in", plant_stand_in(builder, Vector3(0.6, 0.9, 0.6))],
-		["ceiling_diffuser", ceiling_diffuser(builder, Vector3(0.6, 0.05, 0.6))],
-		["hose_cabinet", hose_cabinet(builder, Vector3(0.65, 0.75, 0.16))],
 		["wall_fountain", wall_fountain(builder, Vector3(0.4, 0.4, 0.2))],
-		["thermostat", thermostat(builder, Vector3(0.09, 0.13, 0.03))],
 		["coat_hanging", coat_hanging(builder, Vector3(0.5, 0.95, 0.14))],
 		["towel", towel(builder, Vector3(0.3, 0.55, 0.04))],
 	]
@@ -491,44 +488,6 @@ static func make_plant_stand_in(builder: Node3D, size: Vector3) -> ArrayMesh:
 		KIT.block(p, "cloth_green", Vector3(sin(a) * 0.12, 0.36 + 0.25 * cos(tilt), cos(a) * 0.12), Vector3(0.14, 0.5, 0.01), 0.0, Basis(Vector3.UP, a) * Basis(Vector3.RIGHT, tilt))
 	return KIT.finish(builder, p, "plant_stand_in", size)
 
-## Square ceiling diffuser, 60 cm, beside the light panels.
-static func ceiling_diffuser(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("ceiling_diffuser", size), func() -> ArrayMesh: return make_ceiling_diffuser(builder, size))
-
-static func make_ceiling_diffuser(builder: Node3D, size: Vector3) -> ArrayMesh:
-	var p := KIT.begin()
-	var w := size.x
-	var h := size.y
-	var d := size.z
-	# Painted aluminium, as the T-grid: metal with nothing to mirror read as a
-	# black hole beside each lamp (spec "huecos negros junto a las pantallas").
-	KIT.block(p, "tgrid", Vector3(0, h - 0.004, 0), Vector3(w - 0.005, 0.008, d - 0.005))
-	for k in 4:
-		var s := w * (0.9 - k * 0.2)
-		KIT.block(p, "tgrid", Vector3(0, h - 0.013 - k * 0.01, 0), Vector3(s, 0.01, s), 0.002)
-	return KIT.finish(builder, p, "ceiling_diffuser", size)
-
-## Red hose cabinet with a glass door, on a corridor wall.
-static func hose_cabinet(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("hose_cabinet", size), func() -> ArrayMesh: return make_hose_cabinet(builder, size))
-
-static func make_hose_cabinet(builder: Node3D, size: Vector3) -> ArrayMesh:
-	var p := KIT.begin()
-	var w := size.x
-	var h := size.y
-	var d := size.z
-	KIT.block(p, "paint_red", Vector3(0, h / 2, -0.02), Vector3(w, h, d - 0.04), 0.006)
-	KIT.block(p, "paint_red", Vector3(0, h - 0.03, d / 2 - 0.03), Vector3(w, 0.06, 0.02))
-	KIT.block(p, "paint_red", Vector3(0, 0.03, d / 2 - 0.03), Vector3(w, 0.06, 0.02))
-	for s: float in [-1.0, 1.0]:
-		KIT.block(p, "paint_red", Vector3(s * (w / 2 - 0.03), h / 2, d / 2 - 0.03), Vector3(0.06, h - 0.12, 0.02))
-	KIT.cylinder(p, "cloth_red", Vector3(0, h / 2 + 0.05, 0.041), 0.2, 0.002, 20, KIT.along_z())
-	KIT.cylinder(p, "metal", Vector3(0, h / 2 + 0.05, 0.0415), 0.05, 0.002, 12, KIT.along_z())
-	KIT.block(p, "screen", Vector3(0, h / 2, d / 2 - 0.035), Vector3(w - 0.12, h - 0.12, 0.004))
-	KIT.block(p, "metal", Vector3(w / 2 - 0.05, h / 2, d / 2 - 0.012), Vector3(0.02, 0.1, 0.02))
-	KIT.block(p, "paper", Vector3(0, 0.03, d / 2 - 0.019), Vector3(0.2, 0.03, 0.002))
-	return KIT.finish(builder, p, "hose_cabinet", size, {"wall": true, "mount": 1.0})
-
 ## Steel wall fountain with its push tap, on a corridor wall.
 static func wall_fountain(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("wall_fountain", size), func() -> ArrayMesh: return make_wall_fountain(builder, size))
@@ -545,20 +504,6 @@ static func make_wall_fountain(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.cylinder(p, "metal", Vector3(0.06, h * 0.62 + 0.08, 0.0), 0.008, 0.04, 8)
 	KIT.block(p, "black", Vector3(w / 2 - 0.03, h * 0.62, d / 2 - 0.005), Vector3(0.03, 0.03, 0.01))
 	return KIT.finish(builder, p, "wall_fountain", size, {"wall": true, "mount": 0.75})
-
-## Wall thermostat in beige plastic, for the corridors.
-static func thermostat(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("thermostat", size), func() -> ArrayMesh: return make_thermostat(builder, size))
-
-static func make_thermostat(builder: Node3D, size: Vector3) -> ArrayMesh:
-	var p := KIT.begin()
-	var w := size.x
-	var h := size.y
-	var d := size.z
-	KIT.block(p, "plastic_beige", Vector3(0, h / 2, -0.003), Vector3(w, h, d - 0.006), 0.004)
-	KIT.cylinder(p, "metal", Vector3(0, h * 0.55, d / 2 - 0.005), 0.025, 0.008, 12, KIT.along_z())
-	KIT.block(p, "black", Vector3(0, h * 0.2, d / 2 - 0.006), Vector3(0.04, 0.008, 0.002))
-	return KIT.finish(builder, p, "thermostat", size, {"wall": true, "mount": 1.5})
 
 ## Navy coat hung on a hook, on a washroom wall.
 static func coat_hanging(builder: Node3D, size: Vector3) -> ArrayMesh:

@@ -532,8 +532,8 @@
     "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
   },
   "assets/props/office/sources.json": {
-    "bytes": 5726,
-    "sha256": "cfdebcc9a18490bf578b4a525e90eb78c37375165699fffcef2fa4104beb6808"
+    "bytes": 6606,
+    "sha256": "0f7858d85fd84049620b7e63323f84e7d8028aaf762f3f270ecc1e27b70b9443"
   },
   "assets/paintings/office/11766.jpg": {
     "bytes": 405762,
@@ -2266,5 +2266,233 @@
   "assets/textures/office_tiles043/orm_1k.jpg": {
     "bytes": 374834,
     "sha256": "03d6ba697eb4b74bfd9f7113fd3448f34d1a1539504a4a206e59c96a10719e93"
+  },
+  "assets/props/office/armario_manguera_red2000/Cabinet1.tres": {
+    "bytes": 630,
+    "sha256": "ac757ce3f9507d530f8e2072f70e3b024ee57997ff08d6c998a0fdf4ff2cb92c"
+  },
+  "assets/props/office/armario_manguera_red2000/Cabinet1_baseColor.jpg": {
+    "bytes": 177141,
+    "sha256": "b0b2bf89fd47c680b2cc1f6b9d4f0646b18088b26e2be1178c097cdbac421aa9"
+  },
+  "assets/props/office/armario_manguera_red2000/Cabinet1_metallicRoughness.jpg": {
+    "bytes": 149764,
+    "sha256": "e699d00cee75c4ca9a9086361c6494800fcbbe7c25e0c0fc527213d74c6a7d2d"
+  },
+  "assets/props/office/armario_manguera_red2000/Cabinet1_normal.jpg": {
+    "bytes": 46125,
+    "sha256": "b47ad406692cce6c9aeea041298a39f3ddbd16f7f154ef155e5a1a7c29e1dce6"
+  },
+  "assets/props/office/armario_manguera_red2000/Cristal1.tres": {
+    "bytes": 476,
+    "sha256": "37fb5a4a596587d549f864f0af6aea2b0658dc2fa0fee6a6d6df8cb244c87c14"
+  },
+  "assets/props/office/armario_manguera_red2000/Cristal1_baseColor.jpg": {
+    "bytes": 177141,
+    "sha256": "b0b2bf89fd47c680b2cc1f6b9d4f0646b18088b26e2be1178c097cdbac421aa9"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Black_Glass.tres": {
+    "bytes": 656,
+    "sha256": "7c665456514036c86d15186d5baa4fb7c88a678510e33bea247c8434cfa3f58e"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Black_Glass_baseColor.png": {
+    "bytes": 143778,
+    "sha256": "b415c7878a805851ae6d1265d1139326da9677d33980abf411d3e3d7f21b8d19"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Black_Glass_metallicRoughness.jpg": {
+    "bytes": 49527,
+    "sha256": "ae8d46ea3dc99bc25d6e004f10da754fbc9310799dc2d16b5fe56f4f3b688b78"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Black_Glass_normal.jpg": {
+    "bytes": 30822,
+    "sha256": "700488449a895bbaaa10029f630aa11dcf8322c6a53763665f90848d6c225b86"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Camera_Plastic.tres": {
+    "bytes": 651,
+    "sha256": "d5bc05bcebba30e741693c9b2f53061dbfc97b71d86969d4fe0c4a1872b2e184"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Camera_Plastic_baseColor.jpg": {
+    "bytes": 215878,
+    "sha256": "8b7bde2bc94c73b46131ed5bf3dcb453313b03d7b39b5e0bdf646dcbe3c76757"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Camera_Plastic_metallicRoughness.jpg": {
+    "bytes": 244061,
+    "sha256": "51ab083e652c6cecab3114c0b752a7aa30e20389a9fa6e31ba14a66de980c3ac"
+  },
+  "assets/props/office/camara_cctv_smoggybeard/Camera_Plastic_normal.jpg": {
+    "bytes": 132560,
+    "sha256": "4dd7ae94ed6369b810f5518b29246ea4ef3af98d857703e2cc79f992c38717ed"
+  },
+  "assets/props/office/lavabo_juang3d/Default_Material.tres": {
+    "bytes": 202,
+    "sha256": "5932e572507a8165a3a0c009e2889465725ebadf5bf232fc0cc9f1662198214c"
+  },
+  "assets/props/office/lavabo_juang3d/Metal.tres": {
+    "bytes": 181,
+    "sha256": "7f08302dc02edd49671a35bd43ff04bf4817dc0e93cfa3cafa5d4cbcb5ea8147"
+  },
+  "assets/props/office/luz_emergencia_sousinho/emergency_lights_UV.tres": {
+    "bytes": 671,
+    "sha256": "f0d6bc469cc24e91f6302513fb45444336feb388f6cf451dba3d29a42cd36568"
+  },
+  "assets/props/office/luz_emergencia_sousinho/emergency_lights_UV_baseColor.jpg": {
+    "bytes": 278869,
+    "sha256": "d59ea12071a3f9bacccdf51273002642133b239a0a53f90aeca9d447e7afd488"
+  },
+  "assets/props/office/luz_emergencia_sousinho/emergency_lights_UV_metallicRoughness.jpg": {
+    "bytes": 318416,
+    "sha256": "d2d81b5017cd77b6a059753b3cec52ab406611c27acc8c65801c7055ee4b207a"
+  },
+  "assets/props/office/luz_emergencia_sousinho/emergency_lights_UV_normal.jpg": {
+    "bytes": 294520,
+    "sha256": "73bf909683ec3e2d1fbea04d7e5e993a6fa8b4f9ff1b51ce8d4c3ae59bf1b41f"
+  },
+  "assets/props/office/luz_emergencia_sousinho/lights.tres": {
+    "bytes": 666,
+    "sha256": "a3f25ed2b80a1532855d9ab49c24b1bc0dea177d4e1120c133c316f61fa4851f"
+  },
+  "assets/props/office/luz_emergencia_sousinho/lights_baseColor.png": {
+    "bytes": 69420,
+    "sha256": "f4ebf9ff54ce1dd4a81d40520801c0b01e114b0329a0a486b1a417b058b5d912"
+  },
+  "assets/props/office/luz_emergencia_sousinho/lights_metallicRoughness.jpg": {
+    "bytes": 312771,
+    "sha256": "34d4410759ad7fb42b56c307aab549c99264ee1bd1cc0359f7aec28e46552623"
+  },
+  "assets/props/office/luz_emergencia_sousinho/lights_normal.jpg": {
+    "bytes": 174475,
+    "sha256": "af6904e419de24eecb568d0014499ec14dd2af1b3cf1d684578becafb3d73698"
+  },
+  "assets/props/office/rociador_tashakosaykina/lambert4SG.tres": {
+    "bytes": 688,
+    "sha256": "00f92bfa64fe2b9fd352352f426966dc08ab115ad056d371387cd79635d92d5e"
+  },
+  "assets/props/office/rociador_tashakosaykina/lambert4SG_baseColor.jpg": {
+    "bytes": 205900,
+    "sha256": "74de34dfed5950d83dab7cbf8c3d4c3467c9ad1d1e0f6f698668dc8dda2c0cca"
+  },
+  "assets/props/office/rociador_tashakosaykina/lambert4SG_metallicRoughness.jpg": {
+    "bytes": 252796,
+    "sha256": "58aebc1b229f17e6617744f36ef9ecf79fdd545bb13770caba66c5248064c161"
+  },
+  "assets/props/office/rociador_tashakosaykina/lambert4SG_normal.jpg": {
+    "bytes": 126816,
+    "sha256": "0f9f82061e4e7440ff926200556d88b10c914b5399e0c121dc705ef377914944"
+  },
+  "assets/props/office/rociador_tashakosaykina/sprinkler_LP_UV_moduleinitialShadingGroup.tres": {
+    "bytes": 697,
+    "sha256": "60dacc5a9c76402ce5dcbfa996d97f9f7fa3f81917b2af117075bc64eb35abad"
+  },
+  "assets/props/office/rociador_tashakosaykina/sprinkler_LP_UV_moduleinitialShadingGroup_normal.jpg": {
+    "bytes": 130270,
+    "sha256": "3a9c2a38a5c4ab07003f969bbffebffa2c9225c247e4e0406ab4774a06cf968f"
+  },
+  "assets/props/office/secamanos_ladylionstudios/HandDryerClean.tres": {
+    "bytes": 525,
+    "sha256": "c8cd8845572df3bbeecf6f02597991d10f5379337b1c9908b07f5286ed92d555"
+  },
+  "assets/props/office/secamanos_ladylionstudios/HandDryerClean_baseColor.jpg": {
+    "bytes": 97434,
+    "sha256": "f75724744175235df327ab5eafda32bae335483d42754b12274fdef88258bcac"
+  },
+  "assets/props/office/secamanos_ladylionstudios/HandDryerClean_normal.jpg": {
+    "bytes": 83379,
+    "sha256": "acf234bd1350cd4acebe7129f7bf3ec1839ac920a29adf5062d69422358c8ed8"
+  },
+  "assets/props/office/termostato_alarma_ladylionstudios/Material_ThermostatTexture.tres": {
+    "bytes": 375,
+    "sha256": "86fd9351b25c560a67760e2fc53bf07d21ee6bb648b95a5bd01834c0e296e536"
+  },
+  "assets/props/office/termostato_alarma_ladylionstudios/Material_ThermostatTexture_baseColor.jpg": {
+    "bytes": 90670,
+    "sha256": "ea83bb475b2fd6bc789f857e177f7640763970336195536d7ac37bb130415fe1"
+  },
+  "assets/props/office/unidad_hvac_kubassa/material39.tres": {
+    "bytes": 670,
+    "sha256": "a4c709fce3754ace462edd3b4cc8e6828f1a0a0a325b3d1592d7014f17924474"
+  },
+  "assets/props/office/unidad_hvac_kubassa/material39_baseColor.png": {
+    "bytes": 1181066,
+    "sha256": "5d185ea1f5a96b4981bf4a4b58572ca77ed717dece3d042170e72c80883b91b7"
+  },
+  "assets/props/office/unidad_hvac_kubassa/material39_metallicRoughness.jpg": {
+    "bytes": 266964,
+    "sha256": "6e9a77bf01078d795b5521cee119859b971679accc0225563942ff421508e118"
+  },
+  "assets/props/office/unidad_hvac_kubassa/material39_normal.jpg": {
+    "bytes": 135695,
+    "sha256": "7d3e94e1fcee5920b4222aeaee1a5fad24b2d2cc9fda20d397650d973f957a95"
+  },
+  "assets/props/office/unidad_hvac_kubassa/texture_3.tres": {
+    "bytes": 666,
+    "sha256": "fb1027d11a898ab79b617f380ad30063a9570511204973b534d2e3c281ef72ef"
+  },
+  "assets/props/office/unidad_hvac_kubassa/texture_3_baseColor.png": {
+    "bytes": 949959,
+    "sha256": "2d049341bf69d5f82947e546054de77342d0c89023844977ef901fe3d4868c06"
+  },
+  "assets/props/office/unidad_hvac_kubassa/texture_3_metallicRoughness.jpg": {
+    "bytes": 127476,
+    "sha256": "f28df2af522d3c98d100faa6fdee78faafd82a9f17d9671dc0838ef90231109f"
+  },
+  "assets/props/office/unidad_hvac_kubassa/texture_3_normal.jpg": {
+    "bytes": 218820,
+    "sha256": "bbd917bf2659122ee69287c85f1a4d75791e0ee31458f7954a6367d57cf67fbb"
+  },
+  "assets/props/office/ventila_techo_ahmagh2e/material.tres": {
+    "bytes": 624,
+    "sha256": "7debab6782be6e24ceea605cbd5fca62207c2d8392a58b8804f0b4516a4755f9"
+  },
+  "assets/props/office/ventila_techo_ahmagh2e/material_baseColor.png": {
+    "bytes": 1508989,
+    "sha256": "dd2a4eea30482107024906f5319ed57f37d7952337a079fd63f605137b1fa91e"
+  },
+  "assets/props/office/ventila_techo_ahmagh2e/material_metallicRoughness.png": {
+    "bytes": 425852,
+    "sha256": "cdaafb851a615d86a4999f4e7044d4c9a5ae30b08b9e34d2b35d83d38015f948"
+  },
+  "assets/props/office/ventila_techo_ahmagh2e/material_normal.jpg": {
+    "bytes": 316838,
+    "sha256": "9d80e5af36d32b484720f31149db3a4897b61fa66fc09c7c56554814c4898692"
+  },
+  "assets/props/office/armario_manguera_red2000.res": {
+    "bytes": 67742,
+    "sha256": "5adda65bb14455383977b4496cc55ebdc5413690ce83144065005fe49f4df5b0"
+  },
+  "assets/props/office/camara_cctv_smoggybeard.res": {
+    "bytes": 95014,
+    "sha256": "a419704d6c6e8352712ee2adc0736752ae0968622607f04c51764a57f04a2e37"
+  },
+  "assets/props/office/lavabo_juang3d.res": {
+    "bytes": 221503,
+    "sha256": "056a9c2cefc4f7756d4e54e96f48859a00b8a2ad33a4be1e7252d5ac61dafee3"
+  },
+  "assets/props/office/luz_emergencia_sousinho_body.res": {
+    "bytes": 130820,
+    "sha256": "44e719a7fe63d7438ef9141f1f7f85bf44b4081f8a802244a04516faf38921d7"
+  },
+  "assets/props/office/luz_emergencia_sousinho_glass.res": {
+    "bytes": 11631,
+    "sha256": "a77ffd3d77ce7fc46194fbbbf494e9dddab3440675ff4b9da5f82c00ec0e255a"
+  },
+  "assets/props/office/rociador_tashakosaykina.res": {
+    "bytes": 27146,
+    "sha256": "ca55126a7cb4ab48cdcac68dadddeab66bc995d836ea7757c5d9828fe98efe4a"
+  },
+  "assets/props/office/secamanos_ladylionstudios.res": {
+    "bytes": 10309,
+    "sha256": "53601ea6a139bd2c5dc6bb80049ed56f7da03fbaa049e1f1ef4fb7e1031d7d6b"
+  },
+  "assets/props/office/termostato_alarma_ladylionstudios.res": {
+    "bytes": 5649,
+    "sha256": "76768f5e59457599009973ebd5bd599f60df69359ae919a640f5b7dec03bb134"
+  },
+  "assets/props/office/unidad_hvac_kubassa.res": {
+    "bytes": 200109,
+    "sha256": "d0c64da024bb0cb93c7c6da8e217341ae540d22728fd18557b63d7341b01bd44"
+  },
+  "assets/props/office/ventila_techo_ahmagh2e.res": {
+    "bytes": 36763,
+    "sha256": "ac92a95c80c6ef0621cbc748dded28a158c9ded26a8b366cd5f17527e2ac38d0"
   }
 }
