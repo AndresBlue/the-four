@@ -402,6 +402,7 @@ const NICHE_JAMB := 0.2
 ## The counter's strip: how far before its front, how bright.
 const STRIP_OUT := 0.04
 const STRIP_ENERGY := 10.0
+const STRIP_MIRRORED := 60.0
 const NICHE_HEAD_DEPTH := 0.17
 static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dictionary, item: Dictionary) -> void:
 	var room_id := int(room.get("id", -1))
@@ -411,8 +412,12 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 	var work := desk_z - FRONT_DESK.z * 0.5 + (FRONT_DESK.z - DESKS.FRONT_LEDGE) * 0.5
 	var ledge := desk_z + FRONT_DESK.z * 0.5 - DESKS.FRONT_LEDGE * 0.5
 	# The lamp first: a room lights one lamp of furniture (MODELS.LIT_MOST); on
-	# the ledge's end, its head turned along it so its pool lies on the ledge in sight.
-	MODELS.lamp(builder, holder, room_id, "desk_lamp_arm", Transform3D(Basis(Vector3.UP, -PI * 0.5 + 0.3), Vector3(size.x * 0.5 - 0.3, FRONT_DESK.y, ledge)))
+	# the ledge short of its raised end, its head turned along it so its pool
+	# lies on the papers in sight, its bulb glowing under the shade.
+	var lamp_at := Transform3D(Basis(Vector3.UP, -PI * 0.5 + 0.3), Vector3(size.x * 0.5 - 0.95, FRONT_DESK.y, ledge))
+	MODELS.lamp(builder, holder, room_id, "desk_lamp_arm", lamp_at)
+	KIT.material(builder, "glow_white")
+	builder.box(holder, lamp_at * Vector3(0, 0.395, 0.17), Vector3(0.06, 0.03, 0.06), "glow_white", false, "detail_cylinder")
 	var half := size.x * 0.5 + 0.10
 	reserve_niche(builder, room, item, half + NICHE_JAMB)
 	KIT.material(builder, "reception_plaster")
@@ -436,7 +441,9 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 	var strip_at: Vector3 = strip[0] + Vector3(0, 0, desk_z)
 	var strip_size: Vector3 = strip[1]
 	# A line of light under the overhang, tilted onto the front: bright at its top, gone by the plinth.
-	builder.accent_strip(holder, room_id, strip_at + Vector3(0, -0.005, STRIP_OUT), Vector3(-1.22, 0, 0), Vector2(strip_size.x, 0.03), Color(1.0, 0.8, 0.58), STRIP_ENERGY, 1.4)
+	if builder.accent_strip(holder, room_id, strip_at + Vector3(0, -0.005, STRIP_OUT), Vector3(-1.22, 0, 0), Vector2(strip_size.x, 0.03), Color(1.0, 0.8, 0.58), STRIP_ENERGY, 1.4) != null:
+		# Its lit band as the waxed floor gives it back (the probe sees it brighter).
+		builder.mirror_ghost(holder, strip_at + Vector3(0, -0.17, -0.02), Vector2(strip_size.x, 0.32), Color(1.0, 0.72, 0.46), STRIP_MIRRORED)
 	chair(builder, holder, Vector3(0.2, 0, desk_z - FRONT_DESK.z * 0.5 - 0.28), 1.0, "exec_chair", -0.14)
 	# The terminal on the ledge, turned aside, its side to who comes in (over the ledge, as the reference's).
 	MODELS.put(builder, holder, "crt_black", Transform3D(Basis(Vector3.UP, 0.75), Vector3(-0.45, FRONT_DESK.y, ledge - 0.02)))
@@ -444,11 +451,32 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 	MODELS.put(builder, holder, "phone", Transform3D(Basis(Vector3.UP, PI + 0.3), Vector3(0.55, DESKS.FRONT_WORK, work - 0.05)))
 	MODELS.put(builder, holder, "tray", Transform3D(Basis(Vector3.UP, 0.1), Vector3(-1.25, FRONT_DESK.y, ledge)))
 	# The papers under the lamp's pool (the ledge is black: the pool shows on them).
-	MODELS.put(builder, holder, "folders", Transform3D(Basis(Vector3.UP, -0.15), Vector3(size.x * 0.5 - 0.72, FRONT_DESK.y + 0.0015, ledge + 0.04)))
+	MODELS.put(builder, holder, "folders", Transform3D(Basis(Vector3.UP, -0.15), Vector3(size.x * 0.5 - 1.38, FRONT_DESK.y + 0.0015, ledge + 0.04)))
 	MODELS.put(builder, holder, "plant_small", Transform3D(Basis(Vector3.UP, 0.7), Vector3(-size.x * 0.5 + 0.3, FRONT_DESK.y, ledge + 0.05)))
 	# The reference's ledge: a stack of papers and the pen pot by the lamp.
 	MODELS.put(builder, holder, "paper_stack", Transform3D(Basis(Vector3.UP, 0.12), Vector3(0.05, FRONT_DESK.y, ledge)))
-	MODELS.put(builder, holder, "pen_cup", Transform3D(Basis.IDENTITY, Vector3(size.x * 0.5 - 1.05, FRONT_DESK.y, ledge - 0.08)))
+	MODELS.put(builder, holder, "pen_cup", Transform3D(Basis.IDENTITY, Vector3(size.x * 0.5 - 0.72, FRONT_DESK.y, ledge - 0.1)))
+	# Its right end raised, a plant spilling over it (the reference's).
+	var riser := Vector3(size.x * 0.5 - RISER.x * 0.5, FRONT_DESK.y + RISER.y * 0.5, ledge)
+	builder.box(holder, riser, RISER, "reception_teak")
+	builder.box(holder, riser + Vector3(0, RISER.y * 0.5 + 0.015, 0.01), Vector3(RISER.x + 0.02, 0.03, RISER.z + 0.04), "black")
+	set_down(builder, holder, PLANT_MODELS[0], riser + Vector3(-0.05, RISER.y * 0.5 + 0.03, 0.02), 0.45, 0.5, 0.6)
+	# Two beige filing cabinets against the niche behind, binders on one, a plant on the other.
+	for k in 2:
+		var cabinet := Vector3(-size.x * 0.5 + 0.3 + 0.5 * k, 0, face + 0.33)
+		piece(builder, holder, CABINETS.filing_cabinet(builder, Vector3(0.47, 1.02, 0.62), 3, "plastic_beige"), cabinet)
+		if k == 0: MODELS.put(builder, holder, "binders", Transform3D(Basis.IDENTITY, cabinet + Vector3(0, 1.02, -0.1)))
+		else: set_down(builder, holder, PLANT_MODELS[1], cabinet + Vector3(0, 1.02, -0.05), 0.4, 0.45, 1.3)
+
+## The reception counter's raised right end (front_desk()).
+const RISER := Vector3(0.6, 0.18, 0.4)
+
+## A model fitted (fitted()) standing at `at` in `holder`.
+static func set_down(builder: Node3D, holder: Node3D, path: String, at: Vector3, wide: float, tall: float, yaw: float) -> void:
+	var spot := Node3D.new()
+	spot.position = at
+	holder.add_child(spot)
+	fitted(builder, spot, path, wide, tall, yaw)
 
 ## Keep the wall dressing off the actual plaster and joinery.
 static func reserve_niche(builder: Node3D, room: Dictionary, item: Dictionary, half: float) -> void:

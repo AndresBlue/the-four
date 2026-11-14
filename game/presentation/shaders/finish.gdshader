@@ -18,6 +18,8 @@ uniform float backlight : hint_range(0.0, 1.0) = 0.0;
 // How much of a scan's roughness is kept, the rest being `roughness`: painted
 // steel's scan is flaking paint, and under a lamp its patches draw as stains.
 uniform float map_rough_keep : hint_range(0.0, 1.0) = 1.0;
+// Brushed grain turned a quarter (the lift's leaves: grain down the door).
+uniform bool brush_across = false;
 
 void vertex() { SURFACE_VERTEX; }
 
@@ -33,7 +35,8 @@ void fragment() {
 		float rough = roughness;
 		vec3 color = mix(variation_color.rgb, albedo.rgb, 0.55 + large * 0.45);
 		if (finish == 1) {
-			float streak = fine_noise(uv * vec2(3.0, 600.0)) * 0.7 + vnoise(uv * vec2(1.0, 150.0)) * 0.3;
+			vec2 grain = brush_across ? uv.yx : uv;
+			float streak = fine_noise(grain * vec2(3.0, 600.0)) * 0.7 + vnoise(grain * vec2(1.0, 150.0)) * 0.3;
 			color *= 0.9 + streak * 0.15;
 			rough = clamp(roughness + (streak - 0.5) * 0.18 + large * 0.1, 0.05, 1.0);
 			height = streak * 0.0002;

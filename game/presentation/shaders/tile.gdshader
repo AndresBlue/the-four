@@ -12,6 +12,8 @@ uniform float checker : hint_range(0.0, 1.0) = 0.35;
 uniform float grime : hint_range(0.0, 1.0) = 0.6;
 // Tiles across one repetition of a scanned set.
 uniform float tile_count = 8.0;
+// A waxed floor's coat gives back more than bare glaze (the reception's).
+uniform float specular_level : hint_range(0.0, 1.0) = 0.42;
 
 void vertex() { SURFACE_VERTEX; }
 
@@ -19,7 +21,7 @@ void fragment() {
 	if (baked_surface()) {
 		ALBEDO = baked_albedo(face_uv(), NODE_POSITION_WORLD, true);
 		ROUGHNESS = 0.6;
-		SPECULAR = 0.42;
+		SPECULAR = specular_level;
 	} else {
 		vec2 uv = face_uv();
 		// A scanned set brings its own tiles and grout: the procedural ones step
@@ -48,7 +50,7 @@ void fragment() {
 		AO = ao;
 		// Worn glaze: satin rather than mirror, so lamps do not paint hard glints.
 		ROUGHNESS = use_maps ? scan_roughness(l, 0.0) + dirt * 0.25 : mix(0.34 + dirt * 0.3, 0.92, grout);
-		SPECULAR = 0.42;
+		SPECULAR = specular_level;
 		float height = -grout * 0.003 - bevel * 0.0015 - crack * 0.0005;
 		vec3 n = scan_normal(l, wn);
 		if (finest_surface()) {

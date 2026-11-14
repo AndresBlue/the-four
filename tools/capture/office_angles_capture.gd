@@ -226,6 +226,9 @@ func run() -> void:
 			var from := eye + ahead * 1.2 * n
 			look(from, from + ahead * 5.0)
 			await shot(start, "llegada", n + 1, "llegada")
+		# And from the spawn tilted some 15 degrees down: the floor and what it gives back.
+		look(eye, eye + ahead * 5.0 + Vector3.DOWN * 5.0 * tan(deg_to_rad(15.0)))
+		await shot(start, "llegada_abajo", 1, "llegada_abajo")
 	# The first room of each type, planta 1 first.
 	var chosen := {}
 	for wing in 3:

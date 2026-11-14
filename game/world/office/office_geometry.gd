@@ -1533,8 +1533,19 @@ const LIFT_SCONCE := Vector2(0.35, 1.75)
 ## counter's lamp, the wash on its front and the lift's two lamps, all lit at
 ## once. Only the task lamp casts among the spots.
 const RECEPTION_ACCENTS := 7
-## The lift's wall lamps (pieces/fixtures.gd box_sconce()).
+## The lift's wall lamps (pieces/fixtures.gd box_sconce()), and how bright
+## their glass is to the room's probe (mirror_ghost()).
 const LIFT_LAMP := Vector3(0.13, 0.32, 0.09)
+const LIFT_GLASS_MIRRORED := 250.0
+## The city view framed past the lift's left lamp (its reference): its
+## frame's size (office_walls.framed()).
+const LIFT_PICTURE := Vector3(0.5, 0.37, 0.03)
+
+## The reception's probe: its dim capture strong enough to show in the lift's
+## steel and, with the waxed floor's specular (vinyl_polished), in the floor.
+const RECEPTION_PROBE := 6.0
+## How high the reception's probe captures from, over a standing head (make_probe()).
+const PROBE_EYE := 2.0
 ## The lift's teak casing: its width round the leaves and how proud.
 const LIFT_ARCHITRAVE := Vector2(0.24, 0.05)
 
@@ -1594,9 +1605,24 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	# Opal glass boxes on brass, not the hotel's cloth shades.
 	KIT.material(self, "glow_strip")
 	var lamp := FIXTURES.box_sconce(self, LIFT_LAMP)
+	var glass := LIGHTING.light_color(2850.0)
 	for x: float in [-flank, flank]:
 		var at := Vector3(x, LIFT_SCONCE.y, -REVEAL + LINING)
-		accent_sconce(front, int(room.id), at, 0.0, lamp)
+		if accent_sconce(front, int(room.id), at, 0.0, lamp) == null: continue
+		# Its glass as the waxed floor gives it back through the probe (lens_ghosts()),
+		# and its wash down the wall, dim: one long soft streak, no hot dot.
+		mirror_ghost(front, at + Vector3(0, 0, LIFT_LAMP.z + 0.006), Vector2(LIFT_LAMP.x - 0.02, LIFT_LAMP.y - 0.03), glass, LIFT_GLASS_MIRRORED)
+		mirror_ghost(front, Vector3(x, (at.y + 0.1) * 0.5, at.z + 0.012), Vector2(LIFT_LAMP.x + 0.1, at.y - 0.1), glass, LIFT_GLASS_MIRRORED * 0.08)
+	# Round it as the reference: a steel bin under the right lamp; past the left
+	# one, which always has the wall to spare (the niche may meet the right), a
+	# plant and a framed city view over it. Inside the lift's own keep-clear.
+	var wall := -REVEAL + LINING
+	box(front, Vector3(-flank - 0.42, 0.68, wall + 0.4), Vector3(0.6, 1.35, 0.6), "", true)
+	PROPS.set_down(self, front, String(PROPS.RECEPTION_PLANTS[1][0]), Vector3(-flank - 0.42, 0, wall + 0.4), 0.72, 1.35, 0.9)
+	box(front, Vector3(flank - 0.04, 0.31, wall + 0.24), Vector3(0.4, 0.62, 0.4), "", true)
+	PROPS.set_down(self, front, String(PROPS.BIN_MODELS[0]), Vector3(flank - 0.04, 0, wall + 0.24), 0.36, 0.62, 0.0)
+	var frame: Mesh = WALLS.WALL.picture_frame(self, LIFT_PICTURE, "black")
+	WALLS.framed(self, front, frame, Transform3D(Basis.IDENTITY, Vector3(-flank - 0.42, 1.72, wall)), "city", 1)
 
 ## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
 ## at either end, so it files the empty entries the hotel's own branches do and
@@ -2143,13 +2169,21 @@ func make_probe(slot: Dictionary) -> void:
 	probe.size.y = float(slot.height) + PROBE_PAST * 2.0
 	probe.reflection_mask = FLOOR_LAYER
 	if int(slot.room) == int(manifest.get("start", -1)):
-		slot["intensity"] = 1.35
-	var ground := (slot.parent as Node3D).get_node_or_null("Mesh_" + OFFICE.floor_look(manifest.rooms[int(slot.room)])) as GeometryInstance3D
-	# Hidden while its layers change, as room_layers.put_on() does it.
-	if ground != null and (ground.layers & FLOOR_LAYER) == 0:
-		RenderingServer.instance_set_visible(ground.get_instance(), false)
-		ground.layers |= FLOOR_LAYER
-		RenderingServer.instance_set_visible(ground.get_instance(), ground.is_visible_in_tree())
+		slot["intensity"] = RECEPTION_PROBE
+		# Captured over the head of who arrives, not from the room's middle at eye
+		# height: the probes see a body's own layer (PROBE_ONLY), and from inside the
+		# arriving body the capture was black. Its box raised with it, the floor still
+		# in it (an origin_offset instead had it captured again every frame).
+		probe.position.y = PROBE_EYE
+		probe.size.y = (PROBE_EYE + PROBE_PAST) * 2.0
+	# The floor takes it, and the reception's lift leaves (brushed steel gives the room back).
+	for look: String in [OFFICE.floor_look(manifest.rooms[int(slot.room)]), "reception_steel"]:
+		var ground := (slot.parent as Node3D).get_node_or_null("Mesh_" + look) as GeometryInstance3D
+		# Hidden while its layers change, as room_layers.put_on() does it.
+		if ground != null and (ground.layers & FLOOR_LAYER) == 0:
+			RenderingServer.instance_set_visible(ground.get_instance(), false)
+			ground.layers |= FLOOR_LAYER
+			RenderingServer.instance_set_visible(ground.get_instance(), ground.is_visible_in_tree())
 	probe.intensity = float(slot.intensity)
 	probe_strength(slot, int(slot.room))
 
@@ -2224,6 +2258,28 @@ func accent_strip(parent: Node3D, room_id: int, pos: Vector3, euler: Vector3, si
 	accents.add(room_id, {"light": lamp, "energy": energy, "sconce": -1, "mesh": null, "glowing": true, "casts": false})
 	settle_accent(room_id, [lamp])
 	return lamp
+
+## A bright face only the room's probe sees (PROBE_ONLY, as lens_ghosts()):
+## what its waxed floor gives back of a wall lamp or a lit strip, `size` at
+## `pos` facing +Z of `parent`.
+func mirror_ghost(parent: Node3D, pos: Vector3, size: Vector2, colour: Color, energy: float) -> void:
+	var quad := QuadMesh.new()
+	quad.size = size
+	var glow := StandardMaterial3D.new()
+	glow.cull_mode = BaseMaterial3D.CULL_DISABLED
+	glow.albedo_color = Color.BLACK
+	glow.emission_enabled = true
+	glow.emission = colour
+	glow.emission_energy_multiplier = energy
+	var ghost := MeshInstance3D.new()
+	ghost.name = "MirrorGhost"
+	ghost.mesh = quad
+	ghost.material_override = glow
+	ghost.position = pos
+	ghost.layers = PROBE_ONLY
+	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ghost.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	parent.add_child(ghost)
 
 ## Out by furniture_lamps, as the hotel's table and floor lamps.
 func accent_fade(lamp: Light3D) -> void:
