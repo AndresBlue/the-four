@@ -13,11 +13,9 @@ static func samples(builder: Node3D) -> Array:
 		["visitor_chair", visitor_chair(builder, Vector3(0.56, 0.88, 0.56))],
 		["desk_lamp_banker", desk_lamp(builder, Vector3(0.36, 0.42, 0.22), "banker")],
 		["desk_lamp_arm", desk_lamp(builder, Vector3(0.3, 0.5, 0.36), "arm")],
-		["floor_lamp", floor_lamp(builder, Vector3(0.45, 1.6, 0.45))],
 		["vending_machine", vending_machine(builder, Vector3(0.9, 1.8, 0.8))],
 		["water_cooler", water_cooler(builder, Vector3(0.34, 1.45, 0.34))],
 		["fridge", fridge(builder, Vector3(0.6, 1.6, 0.65))],
-		["coffee_maker", coffee_maker(builder, Vector3(0.22, 0.36, 0.26))],
 		["microwave", microwave(builder, Vector3(0.5, 0.3, 0.38))],
 		["globe", globe(builder, Vector3(0.36, 0.5, 0.36))],
 		["extinguisher", extinguisher(builder, Vector3(0.2, 0.62, 0.18))],
@@ -212,22 +210,6 @@ static func make_desk_lamp(builder: Node3D, size: Vector3, look: String) -> Arra
 		KIT.cylinder(p, "lamp_off", apex + aim * Vector3(0, -0.05, 0), 0.022, 0.04, 8, aim)
 	return KIT.finish(builder, p, "desk_lamp_" + look, size)
 
-## Floor lamp with a linen shade on a brass pole, for a corner by a sofa.
-static func floor_lamp(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("floor_lamp", size), func() -> ArrayMesh: return make_floor_lamp(builder, size))
-
-static func make_floor_lamp(builder: Node3D, size: Vector3) -> ArrayMesh:
-	var p := KIT.begin()
-	var w := size.x
-	var h := size.y
-	KIT.cylinder(p, "black", Vector3(0, 0.015, 0), 0.16, 0.03, 16)
-	KIT.cylinder(p, "gold", Vector3(0, 0.65, 0), 0.012, 1.24, 8)
-	# A drum of cloth narrowing upwards, in rings.
-	for k in 5:
-		KIT.cylinder(p, "linen", Vector3(0, h - 0.31 + 0.03 + k * 0.06, 0), (w * 0.5 - 0.005) * (1.0 - 0.09 * k), 0.06, 20)
-	KIT.cylinder(p, "lamp_off", Vector3(0, h - 0.315, 0), w * 0.5 - 0.03, 0.004, 16)
-	return KIT.finish(builder, p, "floor_lamp", size)
-
 ## What a snack machine sells, by column pair and row: bags and bars in muted
 ## colours (make_vending_machine()).
 const SNACKS := ["cloth_red", "plastic_beige", "cloth_navy", "gold", "cloth_green", "cardboard", "paint_red", "leather"]
@@ -352,33 +334,6 @@ static func make_fridge(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.block(p, "metal", Vector3(w / 2 - 0.06, 0.95, d / 2 - 0.012), Vector3(0.025, 0.2, 0.02), 0.004)
 	KIT.block(p, "black", Vector3(0, 0.04, d / 2 - 0.04), Vector3(w - 0.04, 0.08, 0.02))
 	return KIT.finish(builder, p, "fridge", size)
-
-## Filter coffee maker of black plastic, on the break room counter: its base
-## with the hot plate and the red switch, the tower behind, the hood with the
-## filter basket under it, and the glass jug with its lid and handle.
-static func coffee_maker(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("coffee_maker", size), func() -> ArrayMesh: return make_coffee_maker(builder, size))
-
-static func make_coffee_maker(builder: Node3D, size: Vector3) -> ArrayMesh:
-	var p := KIT.begin()
-	var w := size.x
-	var h := size.y
-	var d := size.z
-	var jz := 0.035
-	KIT.block(p, "black", Vector3(0, 0.0175, 0), Vector3(w, 0.035, d), 0.008)
-	KIT.cylinder(p, "metal", Vector3(0, 0.037, jz), 0.062, 0.004, 16)
-	KIT.block(p, "paint_red", Vector3(w / 2 - 0.03, 0.018, d / 2 - 0.0005), Vector3(0.018, 0.012, 0.001))
-	KIT.block(p, "black", Vector3(0, h / 2, -d / 2 + 0.04), Vector3(w, h, 0.08), 0.012)
-	KIT.block(p, "black", Vector3(0, h - 0.035, 0.0), Vector3(w, 0.07, d - 0.02), 0.014)
-	KIT.cylinder(p, "black", Vector3(0, h - 0.085, jz), 0.05, 0.03, 12)
-	# The jug: its belly of dark glass with the coffee, its neck, lid and handle.
-	KIT.cylinder(p, "screen", Vector3(0, 0.039 + 0.045, jz), 0.064, 0.09, 16)
-	KIT.cylinder(p, "screen", Vector3(0, 0.129 + 0.018, jz), 0.05, 0.036, 16)
-	KIT.cylinder(p, "black", Vector3(0, 0.171, jz), 0.054, 0.012, 16)
-	KIT.block(p, "black", Vector3(0.082, 0.165, jz), Vector3(0.044, 0.014, 0.022), 0.004)
-	KIT.block(p, "black", Vector3(0.097, 0.115, jz), Vector3(0.014, 0.1, 0.022), 0.004)
-	KIT.block(p, "black", Vector3(0.08, 0.07, jz), Vector3(0.034, 0.014, 0.022), 0.004)
-	return KIT.finish(builder, p, "coffee_maker", size)
 
 ## Old beige microwave, on the break room counter.
 static func microwave(builder: Node3D, size: Vector3) -> ArrayMesh:

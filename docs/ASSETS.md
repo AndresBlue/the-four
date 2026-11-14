@@ -290,6 +290,7 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [bisagras de pala](https://sketchfab.com/3d-models/door-hinge-1mb-2108070af696477b91b66a5c40c733d6) | `bisagra_ahmagh2e` | Mehdi Shahsavan | Sketchfab | CC BY 4.0 |
 | [radiocasete portátil de los 80](https://polyhaven.com/a/boombox) | `boombox` | Thomas Paul Mouilleron | Poly Haven | CC0 1.0 |
 | [butaca de madera](https://sketchfab.com/3d-models/vintage-wooden-armchair-low-poly-game-ready-2b7ae6f828844ee4a64c7417a7b78486) | `butaca_madera_renend` | Renend Studio | Sketchfab | CC BY 4.0 |
+| [cafetera de goteo con jarra de vidrio](https://sketchfab.com/3d-models/coffee-maker-9ccda2fddba846e6ba97eb774b8a09c6) | `cafetera_kird3rf` | Fredrik | Sketchfab | CC BY 4.0 |
 | [caja de cartón sucia](https://sketchfab.com/3d-models/dirty-damaged-fatigued-cardboard-box-6ff34ec5021440bd90ef18179002bc18) | `caja_carton_krolzuzanna` | SusanKing | Sketchfab | CC BY 4.0 |
 | [cajas de archivo](https://sketchfab.com/3d-models/2-boxes-3f920e8fd10c4664b5bd1dea3cf7606e) | `cajas_archivo_cozmoth` | Cozmoth | Sketchfab | CC BY 4.0 |
 | [calathea, planta de interior sin maceta](https://polyhaven.com/a/calathea_orbifolia_01) | `calathea_orbifolia_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
@@ -307,6 +308,7 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [globo terráqueo](https://sketchfab.com/3d-models/antique-globe-78b47132c6be42bcb664545a69b380d9) | `globo_collings` | mtcollings | Sketchfab | CC BY 4.0 |
 | [impresora matricial](https://sketchfab.com/3d-models/okidata-microline-320-turbo-f7bf859023544e91ab622a8f18862ecf) | `impresora_okidata_papaj` | Remik.Papaj | Sketchfab | CC BY 4.0 |
 | [lámpara de banquero verde](https://sketchfab.com/3d-models/old-vintage-desk-lamp-0fd07d3289ac4b9cbf59465b937ba9a0) | `lampara_banquero_meunier` | Jeff Meunier | Sketchfab | CC BY 4.0 |
+| [lámpara de pie de forja con pantalla](https://sketchfab.com/3d-models/floor-lamp-33eb258d9873435690254cfbb0ea46ec) | `lampara_pie_bilgehankorkmaz` | bilgehan.korkmaz | Sketchfab | CC BY 4.0 |
 | [lavabo de pie](https://sketchfab.com/3d-models/sink-901084912a1b41758dc8b892b25ac46d) | `lavabo_juang3d` | JuanG3D | Sketchfab | CC BY 4.0 |
 | [librerías de madera con libros](https://sketchfab.com/3d-models/wooden-bookcases-with-books-d0618ac16b2a4a87b9b6c7d5e6765626) | `libreria_libros_collings` | Matthew Collings | Sketchfab | CC BY 4.0 |
 | [libros sueltos](https://sketchfab.com/3d-models/antique-book-set-a7e1164cca004a65ab53ce0e8553586c) | `libros_frodoundead` | FrodoUndead | Sketchfab | CC BY 4.0 |
@@ -321,9 +323,11 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [pachira, planta de interior (cuatro ejemplares sin maceta)](https://polyhaven.com/a/pachira_aquatica_01) | `pachira_aquatica_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [perchero de pie de madera curvada](https://sketchfab.com/3d-models/coat-rack-72e821fc75d9473183a63d548959693b) | `perchero_coat_rack_whostea` | Whostea | Sketchfab | CC BY 4.0 |
 | [perchero de pared con ganchos](https://sketchfab.com/3d-models/old-coat-rack-f7125e65dd004381aa3e9882ef74e963) | `perchero_pared_ehnri` | Ehnri | Sketchfab | CC BY 4.0 |
+| [pilea en maceta de terracota](https://sketchfab.com/3d-models/free-pilea-peperomioides-terracotta-pot-891b276aa29b4c42a0e3bc476203cb9b) | `pilea_terracota_allquad` | AllQuad | Sketchfab | CC BY 4.0 |
 | [termo de plástico verde oliva y crema con asa, de los 70](https://polyhaven.com/a/plastic_thermos) | `plastic_thermos` | PierreB3D | Poly Haven | CC0 1.0 |
 | [portalápices](https://sketchfab.com/3d-models/pencils-w-holder-820166ed87564a3389c549735075657d) | `portalapices_aspectstudio` | AspectStudios | Sketchfab | CC BY 4.0 |
 | [planta de interior en maceta de terracota](https://polyhaven.com/a/potted_plant_01) | `potted_plant_01` | Rico Cilliers | Poly Haven | CC0 1.0 |
+| [potus colgante en su maceta](https://sketchfab.com/3d-models/hanging-pothos-9b961b9aab1443a2a14b81de726e6d5f) | `potus_colgante_kemowolfpaw` | kemowolfpaw | Sketchfab | CC BY 4.0 |
 | [pantalla de proyección portátil sobre trípode](https://polyhaven.com/a/projector_screen) | `projector_screen` | PeterM | Poly Haven | CC0 1.0 |
 | [puerta lisa de chapa](https://sketchfab.com/3d-models/toilet-exit-door-9eff9a6ca32742839b438e07c018c9bf) | `puerta_lisa_sousinho` | Sousinho | Sketchfab | CC BY 4.0 |
 | [puerta metálica gris con marco](https://sketchfab.com/3d-models/metal-door-2-4da6b538427244aaababe36d3e228a40) | `puerta_metal_tboiston` | tboiston | Sketchfab | CC BY 4.0 |
@@ -338,12 +342,14 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [silla de banquero de madera](https://sketchfab.com/3d-models/wooden-office-chair-f415e04f4bb24221854198727b8f0352) | `silla_banquero_zamzam` | Zamzam2003 | Sketchfab | CC BY 4.0 |
 | [silla giratoria de oficina de los 70 (1970s swivel office chair)](https://sketchfab.com/3d-models/old-computer-chair-a311529b1ec349c48f789bf4e1f99e89) | `silla_giratoria_old_computer_chair` | Slava Izvekov (guantanamera) | Sketchfab | CC BY 4.0 |
 | [silla giratoria de tela](https://sketchfab.com/3d-models/a81b0c8cbe3248328652d9cd9b8c8b86) | `silla_tela_projectkaizen` | projectkaizen | Sketchfab | CC BY 4.0 |
+| [sillas de espera de cuero sobre bastidor de acero](https://sketchfab.com/3d-models/waiting-room-chairs-fd6f2c8d76ef4a1a8b932516284d50b0) | `sillas_espera_connorwassall` | Connor Wassall | Sketchfab | CC BY 4.0 |
 | [sillón de dirección (MireyGroup)](https://sketchfab.com/3d-models/8f66d9053c1940da82e21523649e32f9) | `sillon_mirey_a` | Мирэй Групп | Sketchfab | CC BY 4.0 |
 | [mesa pequeña de madera, vintage](https://polyhaven.com/a/small_wooden_table_01) | `small_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [sofá de cuero capitoné con marco de madera tallada](https://polyhaven.com/a/sofa_02) | `sofa_02` | Kirill Sannikov | Poly Haven | CC0 1.0 |
 | [marco de pie de madera con lámina de playa](https://polyhaven.com/a/standing_picture_frame_02) | `standing_picture_frame_02` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [estantería de estructura de acero con baldas de madera, comercial](https://polyhaven.com/a/steel_frame_shelves_02) | `steel_frame_shelves_02` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [taquilla gris](https://sketchfab.com/3d-models/locker-3ebc5746b7784253bb0ebd151022757b) | `taquilla_zambur` | Zambur | Sketchfab | CC BY 4.0 |
+| [terminal de pantalla de los 80 con su teclado](https://sketchfab.com/3d-models/ibm-3178-891ae8149d8547a5971381237d13e2e6) | `terminal_ibm3178_maxdragon` | maxdragonn | Sketchfab | CC BY 4.0 |
 | [termostato de esfera](https://sketchfab.com/3d-models/thermostat-fire-alarm-v11-fbx-low-poly-free-d928ff87322f455ebb3c631b63937578) | `termostato_alarma_ladylionstudios` | LordSamueliSolo | Sketchfab | CC BY 4.0 |
 | [toalla colgada](https://sketchfab.com/3d-models/hanging-towel-2fbb8f56b1ba47bdb6746d95b6fc2242) | `toalla_aprilpolubiec` | aprilpolubiec | Sketchfab | CC BY 4.0 |
 | [máquina de escribir manual de los años 30](https://sketchfab.com/3d-models/1d6009449fe84fd79454c4081eb743bf) | `typewriter_1930s_unbranded_sketchfab` | Kuba Wójcik | Sketchfab | CC BY 4.0 |

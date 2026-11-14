@@ -348,7 +348,10 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, MOVABLES.slat_bench(builder, Vector3(1.5, 0.45, 0.4)), Vector3.ZERO)
 		"bin_floor":
 			builder.box(holder, Vector3(0, 0.31, 0), Vector3(0.4, 0.62, 0.4), "", true)
-			fitted(builder, holder, String(BIN_MODELS[int(builder.vary(seed_pos, 45) * 2.0)]), 0.42, 0.62, builder.vary(seed_pos, 46) * TAU)
+			# The reception's bin is the clean can, upright: the rusty one is dented
+			# and slanted, and read as knocked over by the lift.
+			var bin := 0 if int(room.get("type", -1)) == OFFICE.RECEPTION else int(builder.vary(seed_pos, 45) * 2.0)
+			fitted(builder, holder, String(BIN_MODELS[bin]), 0.42, 0.62, builder.vary(seed_pos, 46) * TAU)
 		"plant_floor":
 			builder.box(holder, Vector3(0, 0.27, 0), Vector3(0.45, 0.54, 0.45), "", true)
 			# The reception's big plants in its first view: the hotel's monstera, the tall pachira.
@@ -460,12 +463,11 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 	# Pulled up to the work top, its back clear of the niche (the compact counter tucks it in).
 	var seat_z := maxf(desk_z - FRONT_DESK.z * 0.5 - 0.28, face + SEAT_CLEAR)
 	chair(builder, holder, Vector3(SEAT_X, 0, seat_z), 1.0, "exec_chair", -0.14)
-	# Her terminal on the work top against the ledge's upright, its screen and its
-	# keyboard square to her; its top shows over the ledge, as the reference's.
-	var screen_z := desk_z + FRONT_DESK.z * 0.5 - DESKS.FRONT_LEDGE - 0.01 - MODELS.size_of(builder, "crt").z * 0.5
-	MODELS.put(builder, holder, "crt", Transform3D(Basis(Vector3.UP, PI), Vector3(SEAT_X, DESKS.FRONT_WORK, screen_z)))
-	var keys_z := screen_z - MODELS.size_of(builder, "crt").z * 0.5 - 0.02 - MODELS.size_of(builder, "keyboard").z * 0.5
-	MODELS.put(builder, holder, "keyboard", Transform3D(Basis(Vector3.UP, PI), Vector3(SEAT_X, DESKS.FRONT_WORK, keys_z)))
+	# Her terminal on the work top against the ledge's upright, its keyboard before
+	# it, square to her (with it, 0.32 high is what the work top's depth takes:
+	# its top stays just under the ledge's).
+	var screen_z := desk_z + FRONT_DESK.z * 0.5 - DESKS.FRONT_LEDGE - 0.01 - MODELS.size_of(builder, "terminal_3178").z * 0.5
+	MODELS.put(builder, holder, "terminal_3178", Transform3D(Basis(Vector3.UP, PI), Vector3(SEAT_X, DESKS.FRONT_WORK, screen_z)))
 	MODELS.put(builder, holder, "phone", Transform3D(Basis(Vector3.UP, PI + 0.3), Vector3(0.55, DESKS.FRONT_WORK, work - 0.05)))
 	MODELS.put(builder, holder, "tray", Transform3D(Basis(Vector3.UP, 0.1), Vector3(-1.25, FRONT_DESK.y, ledge)))
 	# The papers under the lamp's pool (the ledge is black: the pool shows on them).

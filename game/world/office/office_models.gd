@@ -117,6 +117,16 @@ const MODELS := {
 	"fan_unit": {"paths": ["res://assets/props/office/unidad_hvac_kubassa.res"]},
 	"basin": {"paths": ["res://assets/props/office/lavabo_juang3d.res"]},
 	"hand_dryer": {"paths": ["res://assets/props/office/secamanos_ladylionstudios.res"]},
+	# Tanda 2 (tools/props/fit_models.json), baked at their measure; no stand-in.
+	# The reception's terminal, its keyboard before it (office_props.front_desk()).
+	"terminal_3178": {"paths": ["res://assets/props/office/terminal_ibm3178_maxdragon.res"]},
+	"coffee_maker": {"paths": ["res://assets/props/office/cafetera_kird3rf.res"]},
+	"floor_lamp": {"paths": ["res://assets/props/office/lampara_pie_bilgehankorkmaz.res"]},
+	# Baked for the reception's dressing, placed by it: a pair of waiting seats
+	# on their steel frame, a pilea in a terracotta pot, a pothos hung by its cords.
+	"waiting_pair": {"paths": ["res://assets/props/office/sillas_espera_connorwassall.res"], "seat": true},
+	"plant_terracotta": {"paths": ["res://assets/props/office/pilea_terracota_allquad.res"]},
+	"plant_hanging": {"paths": ["res://assets/props/office/potus_colgante_kemowolfpaw.res"]},
 }
 ## The grey cabinet's drawers stand GREY_PITCH apart up from the lowest, as
 ## its drawer is baked; one left out stands GREY_OUT before the rest.
@@ -132,12 +142,12 @@ const POTS := {"steel_dark": Vector3(0.4, 0.38, 0.4), "ceramic": Vector3(0.2, 0.
 const LIT_MOST := 1
 ## A lamp's light in the lamp's own frame: where it is, the point it is aimed
 ## at, its colour, energy, reach and angle (office_geometry.accent_spot()).
-## The floor lamp's sits between its pole's tip and its shade's disc, so that
-## neither shadows it.
+## The floor lamp's sits just under its shade's rim (1.317 up), so that
+## the shade does not shadow it.
 const LIGHTS := {
 	"desk_lamp_banker": {"at": Vector3(0, 0.28, 0.02), "aim": Vector3(0, 0, 0.35), "colour": Color(1.0, 0.84, 0.62), "energy": 1.4, "reach": 2.8, "angle": 42.0},
 	"desk_lamp_arm": {"at": Vector3(0, 0.42, 0.17), "aim": Vector3(0, 0, 0.4), "colour": Color(1.0, 0.86, 0.66), "energy": 1.4, "reach": 2.6, "angle": 40.0},
-	"floor_lamp": {"at": Vector3(0, 1.277, 0), "aim": Vector3(0, 0, 0.2), "colour": Color(1.0, 0.82, 0.6), "energy": 1.0, "reach": 2.4, "angle": 70.0},
+	"floor_lamp": {"at": Vector3(0, 1.3, 0), "aim": Vector3(0, 0, 0.2), "colour": Color(1.0, 0.82, 0.6), "energy": 1.0, "reach": 2.4, "angle": 70.0},
 	"vending": {"at": Vector3(0, 1.65, 0.45), "aim": Vector3(0, 0.2, 1.6), "colour": Color(0.86, 0.92, 1.0), "energy": 0.7, "reach": 3.5, "angle": 70.0},
 }
 ## The models loaded, by path (null: not in the project).
@@ -178,7 +188,7 @@ static func put(builder: Node3D, parent: Node3D, kind: String, xform: Transform3
 ## The things whose front faces whoever uses them (front to +Z as drawn): the
 ## dressing test checks each looks to a seat of its own piece. Not the arm
 ## lamp, whose head is turned onto the work it lights.
-const FRONTED := ["microfiche", "typewriter", "crt", "crt_black", "keyboard", "phone", "phone_off", "dot_matrix_printer", "television", "boombox", "desk_fan", "desk_clock", "desk_lamp_banker", "coffee_maker", "microwave"]
+const FRONTED := ["microfiche", "typewriter", "crt", "crt_black", "keyboard", "terminal_3178", "phone", "phone_off", "dot_matrix_printer", "television", "boombox", "desk_fan", "desk_clock", "desk_lamp_banker", "coffee_maker", "microwave"]
 
 ## Notes a thing with a front as put, for the dressing test (builder.dressing_log.fronts).
 static func note_front(builder: Node3D, parent: Node3D, kind: String, xform: Transform3D) -> void:
@@ -240,11 +250,9 @@ static func stand_in(builder: Node3D, kind: String) -> Mesh:
 		"plant", "plant_bare", "plant_tall", "plant_small": return STAND.plant_stand_in(builder, Vector3(0.6, 0.9, 0.6))
 		"desk_lamp_banker": return STAND.desk_lamp(builder, Vector3(0.36, 0.42, 0.22), "banker")
 		"desk_lamp_arm": return STAND.desk_lamp(builder, Vector3(0.3, 0.5, 0.36), "arm")
-		"floor_lamp": return STAND.floor_lamp(builder, Vector3(0.45, 1.6, 0.45))
 		"vending": return STAND.vending_machine(builder, Vector3(0.9, 1.8, 0.8))
 		"cooler": return STAND.water_cooler(builder, Vector3(0.34, 1.45, 0.34))
 		"fridge": return STAND.fridge(builder, Vector3(0.6, 1.6, 0.65))
-		"coffee_maker": return STAND.coffee_maker(builder, Vector3(0.22, 0.36, 0.26))
 		"microwave": return STAND.microwave(builder, Vector3(0.5, 0.3, 0.38))
 		"globe": return STAND.globe(builder, Vector3(0.36, 0.5, 0.36))
 		"extinguisher": return STAND.extinguisher(builder, Vector3(0.2, 0.62, 0.18))

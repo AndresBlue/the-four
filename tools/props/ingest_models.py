@@ -99,8 +99,9 @@ GLOW_WHITE = {"Chandelier_02": ((1.0, 0.76, 0.46), 2.6)}
 NO_HIGHLIGHT = {"ornate_mirror_01"}
 ## Models whose glass has to be made clear here (material_tres()).
 CLEAR_GLASS = {"vintage_grandfather_clock_01", "armario_manguera_red2000"}
-## A blended material is a pane by its name (glass; the hose cabinet's "Cristal").
-GLASS_WORDS = ("glass", "cristal")
+## A blended material is a pane by its name (glass; the hose cabinet's "Cristal";
+## the coffee maker's jug, "kanne", in Norwegian).
+GLASS_WORDS = ("glass", "cristal", "kanne")
 ## The least roughness a model's plain materials take: the basin came polished
 ## to 0, and every lamp made a hard spark on its glaze and its tap.
 LEAST_ROUGH = {"lavabo_juang3d": 0.2}
@@ -167,6 +168,14 @@ PATCHES = {
     # The air unit's warning labels in English, and the words over its high
     # voltage sign and on its pipe (their pictograms stay).
     ("unidad_hvac_kubassa", "material39_baseColor.png"): [(420, 170, 635, 325), (2170, 473, 2410, 600), (3485, 1125, 3725, 1250), (2552, 2686, 2733, 2716, (157, 157, 17)), (3436, 2096, 3644, 2159)],
+    # The reception's terminal: the maker's badge on its front, its base and its
+    # keyboard; the screen's picture (a film's menu in English) made a dark glass, off.
+    ("terminal_ibm3178_maxdragon", "ibm_3178_baseColor.png"): [(203, 271, 221, 288), (159, 338, 176, 353)],
+    ("terminal_ibm3178_maxdragon", "ibm_3178_keyboard_baseColor.png"): [(17, 23, 34, 40)],
+    ("terminal_ibm3178_maxdragon", "display_baseColor.png"): [(0, 0, 512, 512, (14, 16, 15))],
+    # The coffee maker's name down its side, its maker's badge and both printed on the jug.
+    ("cafetera_kird3rf", "Base_baseColor.jpg"): [(1393, 1570, 1440, 1960, (196, 196, 196)), (150, 1485, 210, 1600, (196, 196, 196))],
+    ("cafetera_kird3rf", "kanne_baseColor.png"): [(262, 912, 515, 1095)],
 }
 ## Images multiplied by a colour as they are brought in: the archive box's
 ## white board turned to kraft.
@@ -180,6 +189,9 @@ TINT = {("cajas_archivo_cozmoth", "material_baseColor.png"): (0.8, 0.64, 0.44),
     # made it half metal, a dark mirror of the ceiling), and lighter: off-white.
     ("ventila_techo_ahmagh2e", "material_baseColor.png"): (1.7, 1.65, 1.55),
     ("ventila_techo_ahmagh2e", "material_metallicRoughness.png"): (1.0, 1.0, 0.0),
+    # The pilea and its terracotta pot came all metal (a black mirror): none.
+    ("pilea_terracota_allquad", "PILEA_Mat_metallicRoughness.png"): (1.0, 1.0, 0.0),
+    ("pilea_terracota_allquad", "POT_TERRACOTTA_SMALL_metallicRoughness.png"): (1.0, 1.0, 0.0),
     ("silla_tela_projectkaizen", "chairobjfinal_chair_sitting_and_back_pillow_Metallic_png-chairobjfinal_chair_sitting_and_back_pillow_Roughness_png.png"): (1.0, 2.4, 1.0),
     ("silla_tela_projectkaizen", "chairobjfinal_seat_back_Metallic-chairobjfinal_seat_back_Roughness.png"): (1.0, 2.5, 1.0),
     ("silla_tela_projectkaizen", "chairobjfinal_seat_rest_Metallic-chairobjfinal_seat_rest_Roughness.png"): (1.0, 1.6, 1.0),

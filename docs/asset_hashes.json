@@ -532,8 +532,8 @@
     "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
   },
   "assets/props/office/sources.json": {
-    "bytes": 6606,
-    "sha256": "0f7858d85fd84049620b7e63323f84e7d8028aaf762f3f270ecc1e27b70b9443"
+    "bytes": 7210,
+    "sha256": "2d4c95bf0d75d69d9edc2f09d7dc28b6daebf46b7166e277f4933a2f5e9d5faa"
   },
   "assets/paintings/office/11766.jpg": {
     "bytes": 405762,
@@ -1960,8 +1960,8 @@
     "sha256": "09d87c2a4b1113907f354b32fe72d408dbf8fbb7c44afe9314037365b6c9a5ae"
   },
   "assets/props/office/nevera_dylanheyes.res": {
-    "bytes": 528752,
-    "sha256": "de3d432b8705ec725be5d62a44a3622af542269ea407c39f129ca78fbe3a1922"
+    "bytes": 528800,
+    "sha256": "488acc89b7a95adfce7a04989dee2712decf618f435f73ca65c3b46487c88195"
   },
   "assets/props/office/plastic_thermos.res": {
     "bytes": 99095,
@@ -2494,5 +2494,205 @@
   "assets/props/office/ventila_techo_ahmagh2e.res": {
     "bytes": 36763,
     "sha256": "ac92a95c80c6ef0621cbc748dded28a158c9ded26a8b366cd5f17527e2ac38d0"
+  },
+  "assets/props/office/terminal_ibm3178_maxdragon.res": {
+    "bytes": 145515,
+    "sha256": "f6699b81e8d1d3b58b1606a6f8961435a6be212d433d7b2905841584848355e0"
+  },
+  "assets/props/office/terminal_ibm3178_maxdragon/display.tres": {
+    "bytes": 344,
+    "sha256": "8677dd6a32ade161d554e68f575da928adfc359bd6557951e2ac0022e7eaf2f4"
+  },
+  "assets/props/office/terminal_ibm3178_maxdragon/display_baseColor.jpg": {
+    "bytes": 4723,
+    "sha256": "a528b825ef1c1190e8f9281f75af0aa44459f104a765f682321f92110498c78b"
+  },
+  "assets/props/office/terminal_ibm3178_maxdragon/ibm_3178.tres": {
+    "bytes": 332,
+    "sha256": "d1be13b8f8f259005f669cc122db06747bc9ce5591e00d82b7d4aec4b524babe"
+  },
+  "assets/props/office/terminal_ibm3178_maxdragon/ibm_3178_baseColor.jpg": {
+    "bytes": 36080,
+    "sha256": "7320cbafdb91110e9b14a8be19d76a00f4495db4b20add8b9988129d23b6ce45"
+  },
+  "assets/props/office/terminal_ibm3178_maxdragon/ibm_3178_keyboard.tres": {
+    "bytes": 357,
+    "sha256": "4973c6ab2aa2a872e1deecdfe8eb2cf7646c0a6f71d905e1222c8152b5795a8d"
+  },
+  "assets/props/office/terminal_ibm3178_maxdragon/ibm_3178_keyboard_baseColor.jpg": {
+    "bytes": 32580,
+    "sha256": "386ade8caecbaf7c7b1e7bea1a12c9a5e322104f97ade5fb120a305a4b599682"
+  },
+  "assets/props/office/cafetera_kird3rf.res": {
+    "bytes": 118761,
+    "sha256": "4842910455c4f340434e33ca8cd41073f894890945786f3802196e727bd4db9b"
+  },
+  "assets/props/office/cafetera_kird3rf/Base.tres": {
+    "bytes": 590,
+    "sha256": "7a746d93346eadefeefb3342f4344abf7fa51089bba5734e4faa53e1333b1638"
+  },
+  "assets/props/office/cafetera_kird3rf/Base_baseColor.jpg": {
+    "bytes": 62355,
+    "sha256": "53ec2bdf0ed703ac73d9a915808f47eac1a05ed3f7844bc8e5744e80b91e9de7"
+  },
+  "assets/props/office/cafetera_kird3rf/Base_metallicRoughness.jpg": {
+    "bytes": 130485,
+    "sha256": "9dbfe5f20520910dec78452fb8fc951121730174b654582bc760132dcb056dde"
+  },
+  "assets/props/office/cafetera_kird3rf/Base_normal.jpg": {
+    "bytes": 25188,
+    "sha256": "3e0f5ad31ed68ea41b58293b9712910c77ba49a8e3a6ec308a9bb8a3db872900"
+  },
+  "assets/props/office/cafetera_kird3rf/kanne.tres": {
+    "bytes": 611,
+    "sha256": "884521f4818a4a9d71a761f71971a0fe7675daf150ee241533efac098cda6a26"
+  },
+  "assets/props/office/cafetera_kird3rf/kanne_baseColor.png": {
+    "bytes": 72485,
+    "sha256": "94e2c50f28fd7a8521aaf9bb9a313b71c37ab9e502d59f8b54fc6bb66f775f41"
+  },
+  "assets/props/office/cafetera_kird3rf/kanne_metallicRoughness.jpg": {
+    "bytes": 92602,
+    "sha256": "f4ebc8c1fb3b1453216a387f9ac0e9dd6a3a00632ac188b6857a71f6643d0e8c"
+  },
+  "assets/props/office/cafetera_kird3rf/kanne_normal.jpg": {
+    "bytes": 19338,
+    "sha256": "125a8388cb5a793165c9f8f49825524f1513c0c7352f54de24675fae4a40376a"
+  },
+  "assets/props/office/cafetera_kird3rf/vannbeh_takt.tres": {
+    "bytes": 669,
+    "sha256": "d8234847ebacc3084551d6d5a67677f13d8414e2205b706bb08541b5a5d6e366"
+  },
+  "assets/props/office/cafetera_kird3rf/vannbeh_takt_baseColor.png": {
+    "bytes": 201887,
+    "sha256": "39ee2b602343511444d7ef30ce0b378b583177c4509d19a9073742a59f898c48"
+  },
+  "assets/props/office/cafetera_kird3rf/vannbeh_takt_metallicRoughness.jpg": {
+    "bytes": 124095,
+    "sha256": "56a7ec710aa7a1e7509054f13c4f61fe0321611e2feb6f64f49bd3ffa77e182b"
+  },
+  "assets/props/office/cafetera_kird3rf/vannbeh_takt_normal.jpg": {
+    "bytes": 18550,
+    "sha256": "3bd682b483984dfc29e28d531b0864d5ef11eac1900518d97a7c5fb370972d49"
+  },
+  "assets/props/office/lampara_pie_bilgehankorkmaz.res": {
+    "bytes": 153667,
+    "sha256": "1065d6c0e8197a27eb54f7021dc3edd65bcd11319ad1732bff9d3622cd16044e"
+  },
+  "assets/props/office/lampara_pie_bilgehankorkmaz/DefaultMaterial.tres": {
+    "bytes": 667,
+    "sha256": "ab2d7f8f72b92cf91489e6e9b877d722918d9cf245221089f9cdd54926d37a67"
+  },
+  "assets/props/office/lampara_pie_bilgehankorkmaz/DefaultMaterial_baseColor.jpg": {
+    "bytes": 175689,
+    "sha256": "1c05061fb80cf720d658c2927f5e6fd532ded47dac3c78df0a8fb0fbccb3141e"
+  },
+  "assets/props/office/lampara_pie_bilgehankorkmaz/DefaultMaterial_metallicRoughness.jpg": {
+    "bytes": 168796,
+    "sha256": "834bbc37c03e28bba6a6a0ccd3ca4601dd60b763365551d9e8849420d99f1b9c"
+  },
+  "assets/props/office/lampara_pie_bilgehankorkmaz/DefaultMaterial_normal.jpg": {
+    "bytes": 166509,
+    "sha256": "119eac56990bf8b97d406d127832f68ae95d98d61565f78555ced3e0a771f62e"
+  },
+  "assets/props/office/sillas_espera_connorwassall.res": {
+    "bytes": 67525,
+    "sha256": "27aa0735e688aaf7db056c57b0c0046737a45ffca1b6fa90582389af7cdf4b86"
+  },
+  "assets/props/office/sillas_espera_connorwassall/01___Default.tres": {
+    "bytes": 343,
+    "sha256": "faa542b483f8d79f05c3a70e679a17ec83a7536caf2abd426c09ca1f206935c2"
+  },
+  "assets/props/office/sillas_espera_connorwassall/01___Default_baseColor.jpg": {
+    "bytes": 402154,
+    "sha256": "b899cb0894b46a07631d718edac4a1d69ee1407d35d2a0464265b40467d4524e"
+  },
+  "assets/props/office/pilea_terracota_allquad.res": {
+    "bytes": 81994,
+    "sha256": "e9773d2a9e771b5c44d9bb82805e5544b4993069df9f565ff8bccf1a8e1ba80a"
+  },
+  "assets/props/office/pilea_terracota_allquad/PILEA_Mat.tres": {
+    "bytes": 678,
+    "sha256": "7aec4530453cc064ee7f5c731fc8746f59a1038c9c1cc681eaa47b7995c859b1"
+  },
+  "assets/props/office/pilea_terracota_allquad/PILEA_Mat_baseColor.png": {
+    "bytes": 818798,
+    "sha256": "80d0a4284dfd4513fa7c370ce440ca31cb9baf662a958deed4a72b900d21434b"
+  },
+  "assets/props/office/pilea_terracota_allquad/PILEA_Mat_metallicRoughness.png": {
+    "bytes": 336186,
+    "sha256": "7eb183bcf6db2c0620768a3f220acf3b6ba8d9c314a135ed2c0398df6978efcf"
+  },
+  "assets/props/office/pilea_terracota_allquad/PILEA_Mat_normal.jpg": {
+    "bytes": 108720,
+    "sha256": "a30757c48aff65dca450a88587431464e718e80c6eac7060cf2af0bb5e4a2756"
+  },
+  "assets/props/office/pilea_terracota_allquad/POT_TERRACOTTA_SMALL.tres": {
+    "bytes": 675,
+    "sha256": "50f1af43df287f69ae70f4ebb5d8ec0d9f9e3693a414dee128e97aa5009cb5de"
+  },
+  "assets/props/office/pilea_terracota_allquad/POT_TERRACOTTA_SMALL_baseColor.jpg": {
+    "bytes": 252204,
+    "sha256": "ee52575929a3a1c365ba94689cecf60158d8b9514d0491cf12010db2bf11142e"
+  },
+  "assets/props/office/pilea_terracota_allquad/POT_TERRACOTTA_SMALL_metallicRoughness.png": {
+    "bytes": 705392,
+    "sha256": "d9f981185c2f6f0295357d3b7c29c84c447b132e9067cdcedf918982a901822c"
+  },
+  "assets/props/office/pilea_terracota_allquad/POT_TERRACOTTA_SMALL_normal.jpg": {
+    "bytes": 326747,
+    "sha256": "2e0349d3163dfb47fe56ec6c3c8035dad67713f76bb3e0d59bbeca9b74aeaaee"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw.res": {
+    "bytes": 124135,
+    "sha256": "b19725c5bcf1df7e24946b3b787b0d41cc2296f2ecb66248d0f5ffd5af618441"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Pothos_Leaf.tres": {
+    "bytes": 340,
+    "sha256": "017ba4588724d4d9ed91f3c7307d350dd5f44a39fe77961f7fc1db8925cd393b"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Pothos_Leaf_2.tres": {
+    "bytes": 344,
+    "sha256": "58915624f60877a5d142d6e9d0e0488582176378e18b0eeeac626fbdf4305070"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Pothos_Leaf_2_baseColor.jpg": {
+    "bytes": 98192,
+    "sha256": "1e5bce2062718688b0c71799086bc85095b908c9448dc595ad5a1c7c31f020fd"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Pothos_Leaf_3.tres": {
+    "bytes": 344,
+    "sha256": "521e0e3dab67b18310e0b41099a8429e493c477bd9068231b58ab9edae6e721c"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Pothos_Leaf_3_baseColor.jpg": {
+    "bytes": 86681,
+    "sha256": "ca31cc812d5e240238d83c3940e7145250e510b1c1ae6dff5da030cff11aaf66"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Pothos_Leaf_baseColor.jpg": {
+    "bytes": 123562,
+    "sha256": "3d2afe9fce828dc7d9f4063fa9f207b6c392004da8f87b18efdfe250012140a9"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Stem.tres": {
+    "bytes": 326,
+    "sha256": "5e50b7f01ed1c1c4f10dbb439caf46ef6d46362bff2e9c5b1d7ecf4100a1da59"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/Stem_baseColor.jpg": {
+    "bytes": 64268,
+    "sha256": "b627b19a6e179862f02d718132511efe3911ce79cabaf531d722b44d91501e87"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/String.tres": {
+    "bytes": 330,
+    "sha256": "3392ec1305ac2a92fe4cb14cbcc3dc1e379998f76ecfb93051845ef3b8305ae7"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/String_baseColor.png": {
+    "bytes": 5694,
+    "sha256": "a2bc98c6687f919067655dff53d200e3e886f764aa4e5a181c9245f568695eff"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/material.tres": {
+    "bytes": 339,
+    "sha256": "cba0648246325a962f31a269110409568e734ce1a05b7f326323ea284f618436"
+  },
+  "assets/props/office/potus_colgante_kemowolfpaw/material_baseColor.jpg": {
+    "bytes": 59888,
+    "sha256": "721f1a6c7608b801cbfba65e3add8351ffad3f73ce32e54b71571838f288a4c7"
   }
 }

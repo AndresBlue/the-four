@@ -23,7 +23,7 @@ const EQ_DESKS := preload("res://game/world/office/pieces/desks.gd")
 ## hotel's kinds (prop_factory) and the offices' plant and basin.
 const EXACT_CORNERS := ["plant", "bin", "basin", "cart"]
 ## The samples the families give (area 4a U2 to U9, area 5 U2 to U4: 10, 6 and 5, area 4d: 2, area 4c: 24 and 10).
-const PIECES := 119
+const PIECES := 117
 ## The pieces' own materials (kit.gd, area 4a U1).
 const OWN := ["paper", "laminate_light", "plastic_beige", "steel_mint", "steel_grey", "steel_dark", "cloth_red", "cloth_green", "cloth_navy"]
 ## Woods mapped per batched box (no object_space): wrong on a baked mesh.

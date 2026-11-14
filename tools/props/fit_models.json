@@ -1480,5 +1480,130 @@
     ]
    }
   ]
+ },
+ "terminal_ibm3178_maxdragon": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/terminal.gltf",
+  "parts": [
+   {
+    "name": "terminal",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.32
+     ],
+     null
+    ],
+    "shrink": {
+     "^ibm_3178_1": 0.6
+    }
+   }
+  ]
+ },
+ "cafetera_kird3rf": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/cafetera.gltf",
+  "parts": [
+   {
+    "name": "coffee",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.36
+     ],
+     null
+    ],
+    "shrink": {
+     "^defaultMaterial$": 0.3,
+     "^defaultMaterial\\.001$": 0.25,
+     "^defaultMaterial\\.002$": 0.3
+    }
+   }
+  ]
+ },
+ "pilea_terracota_allquad": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/pilea.gltf",
+  "parts": [
+   {
+    "name": "pilea",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.45
+     ],
+     null
+    ],
+    "shrink": {
+     "^PILEA": 0.15,
+     "^POT": 0.2
+    }
+   }
+  ]
+ },
+ "potus_colgante_kemowolfpaw": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/potus.gltf",
+  "parts": [
+   {
+    "name": "pothos",
+    "objects": "^Constructed Sample",
+    "box": [
+     null,
+     [
+      0.0,
+      1.1
+     ],
+     null
+    ],
+    "shrink": {
+     "Leaf": 0.1,
+     "_Stem_": 0.15
+    }
+   }
+  ]
+ },
+ "sillas_espera_connorwassall": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/sillas_espera.gltf",
+  "turn": 90,
+  "parts": [
+   {
+    "name": "pair",
+    "objects": "^Box001",
+    "box": [
+     null,
+     [
+      0.0,
+      0.8
+     ],
+     null
+    ]
+   }
+  ]
+ },
+ "lampara_pie_bilgehankorkmaz": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/lampara_pie.gltf",
+  "parts": [
+   {
+    "name": "lamp",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      1.6
+     ],
+     null
+    ]
+   }
+  ]
  }
 }

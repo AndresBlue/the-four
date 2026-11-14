@@ -90,6 +90,12 @@ const CREDITS := [
 		"«HVAC Unit», de kubassa (Sketchfab, CC BY 4.0): las unidades de climatización, simplificadas y sin sus rótulos.",
 		"«Sink», de JuanG3D (Sketchfab, CC BY 4.0): el lavabo, simplificado.",
 		"«Hand Dryer Clean», de LordSamueliSolo (Sketchfab, CC BY 4.0): el secamanos, con el botón sin letras.",
+		"«IBM 3178», de maxdragonn (Sketchfab, CC BY 4.0): el terminal de la recepción, con sus marcas tapadas y la pantalla apagada.",
+		"«Coffee maker», de Fredrik (Sketchfab, CC BY 4.0): la cafetera, simplificada y sin su marca.",
+		"«Floor Lamp», de bilgehan.korkmaz (Sketchfab, CC BY 4.0): la lámpara de pie.",
+		"«Waiting Room Chairs», de Connor Wassall (Sketchfab, CC BY 4.0): las sillas de espera, sin su jardinera.",
+		"«[FREE] Pilea Peperomioides Terracotta pot», de AllQuad (Sketchfab, CC BY 4.0): la pilea, simplificada.",
+		"«Hanging Pothos», de kemowolfpaw (Sketchfab, CC BY 4.0): el potus colgante, simplificado.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["SONIDO DE FREESOUND", [
