@@ -18,7 +18,8 @@ const PLAIN_TRES := ["tgrid", "threshold", "partition"]
 const FLOOR_WING_0 := ["vinyl", "carpet", "carpet", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
 ## The reception kept clean (the floor's first view, 12 November 2026).
 const WALLS_WING_0 := ["office_paint_kept", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
-const TRIMS_WING_0 := ["frieze", "", "", "dado", "", "dado", "", "", "", "", "frieze", "frieze", "", "", "", "", "", "", "", "frieze", "", "dado", "two_tone", "two_tone", "panel_wall", ""]
+## The reception two-toned in its own greige (its reference, 13 November 2026).
+const TRIMS_WING_0 := ["two_tone", "", "", "dado", "", "dado", "", "", "", "", "frieze", "frieze", "", "", "", "", "", "", "", "frieze", "", "dado", "two_tone", "two_tone", "panel_wall", ""]
 ## The rooms of the floor that are soft underfoot (carpet): the wing 0 naves and wing 2's boardroom, executive office and secretary.
 const SOFT_FLOORS := [Vector2i(1, 0), Vector2i(2, 0), Vector2i(5, 2), Vector2i(16, 2), Vector2i(24, 2)]
 var checks: Array = []
@@ -177,7 +178,7 @@ func check_walls(hotel) -> void:
 				if absf(t.origin.y - OG.FRIEZE_TOP) < 0.01: rail = true
 			if not rail: rail_missing.append(int(room.id))
 		if trim == "dado" and walls > 0 and count(node, "walnut") == 0: dado_bare.append(int(room.id))
-		if trim == "two_tone" and walls > 0 and count(node, "two_tone_low") == 0: two_tone_bare.append(int(room.id))
+		if trim == "two_tone" and walls > 0 and count(node, hotel.low_paint(room)) == 0: two_tone_bare.append(int(room.id))
 		if trim != "frieze" and count(node, "dado_oak") > 0: wrong_oak.append(int(room.id))
 		if trim == "panel_wall":
 			secretaries += 1

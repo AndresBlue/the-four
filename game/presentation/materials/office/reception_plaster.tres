@@ -4,10 +4,10 @@
 
 [resource]
 shader = ExtResource("1")
-shader_parameter/flat_color = Color(0.74, 0.7, 0.63, 1)
-shader_parameter/albedo = Color(0.78, 0.74, 0.67, 1)
-shader_parameter/variation_color = Color(0.72, 0.68, 0.61, 1)
+shader_parameter/flat_color = Color(0.6, 0.565, 0.505, 1)
+shader_parameter/albedo = Color(0.64, 0.605, 0.54, 1)
+shader_parameter/variation_color = Color(0.6, 0.565, 0.5, 1)
 shader_parameter/roughness = 0.79
 shader_parameter/specular = 0.32
-shader_parameter/grime = 0.12
+shader_parameter/grime = 0.2
 shader_parameter/relief = 0.34

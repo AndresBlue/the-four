@@ -4,11 +4,11 @@
 
 [resource]
 shader = ExtResource("1")
-shader_parameter/flat_color = Color(0.5, 0.44, 0.36, 1)
-shader_parameter/paper_color = Color(0.64, 0.565, 0.46, 1)
-shader_parameter/print_color = Color(0.6, 0.53, 0.43, 1)
-shader_parameter/stain_color = Color(0.5, 0.42, 0.3, 1)
-shader_parameter/edge_color = Color(0.32, 0.29, 0.25, 1)
+shader_parameter/flat_color = Color(0.5, 0.47, 0.42, 1)
+shader_parameter/paper_color = Color(0.62, 0.585, 0.52, 1)
+shader_parameter/print_color = Color(0.6, 0.565, 0.5, 1)
+shader_parameter/stain_color = Color(0.52, 0.48, 0.41, 1)
+shader_parameter/edge_color = Color(0.34, 0.32, 0.29, 1)
 shader_parameter/roll_width = 1.37
 shader_parameter/print_strength = 0.25
 shader_parameter/stains = 0.04

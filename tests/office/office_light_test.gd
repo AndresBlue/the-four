@@ -86,7 +86,8 @@ func block_palette() -> void:
 	check("Los pasillos, a 3500 K", kelvin(OFFICE.CORRIDOR) == 3500.0 and kelvin(OFFICE.GALLERY) == 3500.0)
 	check("Ámbar en recepción y descanso", kelvin(OFFICE.RECEPTION) == 2700.0 and kelvin(OFFICE.BREAK_ROOM) == 2700.0)
 	check("Neutra en juntas y dirección", kelvin(OFFICE.BOARDROOM) == 3300.0 and kelvin(OFFICE.EXEC_OFFICE) == 3300.0)
-	check("Estrecha en recepción y juntas, parabólica en secretaría, envolvente en dirección", look_of(OFFICE.RECEPTION) == "narrow" and look_of(OFFICE.BOARDROOM) == "narrow" and look_of(OFFICE.SECRETARY) == "parabolic" and look_of(OFFICE.EXEC_OFFICE) == "wrap")
+	# The reception's plain lens, as its reference (13 November 2026).
+	check("Lisa en recepción, estrecha en juntas, parabólica en secretaría, envolvente en dirección", look_of(OFFICE.RECEPTION) == "prismatic" and look_of(OFFICE.BOARDROOM) == "narrow" and look_of(OFFICE.SECRETARY) == "parabolic" and look_of(OFFICE.EXEC_OFFICE) == "wrap")
 	check("Prismática en el resto", look_of(OFFICE.OFFICE) == "prismatic" and look_of(OFFICE.CORRIDOR) == "prismatic" and look_of(OFFICE.MAIL) == "prismatic")
 	var unknown: Array = range(26).filter(func(t): return not OFFICE.TROFFER_LOOKS.has(look_of(t)))
 	check("Toda familia está en TROFFER_LOOKS", unknown.is_empty())

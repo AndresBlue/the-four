@@ -441,7 +441,8 @@ static func reception_wait(room: Dictionary, zones: Array, counter: Dictionary, 
 		var wall := LAYOUT.wall_of(direction)
 		if wall == String(counter.get("wall", "")) or not usable(room, wall): continue
 		for kind: String in ["waiting_row_4", "waiting_row"]:
-			var run := lay_wall(room, zones, kind, 1, wall)
+			# From the lift's end first: the seats in the first view, as in the reference.
+			var run := lay_wall(room, zones, kind, 1, wall, false, feature_end(room, wall))
 			if not run.is_empty(): return run
 	return {}
 

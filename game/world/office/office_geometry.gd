@@ -1115,9 +1115,6 @@ func emergency_on() -> StandardMaterial3D:
 ## (an unshadowed lamp would shine through the walls).
 func round_lamps() -> void:
 	super()
-	if not lift_glass_sources.is_empty():
-		var reception_id := int(manifest.start)
-		for lamp in lift_glass_sources: refresh_lift_glass(lamp, reception_id)
 	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
 		# Fill the two public rooms on their own layers. They rely on bounce
 		# in Forward+, where the direct light can stay shadowed.
@@ -1259,11 +1256,18 @@ func lower_wall(boundary: Node3D, x: float, length: float, height: float, inner:
 			if top > DADO_TOP: box(boundary, Vector3(x, DADO_TOP + DADO_CAP.x * 0.5, face + inner * DADO_CAP.y * 0.5), Vector3(length, DADO_CAP.x, DADO_CAP.y), "walnut")
 		"two_tone":
 			var high := minf(TWO_TONE_TOP, top)
-			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * LINING * 0.5), Vector3(length, high - SKIRT.x, LINING), "two_tone_low")
+			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * LINING * 0.5), Vector3(length, high - SKIRT.x, LINING), low_paint(building_room))
 		"panel_wall":
 			if String(SIDE_OF.get(String(boundary.name), "")) != panel_side: return
 			var high := minf(height, top)
 			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * DADO_THICK * 0.5), Vector3(length, high - SKIRT.x, DADO_THICK), "veneer")
+
+## The lower paint of a two-tone room: the reception's greige to its upper
+## wall (its reference), the air rooms' grey-green.
+func low_paint(room: Dictionary) -> String:
+	if int(room.type) != OFFICE.RECEPTION: return "two_tone_low"
+	KIT.material(self, "reception_low")
+	return "reception_low"
 
 ## How far this room's lower wall stands off the face of its wall on `side`
 ## (wall_trim()), for what is fixed low on it: the duct's wall grilles.
@@ -1333,7 +1337,7 @@ func corner_posts(node: Node3D, room: Dictionary) -> void:
 					corner_piece(node, corner, into, SKIRT.x, DADO_TOP, DADO_THICK, "walnut")
 					corner_piece(node, corner, into, DADO_TOP, DADO_TOP + DADO_CAP.x, DADO_CAP.y, "walnut")
 				"two_tone":
-					corner_piece(node, corner, into, SKIRT.x, TWO_TONE_TOP, LINING, "two_tone_low")
+					corner_piece(node, corner, into, SKIRT.x, TWO_TONE_TOP, LINING, low_paint(room))
 
 ## A square piece filling a corner post's notch from `low` to `high`, `proud`
 ## past the faces of its two walls.
@@ -1531,10 +1535,8 @@ const LIFT_SCONCE := Vector2(0.35, 1.75)
 const RECEPTION_ACCENTS := 7
 ## The lift's wall lamps (pieces/fixtures.gd box_sconce()).
 const LIFT_LAMP := Vector3(0.13, 0.32, 0.09)
-const LIFT_GLASS_REFLECTION := 1.6
-var lift_glass_sources: Array[OmniLight3D] = []
-## The lift's walnut casing: its width round the leaves and how proud.
-const LIFT_ARCHITRAVE := Vector2(0.16, 0.05)
+## The lift's teak casing: its width round the leaves and how proud.
+const LIFT_ARCHITRAVE := Vector2(0.24, 0.05)
 
 ## The closed arrival lift, set in front of the continuous reception wall.
 func arrival_lift(node: Node3D, room: Dictionary) -> void:
@@ -1571,16 +1573,18 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	box(front, Vector3((x0 + x1) * 0.5, top, 0.028 - depth * 0.5), Vector3(x1 - x0 + 0.08, 0.08, depth), "reception_steel")
 	var wide := LIFT_ARCHITRAVE.x
 	var z := LIFT_ARCHITRAVE.y * 0.5 - REVEAL * 0.5
-	for x: float in [x0 - 0.04 - wide * 0.5, x1 + 0.04 + wide * 0.5]: box(front, Vector3(x, (top + 0.04 + wide) * 0.5, z), Vector3(wide, top + 0.04 + wide, LIFT_ARCHITRAVE.y + REVEAL), "walnut")
-	box(front, Vector3((x0 + x1) * 0.5, top + 0.04 + wide * 0.5, z), Vector3(x1 - x0 + 0.08 + wide * 2.0, wide, LIFT_ARCHITRAVE.y + REVEAL), "walnut")
+	KIT.material(self, "reception_teak")
+	for x: float in [x0 - 0.04 - wide * 0.5, x1 + 0.04 + wide * 0.5]: box(front, Vector3(x, (top + 0.04 + wide) * 0.5, z), Vector3(wide, top + 0.04 + wide, LIFT_ARCHITRAVE.y + REVEAL), "reception_teak")
+	box(front, Vector3((x0 + x1) * 0.5, top + 0.04 + wide * 0.5, z), Vector3(x1 - x0 + 0.08 + wide * 2.0, wide, LIFT_ARCHITRAVE.y + REVEAL), "reception_teak")
 	var display_at := Vector3(0, top + 0.04 + wide * 0.5, LIFT_ARCHITRAVE.y + 0.001)
-	box(front, display_at, Vector3(0.24, 0.105, 0.018), "reception_steel")
-	box(front, display_at + Vector3(0, 0, 0.011), Vector3(0.193, 0.075, 0.006), "black")
+	box(front, display_at, Vector3(0.34, 0.13, 0.018), "reception_steel")
+	box(front, display_at + Vector3(0, 0, 0.011), Vector3(0.3, 0.1, 0.006), "black")
 	car_digits(front, display_at + Vector3(0, 0, 0.026), 0.0)
+	# Lit red segments, read from across the room as the reference's.
 	var digits := front.get_node("Digits") as Label3D
 	digits.text = "2"
-	digits.pixel_size = 0.00117
-	digits.modulate = Color(2.4, 0.27, 0.09)
+	digits.pixel_size = 0.0019
+	digits.modulate = Color(4.0, 0.35, 0.1)
 	digits.outline_size = 0
 	x0 -= 0.04 + wide
 	x1 += 0.04 + wide
@@ -1592,34 +1596,7 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	var lamp := FIXTURES.box_sconce(self, LIFT_LAMP)
 	for x: float in [-flank, flank]:
 		var at := Vector3(x, LIFT_SCONCE.y, -REVEAL + LINING)
-		var sconce := accent_sconce(front, int(room.id), at, 0.0, lamp)
-		if sconce != null and RenderingServer.get_rendering_device() != null and RenderingServer.get_current_rendering_method() == "forward_plus":
-			lift_glass_light(front, at, sconce_lights.back())
-
-## The shape of the opal glass in the floor's highlight, paired with its wall lamp.
-func lift_glass_light(parent: Node3D, at: Vector3, wall_light: OmniLight3D) -> void:
-	var glass := AreaLight3D.new()
-	glass.position = at + Vector3.BACK * (LIFT_LAMP.z + 0.015)
-	glass.rotation.y = PI
-	glass.area_size = Vector2(LIFT_LAMP.x - 0.03, LIFT_LAMP.y - 0.05)
-	glass.area_range = 5.0
-	glass.light_color = LIGHTING.light_color(2850.0)
-	glass.light_specular = 1.5
-	glass.light_bake_mode = Light3D.BAKE_DISABLED
-	glass.light_volumetric_fog_energy = 0.0
-	glass.light_cull_mask = FLOOR_LAYER
-	glass.visible = false
-	parent.add_child(glass)
-	wall_light.set_meta("lift_glass", glass)
-	lift_glass_sources.append(wall_light)
-
-func refresh_lift_glass(wall_light: Light3D, room_id: int) -> void:
-	var glass := wall_light.get_meta("lift_glass") as AreaLight3D
-	var nearby := not round_at.is_empty() and (round_at.position as Vector3).distance_squared_to(wall_light.global_position) < 49.0
-	var shown: bool = nearby and wall_light.is_visible_in_tree() and lit(room_id) and not echo_view and int(preset.probes) >= 2
-	if glass.visible != shown: glass.visible = shown
-	var energy := LIFT_GLASS_REFLECTION * (1.0 - drained(room_id))
-	if not is_equal_approx(glass.light_energy, energy): glass.light_energy = energy
+		accent_sconce(front, int(room.id), at, 0.0, lamp)
 
 ## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
 ## at either end, so it files the empty entries the hotel's own branches do and
@@ -2208,7 +2185,8 @@ func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colou
 	lamp.spot_range = reach
 	lamp.spot_angle = angle
 	lamp.light_size = ACCENT_SIZE * preset.penumbra
-	lamp.light_specular = 0.3
+	# None in the reception: its waxed floor gave back hot dots ("bolas brillantes").
+	lamp.light_specular = 0.0 if room_id == int(manifest.get("start", -1)) else 0.3
 	lamp.light_bake_mode = Light3D.BAKE_DISABLED
 	lamp.light_volumetric_fog_energy = 0.0
 	lamp.shadow_enabled = casts
@@ -2219,6 +2197,31 @@ func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colou
 	lamp.visible = false
 	parent.add_child(lamp)
 	accents.add(room_id, {"light": lamp, "energy": energy, "sconce": -1, "mesh": null, "glowing": true, "casts": casts})
+	settle_accent(room_id, [lamp])
+	return lamp
+
+## A line of light (the reception counter's strip under its overhang): an
+## AreaLight3D `size` wide at `pos`, turned by `euler`, its light down -Z, no
+## shadow and no specular, an accent as accent_spot()'s. Null as it.
+func accent_strip(parent: Node3D, room_id: int, pos: Vector3, euler: Vector3, size: Vector2, colour: Color, energy: float, reach: float) -> AreaLight3D:
+	if not accents.has_room(room_id): return null
+	var lamp := AreaLight3D.new()
+	lamp.name = "AccentStrip"
+	lamp.position = pos
+	lamp.rotation = euler
+	lamp.area_size = size
+	lamp.area_range = reach
+	lamp.light_color = colour
+	lamp.light_energy = energy
+	lamp.light_specular = 0.0
+	lamp.light_bake_mode = Light3D.BAKE_DISABLED
+	lamp.light_volumetric_fog_energy = 0.0
+	lamp.shadow_enabled = false
+	lamp.distance_fade_enabled = true
+	accent_fade(lamp)
+	lamp.visible = false
+	parent.add_child(lamp)
+	accents.add(room_id, {"light": lamp, "energy": energy, "sconce": -1, "mesh": null, "glowing": true, "casts": false})
 	settle_accent(room_id, [lamp])
 	return lamp
 
@@ -2240,6 +2243,8 @@ func accent_sconce(boundary: Node3D, room_id: int, pos: Vector3, yaw: float, mes
 	sconce.rotation.y = yaw
 	boundary.add_child(sconce)
 	sconce_light(boundary, sconce)
+	# No hot dots on the reception's waxed floor (accent_spot()).
+	if room_id == int(manifest.get("start", -1)): sconce_lights.back().light_specular = 0.0
 	accents.add(room_id, {"light": sconce_lights.back(), "energy": SCONCE_ENERGY, "sconce": sconce_lights.size() - 1, "mesh": sconce, "glowing": true})
 	settle_accent(room_id, [sconce, sconce_lights.back()])
 	return sconce
@@ -2275,7 +2280,6 @@ func refresh_accents(room_id: int) -> void:
 			lamp.light_energy = (SCONCE_ENERGY if casting else SCONCE_ENERGY * SCONCE_FILL_ENERGY) * left
 		else: lamp.light_energy = float(entry.energy) * left
 		if not on and lamp.visible: lamp.visible = false
-		if lamp.has_meta("lift_glass"): refresh_lift_glass(lamp, room_id)
 		var mesh: MeshInstance3D = entry.mesh
 		if mesh != null and bool(entry.glowing) != on:
 			entry.glowing = on

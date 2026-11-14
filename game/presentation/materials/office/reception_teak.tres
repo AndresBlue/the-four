@@ -1,0 +1,16 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/wood.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.46, 0.31, 0.19, 1)
+shader_parameter/object_space = true
+shader_parameter/light_color = Color(0.55, 0.38, 0.23, 1)
+shader_parameter/dark_color = Color(0.34, 0.22, 0.13, 1)
+shader_parameter/ring_density = 30.0
+shader_parameter/varnish = 0.7
+shader_parameter/map_metres = 1.8
+shader_parameter/map_mode = 1
+shader_parameter/map_tint = Color(0.46, 0.31, 0.19, 1)
+metadata/scan = "office_walnut_veneer"

@@ -270,12 +270,13 @@ const FINISHES := ["terrazzo", "tile", "carpet", "carpet_exec", "concrete", "vin
 const BLOCK_WALLS := [8, 12, 18, 22, 23, 25]
 const WALLS := ["office_paint", "office_paint_kept", "block", "veneer", "partition"]
 ## The lower wall of each type (wall_trim(), spec_rediseno 2): the frieze of
-## the corridors, the lobbies and the reception, the walnut dado round the
-## office, the boardroom and the security post, the air rooms' two tones of
-## paint, the secretary's one panelled wall; "" none.
-const FRIEZE_ROOMS := [0, 10, 11, 19]
+## the corridors and the lobbies, the walnut dado round the office, the
+## boardroom and the security post, two tones of paint in the air rooms and the
+## reception (its own greige, office_geometry.low_paint()), the secretary's one
+## panelled wall; "" none.
+const FRIEZE_ROOMS := [10, 11, 19]
 const DADO_ROOMS := [3, 5, 21]
-const TWO_TONE_ROOMS := [22, 23]
+const TWO_TONE_ROOMS := [0, 22, 23]
 const TRIMS := ["", "frieze", "dado", "two_tone", "panel_wall"]
 const LAMPS := ["troffer", "batten", "emergency"]
 ## The colour temperature of each type's lamps, in kelvin (lamp_kelvin(),
@@ -288,11 +289,11 @@ const LAMPS := ["troffer", "batten", "emergency"]
 ## against the references in the captures.
 const LAMP_KELVIN := [2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3300.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3500.0, 3500.0, 3000.0, 3000.0, 2700.0, 3300.0, 3000.0, 2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0]
 ## The troffer families (troffer_look(), spec_rediseno 2): narrow with a louvre
-## in the reception and the boardroom, parabolic in the secretary's office, a
+## in the boardroom, parabolic in the secretary's office, a
 ## surface-mounted wraparound in the director's office, prismatic elsewhere.
 ## Only how they look: troffers() is the same for every family.
 const TROFFER_LOOKS := ["prismatic", "narrow", "parabolic", "wrap"]
-const NARROW_TROFFERS := [RECEPTION, BOARDROOM]
+const NARROW_TROFFERS := [BOARDROOM]
 const PARABOLIC_TROFFERS := [SECRETARY]
 const WRAP_TROFFERS := [EXEC_OFFICE]
 ## Where the special rooms lie, as a share of the walk.
@@ -637,7 +638,7 @@ const CORNER_HEIGHT := {"reception": 1.1, "bench": 0.45, "sideboard": 1.3, "tabl
 const FIXTURE_HALF := {ELECTRICAL: 2.2, SECURITY: 1.1, AIR_PLANT: 1.7}
 ## The chairs of a type's waiting row and of its corner "chairs"
 ## (office_props.gd, office_models.gd); the stacking chair elsewhere.
-const WAITING_CHAIR := {RECEPTION: "waiting_chair", WINDOW: "waiting_chair", SECRETARY: "visitor_chair"}
+const WAITING_CHAIR := {RECEPTION: "reception_seat", WINDOW: "waiting_chair", SECRETARY: "visitor_chair"}
 
 ## The floor as it is seen (office_geometry.floor_surface()): Dirección's
 ## carpet shows polished vinyl round its rug (rug_of()); how it sounds is

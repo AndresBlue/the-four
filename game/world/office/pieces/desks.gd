@@ -233,21 +233,21 @@ static func make_front_desk(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var inner := d / 2.0 - FRONT_LEDGE
 	KIT.block(p, "black", Vector3(0.0, 0.05, -0.06), Vector3(w - 0.1, 0.1, d - FRONT_OVER - 0.12))
 	for s: float in [-1.0, 1.0]:
-		KIT.block(p, "walnut_object", Vector3(s * (w / 2.0 - 0.025), low / 2.0, (zf + inner) / 2.0), Vector3(0.05, low, zf - inner), 0.004)
-		KIT.block(p, "walnut_object", Vector3(s * (w / 2.0 - 0.025), FRONT_WORK / 2.0, (inner - d / 2.0) / 2.0), Vector3(0.05, FRONT_WORK, inner + d / 2.0), 0.004)
+		KIT.block(p, "reception_teak", Vector3(s * (w / 2.0 - 0.025), low / 2.0, (zf + inner) / 2.0), Vector3(0.05, low, zf - inner), 0.004)
+		KIT.block(p, "reception_teak", Vector3(s * (w / 2.0 - 0.025), FRONT_WORK / 2.0, (inner - d / 2.0) / 2.0), Vector3(0.05, FRONT_WORK, inner + d / 2.0), 0.004)
 	KIT.block(p, "black", Vector3(0.0, (0.1 + low) / 2.0, zf - 0.02), Vector3(w - 0.1, low - 0.1, 0.04), 0.002)
 	# The upright under the ledge, over the work top, on the sitter's side.
 	KIT.block(p, "walnut_object", Vector3(0.0, (FRONT_WORK + low) / 2.0, inner + 0.01), Vector3(w - 0.1, low - FRONT_WORK, 0.02), 0.002)
-	# Teak panels in bays, a walnut rail over and under them.
+	# Smooth teak panels in bays with hairline reveals, a teak rail over and under them.
 	var bays := maxi(3, roundi((w - 0.1) / 0.8))
 	var bay := (w - 0.1) / bays
 	for k in bays:
 		var x := -w / 2.0 + 0.05 + bay * (float(k) + 0.5)
-		KIT.block(p, "walnut_object", Vector3(x, (0.16 + low - 0.06) / 2.0, zf + 0.003), Vector3(bay - 0.06, low - 0.06 - 0.16, 0.006), 0.002)
-	for y: float in [0.13, low - 0.03]: KIT.block(p, "walnut_object", Vector3(0.0, y, zf + 0.004), Vector3(w - 0.1, 0.04, 0.008), 0.002)
+		KIT.block(p, "reception_teak", Vector3(x, (0.16 + low - 0.06) / 2.0, zf + 0.003), Vector3(bay - 0.012, low - 0.06 - 0.16, 0.006), 0.002)
+	for y: float in [0.13, low - 0.03]: KIT.block(p, "reception_teak", Vector3(0.0, y, zf + 0.004), Vector3(w - 0.1, 0.04, 0.008), 0.002)
 	# The ledge, dark, with its walnut edge; the work top behind it.
 	KIT.block(p, "black", Vector3(0.0, h - FRONT_TOP / 2.0, (inner + d / 2.0 - 0.03) / 2.0), Vector3(w, FRONT_TOP - 0.004, FRONT_LEDGE - 0.03), 0.004)
-	KIT.block(p, "walnut_object", Vector3(0.0, h - FRONT_TOP / 2.0, d / 2.0 - 0.015), Vector3(w, FRONT_TOP, 0.03), 0.006)
+	KIT.block(p, "black", Vector3(0.0, h - FRONT_TOP / 2.0, d / 2.0 - 0.015), Vector3(w, FRONT_TOP, 0.03), 0.006)
 	KIT.block(p, "walnut_object", Vector3(0.0, FRONT_WORK - 0.015, (inner - d / 2.0) / 2.0), Vector3(w - 0.06, 0.03, inner + d / 2.0), 0.004)
 	return KIT.finish(builder, p, "front_desk", size, {"colliders": [AABB(Vector3(-w / 2.0, 0.0, -d / 2.0), Vector3(w, h, d))], "light_strip": [Vector3(0.0, low - 0.008, zf + 0.035), Vector3(w - 0.2, 0.012, 0.02)]})
 
