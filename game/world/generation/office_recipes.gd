@@ -40,6 +40,8 @@ const ANY_WAY := ["dining_set", "work_table", "sorting_table", "cart_boxes"]
 ## middle of the room, to TAKEN_OUT in front of it.
 const TAKEN_PAST := 0.1
 const TAKEN_OUT := 0.6
+## Nothing a room is furnished with stands higher (office_dressing_test's 2.2 m rule).
+const TALLEST := 2.2
 ## Where a stage raises its bodies in a lobby with a lift (revival.gd
 ## revival_point(), revival_spread()): LIFT_AWAY from its middle, away from the
 ## lift, and the spread either way with a body's 0.3 round it.
@@ -68,7 +70,7 @@ static func item(kind: String, at: Vector2, turn: int, group: int, length := 0.0
 ## (a street in a nave) from the pieces of other groups.
 static func fits(room: Dictionary, zones: Array, piece: Dictionary) -> bool:
 	var r := LAYOUT.footprint(piece)
-	if not LAYOUT.fits_in(LAYOUT.inner(room), r) or hits(r, zones): return false
+	if not LAYOUT.fits_in(LAYOUT.inner(room), r) or hits(r, zones, float(piece.extra.height)): return false
 	for other in room.furniture:
 		if int(other.extra.group) == int(piece.extra.group): continue
 		if not LAYOUT.apart(r, LAYOUT.footprint(other), LAYOUT.gap_of(room)): return false
@@ -86,9 +88,11 @@ static func prepare(zones: Array) -> void:
 		zone["bound"] = Rect2(a, Vector2.ZERO).expand(b).grow(float(zone.r) + 0.001)
 
 ## LAYOUT.blocked() with each capsule's bounds tried first: the same answer,
-## cheaper.
-static func hits(rect: Rect2, zones: Array) -> bool:
+## cheaper. A zone kept only from pieces over a height ("over") lets one of
+## `top` or lower through.
+static func hits(rect: Rect2, zones: Array, top := INF) -> bool:
 	for zone in zones:
+		if top < INF and float(zone.get("over", -1.0)) >= top: continue
 		if zone.has("rect"):
 			if rect.intersects(zone.rect): return true
 		elif zone.has("bound") and not rect.intersects(zone.bound): continue
@@ -117,7 +121,15 @@ static func keep_clear(view: Dictionary, room: Dictionary, taken: Array) -> Arra
 		var eye: Array = mail.camera
 		var typist: Array = mail.camera_target
 		var middle := Vector2(float(room.px), float(room.pz))
-		out.append({"a": Vector2(float(eye[0]), float(eye[2])) - middle, "b": Vector2(float(typist[0]), float(typist[2])) - middle, "r": LAYOUT.SWEEP_CLEAR})
+		var a := Vector2(float(eye[0]), float(eye[2])) - middle
+		var b := Vector2(float(typist[0]), float(typist[2])) - middle
+		# In the window of a bay of the real building the line keeps clear only of
+		# what could cut it: nothing of the room stands TALLEST high, so not where
+		# the line is over that, and nothing as low as the typist's head reaches it.
+		if OFFICE.band_bay(room) and int(room.type) == OFFICE.WINDOW:
+			var t := clampf((float(eye[1]) - TALLEST) / maxf(float(eye[1]) - float(typist[1]), 0.01), 0.0, 1.0)
+			out.append({"a": a.lerp(b, t), "b": b, "r": LAYOUT.SWEEP_CLEAR, "over": float(typist[1])})
+		else: out.append({"a": a, "b": b, "r": LAYOUT.SWEEP_CLEAR})
 	prepare(out)
 	return out
 
@@ -505,7 +517,7 @@ static func lay_wall(room: Dictionary, zones: Array, kind: String, row: int, wal
 	var along_z: bool = wall == "west" or wall == "east"
 	# Only the zones and the pieces by this wall can stop a run against it.
 	var band: Rect2 = Rect2(off.x - size.y / 2, -reach, size.y, reach * 2) if along_z else Rect2(-reach, off.y - size.y / 2, reach * 2, size.y)
-	var near := Near.new(room, zones, group, band)
+	var near := Near.new(room, zones, group, band, float(spec.height))
 	for along in (corner_first(reach, width, toward) if from_corner or toward != 0.0 else ALONG):
 		var a := float(along)
 		if absf(a) + width / 2 > reach: continue
@@ -540,11 +552,13 @@ class Near:
 	var gap: float
 	var zones: Array = []
 	var others: Array[Rect2] = []
-	func _init(room: Dictionary, all_zones: Array, group: int, band: Rect2) -> void:
+	func _init(room: Dictionary, all_zones: Array, group: int, band: Rect2, top := INF) -> void:
 		space = LAYOUT.inner(room)
 		gap = LAYOUT.gap_of(room)
 		var wide := band.grow(gap + 0.5)
 		for zone in all_zones:
+			# A zone kept only from pieces over a height (keep_clear()'s camera line).
+			if float(zone.get("over", -1.0)) >= top: continue
 			if zone.has("rect"):
 				if (zone.rect as Rect2).intersects(wide): zones.append(zone)
 			elif not zone.has("bound") or (zone.bound as Rect2).intersects(wide): zones.append(zone)
@@ -674,7 +688,7 @@ static func lay_middle(room: Dictionary, zones: Array, kind: String, row := 1) -
 	var spec: Dictionary = OFFICE.FURNITURE[kind]
 	var size: Vector2 = spec.size
 	var group: int = room.furniture.size()
-	var near := Near.new(room, zones, group, LAYOUT.inner(room))
+	var near := Near.new(room, zones, group, LAYOUT.inner(room), float(spec.height))
 	for depth in MIDDLE_DEPTHS:
 		for aside in MIDDLE_SIDES:
 			for spin in turns:
@@ -713,25 +727,18 @@ static func lay_halls(view: Dictionary, taken: Dictionary, rng: RandomNumberGene
 	for key in keys: lay_line(view, taken, lines[key], String(key).get_slice(":", 1), rng, out)
 	return out
 
-## The corridor fittings mounted under a bench's 0.5 m (office_walls.PIECES).
-const WAIT_LOW := ["extinguisher", "socket"]
-
-## Whether a low fitting's slot falls within `half` of `pos` (the world's
-## coordinate along a corridor wall), as office_walls.corridor() hangs them.
-static func under_low(wall: String, pos: float, half: float) -> bool:
-	var rhythm: Array = OFFICE.CORRIDOR_RHYTHM
-	var pitch: float = OFFICE.CORRIDOR_PITCH
-	var quarter: int = ["north", "east", "south", "west"].find(wall) * rhythm.size() / 4
-	for k in range(ceili((pos - half) / pitch), floori((pos + half) / pitch) + 1):
-		if WAIT_LOW.has(String(rhythm[posmod(k + quarter, rhythm.size())])): return true
-	return false
-
 ## The window's wait (planta_real.md 13.13): in the corridor its doorway opens
 ## on, WAIT_BENCHES benches against the wall across from the counter, as near
 ## facing it as they fit, else on its own wall beside the doorway; only where a
-## corridor's floor furniture fits (HALL_WIDTH, HALL_PASS), as lay_line() lays it.
+## corridor's floor furniture fits (HALL_WIDTH, HALL_PASS), as lay_line() lays
+## it. The wait comes before the wall's fittings in its stretch (the director,
+## ronda 6): a bench stands under the zone sign (1.6 m up, it hides nothing)
+## and over the low fittings' slots, which then stay bare (office_walls.taken()
+## counts the bench).
 const WAIT_BENCHES := 2
-const WAIT_TRIES := [0.0, -0.8, 0.8, -1.6, 1.6, -2.4, 2.4, -3.2, 3.2, -4.0, 4.0]
+## Between the two benches of the wait when they stand in a row.
+const WAIT_APART := 0.1
+const WAIT_TRIES := [0.0, -0.4, 0.4, -0.8, 0.8, -1.2, 1.2, -1.6, 1.6, -2.0, 2.0, -2.4, 2.4, -2.8, 2.8, -3.2, 3.2, -3.6, 3.6, -4.0, 4.0, -4.4, 4.4, -4.8, 4.8, -5.2, 5.2, -5.6, 5.6, -6.0, 6.0, -6.4, 6.4, -6.8, 6.8, -7.2, 7.2]
 static func lay_wait(view: Dictionary, taken: Dictionary, window: Dictionary, out: Dictionary) -> void:
 	for way in FLOOR.doorways(window):
 		var hall: Dictionary = view.rooms[int(way.other)]
@@ -748,26 +755,28 @@ static func lay_wait(view: Dictionary, taken: Dictionary, window: Dictionary, ou
 			if absf(float(d)) > FLOOR.PORTAL: tries.append([near, door + float(d)])
 		var laid := 0
 		var zones_of := {}
-		for spot in tries:
-			if laid >= WAIT_BENCHES: return
+		while not tries.is_empty() and laid < WAIT_BENCHES:
+			var spot: Array = tries.pop_front()
 			var wall := String(spot[0])
 			var room := hall_cell(line, wall, along_x, float(spot[1]))
 			if room.is_empty(): continue
 			var id := int(room.id)
 			if not zones_of.has(id):
 				var spots: Array = taken.get(id, [])
-				zones_of[id] = keep_clear(view, room, spots) + ways_in(room, spots) + hall_signs(room, wall)
+				zones_of[id] = keep_clear(view, room, spots) + ways_in(room, spots)
 			var a: float = float(spot[1]) - hall_mid(room, along_x)
 			var piece := hall_piece(room, "bench_slat", wall, a)
-			# Not off every wall fitting's slot as lay_line() keeps (a bench of 1.5 m
-			# never clears them, CORRIDOR_PITCH 2 m): at 0.5 m high it stands under
-			# them, but for the ones mounted lower (WAIT_LOW).
-			if piece.is_empty() or not fits(room, zones_of[id], piece) or under_low(wall, float(spot[1]), float(piece.size[0]) / 2 + 0.1): continue
+			if piece.is_empty(): continue
+			# Next to the first bench in its cell, one row of seats: its group, so no gap.
+			if spot.size() > 2 and int(spot[2]) == id: piece.extra.group = int(spot[3])
+			if not fits(room, zones_of[id], piece) or not all_fit(room, zones_of[id], [piece], true): continue
 			if hall_gap(room, room.furniture + [piece]) < float(OFFICE.HALL_PASS): continue
 			room.furniture.append(piece)
 			if not out.has(id): out[id] = []
 			out[id].append({"wall": wall, "along": a, "half": float(piece.size[0]) / 2})
 			laid += 1
+			var reach: float = float(piece.size[0]) + WAIT_APART
+			tries = [[wall, float(spot[1]) + reach, id, int(piece.extra.group)], [wall, float(spot[1]) - reach, id, int(piece.extra.group)]] + tries
 		return
 
 ## One line of wall: a window of HALL_STEP's spread at a time, a place drawn in

@@ -48,6 +48,10 @@ func _initialize() -> void:
 	var rings := [[], [], []]
 	var floor_m2 := [[], [], []]
 	var sizes := [{}, {}, {}]
+	# Rooms of each type per planta (a salon once), per seed; and how often two
+	# rooms of a type the programme keeps apart (REAL_APART) stand side by side.
+	var kinds := [{}, {}, {}]
+	var side_by_side := [{}, {}, {}]
 	var layers_most := 0
 	var layers_full := 0
 	var clashes := 0
@@ -122,6 +126,27 @@ func _initialize() -> void:
 				var a: float = seen_size[key]
 				var band := "<15" if a < 15.0 else "15-30" if a < 30.0 else "30-50" if a < 50.0 else "50-100" if a < 100.0 else ">=100"
 				sizes[p][band] = int(sizes[p].get(band, 0)) + 1
+		for p in 3:
+			var count := {}
+			var seen := {}
+			for room in data.rooms:
+				if int(room.wing) != p or FLOOR.is_void(room) or bool(room.corridor): continue
+				var key := int(room.hall) if int(room.hall) >= 0 else int(room.id)
+				if seen.has(key): continue
+				seen[key] = true
+				count[int(room.type)] = int(count.get(int(room.type), 0)) + 1
+			for t in OFFICE.NAMES.size():
+				if not kinds[p].has(t): kinds[p][t] = []
+				kinds[p][t].append(int(count.get(t, 0)))
+			var apart := {}
+			for room in data.rooms:
+				if int(room.wing) == p and OFFICE.kept_apart(room): apart[Vector2i(int(room.x), int(room.z))] = room
+			for cell: Vector2i in apart:
+				for next: Vector2i in [cell + Vector2i(1, 0), cell + Vector2i(0, 1)]:
+					var other: Dictionary = apart.get(next, {})
+					var room: Dictionary = apart[cell]
+					if other.is_empty() or int(other.type) != int(room.type) or (int(room.hall) >= 0 and int(other.hall) == int(room.hall)): continue
+					tally(side_by_side[p], OFFICE.plan_code(room))
 		for want in [["window", 0, OFFICE.WINDOW], ["electrical", 1, OFFICE.ELECTRICAL], ["security", 2, OFFICE.SECURITY]]:
 			var found := VALIDATOR.of_type(data, int(want[1]), int(want[2]))
 			specials[want[0]].append(VALIDATOR.share_in(data, int(want[1]), int(found[0].id)) if found.size() == 1 else -1.0)
@@ -195,6 +220,13 @@ func _initialize() -> void:
 		out["lockers_%d" % p] = spread(lockers[p])
 		out["m2_%d" % p] = spread(floor_m2[p])
 		out["sizes_%d" % p] = sizes[p]
+	for p in 3:
+		var line: Array = []
+		for t in kinds[p]:
+			var values: Array = kinds[p][t]
+			if values.max() > 0: line.append("%s %s" % [OFFICE.plan_code({"type": t}) if OFFICE.plan_code({"type": t}) != "" else str(t), str(spread(values))])
+		print("PLAN_METRICS planta %d: salas por tipo [mín, p10, p50, p90, máx] %s" % [p + 1, ", ".join(line)])
+		print("PLAN_METRICS planta %d: parejas lado a lado de tipos que van sueltos %s" % [p + 1, str(side_by_side[p])])
 	print("PLAN_METRICS edificio: tipologías %s, largo %s, fondo %s, vanos %s, transversales %s, transversales del medio a %s del largo" % [str(build.typology), str(spread(build.length)), str(spread(build.depth)), str(spread(build.bays)), str(build.crosses), str(spread(build.cross_at))])
 	print("PLAN_METRICS edificio: recepción %s, con muesca %d, órdenes de vanos distintos %d de %d, bandas de la planta 1 iguales %d" % [str(build.start), int(build.notch), build.orders.size(), made, int(build.bands_alike)])
 	out["building"] = {"typology": build.typology, "length": spread(build.length), "depth": spread(build.depth), "bays": spread(build.bays), "crosses": build.crosses, "cross_at": spread(build.cross_at), "start": build.start, "notch": build.notch, "orders": build.orders.size(), "bands_alike": build.bands_alike}

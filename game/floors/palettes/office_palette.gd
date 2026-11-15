@@ -71,19 +71,35 @@ const REAL_LEAST_WALKS := [75.0, 0.0, 0.0]
 const REAL_ZONES := [
 	{"office": {OFFICE: 10.0, STORE: 0.5}, "bay": {OFFICE: 1.0}, "corner": {OFFICE: 1.0}, "end": {OFFICE: 2.0, STORE: 1.0}, "deep": {BOARDROOM: 1.0, BREAK_ROOM: 1.0, OPEN_OFFICE: 1.0}, "narrow": {COPY_ROOM: 1.0, STORE: 1.0, MOBILE_ARCHIVE: 1.0}, "lift": {BREAK_ROOM: 1.0, BOARDROOM: 1.0}, "core": {COPY_ROOM: 1.0, DEPOT: 1.0}, "service": {STORE: 3.0, DEPOT: 2.0}},
 	{"office": {MOBILE_ARCHIVE: 2.0, OFFICE: 1.5, STORE: 0.5}, "bay": {OFFICE: 3.0, MAIL: 0.3, COPY_ROOM: 0.5}, "back": {DEPOT: 1.0}, "corner": {OFFICE: 1.0}, "end": {MOBILE_ARCHIVE: 1.0, STORE: 1.0}, "deep": {ARCHIVE: 1.0}, "narrow": {MOBILE_ARCHIVE: 1.0}, "lift": {MAIL: 1.0, COPY_ROOM: 1.0}, "core": {DEPOT: 1.0}, "service": {STORE: 2.0, DEPOT: 2.0}},
-	# Dirección's central zone: its one boardroom is a must; the hall bays the
-	# suites leave, a cabinet's office or a break room (one more boardroom at most, by B's lift).
-	{"office": {OFFICE: 1.0}, "bay": {OFFICE: 1.0}, "corner": {OFFICE: 1.0}, "end": {STORE: 1.0, OFFICE: 1.0}, "deep": {OFFICE: 1.0, BREAK_ROOM: 1.0}, "narrow": {STORE: 1.0, COPY_ROOM: 1.0}, "lift": {BOARDROOM: 1.0, BREAK_ROOM: 1.0}, "core": {DEPOT: 1.0, COPY_ROOM: 0.5}, "service": {STORE: 2.0, DEPOT: 2.0}},
+	# Dirección's central zone: its boardroom and its break room are musts; the
+	# hall bays the suites leave, a cabinet's office or a general secretary's
+	# (one more boardroom at most, REAL_MOST).
+	{"office": {OFFICE: 1.0}, "bay": {OFFICE: 1.0}, "corner": {OFFICE: 1.0}, "end": {STORE: 1.0, OFFICE: 1.0}, "deep": {OFFICE: 2.0, SECRETARY: 1.0, BOARDROOM: 0.5}, "narrow": {STORE: 1.0, COPY_ROOM: 1.0}, "lift": {BOARDROOM: 1.0, OFFICE: 1.0}, "core": {DEPOT: 1.0, COPY_ROOM: 0.5}, "service": {STORE: 2.0, DEPOT: 2.0}},
 ]
+## The most of a type a planta of the real building has, at any length of
+## building (the director, ronda 6): a zone past it draws from what it has
+## left (office_generator.drawn()). A salon's cells count each.
+const REAL_MOST := [
+	{BREAK_ROOM: 2, COPY_ROOM: 2, BOARDROOM: 2, MAIL: 1, MOBILE_ARCHIVE: 2},
+	{BREAK_ROOM: 1, COPY_ROOM: 2, MAIL: 2, MOBILE_ARCHIVE: 4},
+	{BREAK_ROOM: 1, COPY_ROOM: 1, BOARDROOM: 2},
+]
+## Types a zone never draws beside one of their own: no row of narrow mobile
+## archives, copy rooms or break rooms.
+const REAL_APART := [MOBILE_ARCHIVE, COPY_ROOM, BREAK_ROOM, MAIL, BOARDROOM]
+static func kept_apart(room: Dictionary) -> bool: return REAL_APART.has(int(room.get("type", -1)))
+## What a zone with nothing left under REAL_MOST draws instead, by planta.
+const REAL_SPARE := [{OFFICE: 1.0}, {STORE: 1.0, OFFICE: 1.0}, {OFFICE: 1.0}]
 ## What each planta must have, in the zone it is put in first, before the
 ## zones are drawn (MUSTS as the programme lays them): [type, zones in turn].
 ## Registro y Archivo has its clerks' break room and the registry's own mail
 ## room besides the one by the lift: the planta's tops for the papers
-## (document_placement), none of them by its way in.
+## (document_placement), none of them by its way in. Dirección's archive is a
+## whole offices bay of its central zone; a hall bay where the zone has none.
 const REAL_MUSTS := [
 	[[BOARDROOM, ["lift", "deep", "bay"]], [BREAK_ROOM, ["lift", "deep", "bay"]], [MAIL, ["bay", "end"]], [COPY_ROOM, ["core", "bay", "narrow"]]],
 	[[MAIL, ["lift", "bay", "end"]], [COPY_ROOM, ["bay", "lift", "narrow"]], [BREAK_ROOM, ["bay", "lift", "end"]], [MAIL, ["bay", "end"]]],
-	[[BOARDROOM, ["deep", "lift"]], [BREAK_ROOM, ["deep", "lift", "end"]]],
+	[[BOARDROOM, ["deep", "lift"]], [BREAK_ROOM, ["deep", "lift", "end"]], [ARCHIVE, ["deep"]]],
 ]
 ## How far along the building from a planta's way in a type with a top for
 ## the papers is put first (office_generator.draw_programme()), a share of its
@@ -689,15 +705,21 @@ const SMALL_FURNITURE := {
 	OFFICE: [4.5, [["work_desk", "center", 1, 1, 1], ["filing", "run", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["filing", "side", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bookcase", "spare", 0, 1, 1]]],
 	SECRETARY: [4.5, [["work_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 2], ["printer_cart", "spare", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
 	TOILETS: [4.5, [["cubicles", "wall", 1, 1, 1], ["locker_bank", "spare", 1, 1, 1], ["bench_slat", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
-	# The window of a bay (7.2 x band, office_generator.special_fits()): the
-	# staff records along its walls, a sorting table and the forms' counter
-	# against them (the work table, 1.8 m deep, does not clear a band's middle),
-	# cabinets, card indexes and shelves (spec_proporcion: 20 % of its floor).
-	WINDOW: [6.0, [["filing", "run", 1, 1, 2], ["wood_shelving", "side", 1, 1, 1], ["sorting_table", "spare", 1, 1, 1], ["card_index", "spare", 1, 2, 1], ["filing", "spare", 1, 2, 3], ["pigeon_counter", "spare", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
+	# The window of a bay (7.2 x band, office_generator.special_fits(), at any
+	# band: band_bay()): the staff records along its walls in one run, cabinets,
+	# card indexes and shelves; the clerks' work table in the middle, else a
+	# sorting table, and a card index of its own (spec_proporcion: 20 % of its floor).
+	WINDOW: [6.0, [["filing", "run", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["sorting_table", "middle", 0, 1, 1], ["card_index", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["filing", "run", 1, 1, 2], ["card_index", "middle", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
 	COPY_ROOM: [6.0, [["copier", "back", 1, 1, 1], ["copier", "side", 1, 1, 1], ["reader_table", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
 	MAIL: [6.0, [["pigeonholes", "wall", 1, 1, 2], ["sorting_table", "side", 1, 1, 1], ["mail_cart", "spare", 1, 1, 2], ["filing", "spare", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]]],
 	EXEC_OFFICE: [6.0, [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 1, 2, 1], ["sideboard", "spare", 1, 1, 1], ["lounge", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
 }
+## Whether a room is the window or a mail room of a band's bay of the real
+## building: 7.2 m long, a length none of today's MODULE_SIZES has (so today's
+## plan keeps its recipe), at any band, the reception's 6.0 m too.
+static func band_bay(room: Dictionary) -> bool:
+	var long := maxf(float(room.span_x), float(room.span_z))
+	return int(room.type) in [WINDOW, MAIL] and is_equal_approx(long, BAY) and minf(float(room.span_x), float(room.span_z)) < long - 0.01
 ## A director's office of an offices bay (office_generator.band_suites()): its
 ## two cells of 3.6 one room, where the director's desk (2.2 x 2.3) does not fit
 ## a cell; a work desk between two cabinets and the bookcases in one, the lounge
@@ -707,6 +729,7 @@ const NARROW_EXEC := [["work_desk", "center", 1, 1, 1], ["bookcase", "run", 1, 2
 ## else ROOM_FURNITURE's. By the cell's size, not the switch: the standby floor
 ## (today's plan) keeps its recipes with the real plan on.
 static func recipe_of(room: Dictionary) -> Array:
+	if band_bay(room): return SMALL_FURNITURE[int(room.type)][1]
 	if int(room.type) == EXEC_OFFICE and minf(float(room.span_x), float(room.span_z)) < SMALL_SIDE: return NARROW_EXEC
 	var small: Array = SMALL_FURNITURE.get(int(room.type), [])
 	if not small.is_empty() and minf(float(room.span_x), float(room.span_z)) < float(small[0]): return small[1]

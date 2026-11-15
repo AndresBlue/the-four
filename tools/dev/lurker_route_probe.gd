@@ -258,36 +258,44 @@ func nave_trip() -> void:
 	trip_now = -1
 
 ## A door band two legs ahead, its door toggled shut: she finds another way
-## or says she is blocked.
+## or says she is blocked. Lit rooms cost her six times as much, so with the
+## lamps on she takes the plenum and crosses a door on the ceilings only where
+## lit rooms open into each other; the real building's rooms open only on its
+## corridors, so the search tries again with the power gone, when the
+## ceilings and their doors are hers.
 func door_shut_on_her() -> void:
 	var ids := rooms_of(0)
-	for a in ids:
-		for b in ids:
-			if a == b: continue
-			lurker.teleport(centre(a), 0.0, &"probe")
-			if not lurker.motion.go_to_room(b, 1.35): continue
-			var legs: Array = lurker.motion.legs
-			var ahead := -1
-			for k in range(2, legs.size()):
-				if String(legs[k].kind) == "band" and (lurker.shell.patches[int(legs[k].patch)].pair as Vector2i).x >= 0:
-					ahead = k
-					break
-			if ahead < 0: continue
-			var pair: Vector2i = lurker.shell.patches[int(legs[ahead].patch)].pair
-			var door = lurker.routes.door_nodes.get(pair)
-			if door == null: continue
-			door.toggle()
-			await physics_frame
-			await physics_frame
-			check("una puerta que se cierra sale de su camino en un fotograma", not lurker.motion.remaining_pairs().has(pair) or lurker.motion.committed())
-			var from: Dictionary = lurker.motion.plan_start()
-			var again: Dictionary = lurker.routes.plan(from.start, {"room": b}, from.from_state, from.from_point) if not from.is_empty() else {"ok": false, "cost": 0.0}
-			var budget: float = 3.0 * float(again.cost) + 10.0 if bool(again.ok) else 10.0
-			await watch(minf(budget, 600.0), func(): return lurker.motion.at_goal() or lurker.motion.route_state() == &"blocked")
-			check("con la puerta cerrada llega o se queda parada", lurker.motion.at_goal() or lurker.motion.route_state() == &"blocked", where())
-			door.toggle()
-			await watch(1.0, func(): return false)
-			return
+	for dark in [false, true]:
+		if dark: level.hotel.blackout(true)
+		for a in ids:
+			for b in ids:
+				if a == b: continue
+				lurker.teleport(centre(a), 0.0, &"probe")
+				if not lurker.motion.go_to_room(b, 1.35): continue
+				var legs: Array = lurker.motion.legs
+				var ahead := -1
+				for k in range(2, legs.size()):
+					if String(legs[k].kind) == "band" and (lurker.shell.patches[int(legs[k].patch)].pair as Vector2i).x >= 0:
+						ahead = k
+						break
+				if ahead < 0: continue
+				var pair: Vector2i = lurker.shell.patches[int(legs[ahead].patch)].pair
+				var door = lurker.routes.door_nodes.get(pair)
+				if door == null: continue
+				door.toggle()
+				await physics_frame
+				await physics_frame
+				check("una puerta que se cierra sale de su camino en un fotograma", not lurker.motion.remaining_pairs().has(pair) or lurker.motion.committed())
+				var from: Dictionary = lurker.motion.plan_start()
+				var again: Dictionary = lurker.routes.plan(from.start, {"room": b}, from.from_state, from.from_point) if not from.is_empty() else {"ok": false, "cost": 0.0}
+				var budget: float = 3.0 * float(again.cost) + 10.0 if bool(again.ok) else 10.0
+				await watch(minf(budget, 600.0), func(): return lurker.motion.at_goal() or lurker.motion.route_state() == &"blocked")
+				check("con la puerta cerrada llega o se queda parada", lurker.motion.at_goal() or lurker.motion.route_state() == &"blocked", where())
+				door.toggle()
+				await watch(1.0, func(): return false)
+				if dark: level.hotel.blackout(false)
+				return
+	level.hotel.blackout(false)
 	fail("ningún trayecto con una puerta delante")
 
 ## Every door of planta 2 shut with no signal: by the ducts, at their speed.

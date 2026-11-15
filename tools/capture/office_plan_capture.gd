@@ -8,9 +8,11 @@ extends "res://tools/capture/office_rooms_capture.gd"
 ## its doorway; from their doorways a core's toilets, an archive of the second
 ## planta and a director's office of the third; the reception from its lift's
 ## doors, a director's office from its secretary's, the third's boardroom and
-## its security post from the corridor, on the side away from its door.
+## its security post from the corridor, on the side away from its door; the
+## reception towards its lift; the third's central zone, a director's office of
+## two bays and the corridor along it.
 ## With a window:
-##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent --real-plan [--seed=7] [--quality=2] [--out=evidence/planta/capturas]
+##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent --real-plan [--seed=7] [--quality=2] [--survivors=1] [--out=evidence/planta/capturas]
 ## Writes <out>/<seed>_{anillo,despacho,galeria,...}.png. Quits
 ## saying so when the floor that came up is not the real plan's.
 ## How far down a corridor the eye looks.
@@ -25,9 +27,11 @@ func plan_run() -> void:
 	level.ui.finish_intro()
 	var seed_value := 7
 	var quality := 2
+	var survivors := 1
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
 		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
+		if argument.begins_with("--survivors="): survivors = int(argument.trim_prefix("--survivors="))
 	var out_dir := "res://evidence/planta/capturas"
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--out="): out_dir = "res://" + argument.trim_prefix("--out=").trim_prefix("res://")
@@ -35,7 +39,7 @@ func plan_run() -> void:
 	level.settings.values = level.settings.DEFAULTS.duplicate()
 	level.settings.set_designed(quality)
 	level.creature_scene = "none"
-	await level.start_floor(seed_value, false, [1], "apacible", 2)
+	await level.start_floor(seed_value, false, range(1, survivors + 1), "apacible", 2)
 	level.apply_settings()
 	await level.bounce_ready()
 	var manifest: Dictionary = level.manifest
@@ -43,7 +47,7 @@ func plan_run() -> void:
 	if bool(manifest.get("fallback", false)):
 		# The game put up the standby floor: the real one is put up here anyway,
 		# as the game would, and what its physical checks say is printed.
-		var drawn: Dictionary = level.kind.GENERATOR.new().generate(seed_value, 1)
+		var drawn: Dictionary = level.kind.GENERATOR.new().generate(seed_value, survivors)
 		if bool(drawn.get("fallback", false)):
 			print("PLAN_CAPTURE the generator gave the standby floor")
 			quit(1)
@@ -155,6 +159,11 @@ func plan_run() -> void:
 		look(from, from - way * 6.0 - Vector3(0, 0.3, 0))
 		(await grab(false)).save_png(out_dir + "/%d_recepcion_ascensor.png" % seed_value)
 		print("PLAN_CAPTURE recepcion desde el ascensor %d" % int(start.id))
+		# And the other way: from its far wall towards the lift, the reference's view.
+		var back := FLOOR.position_of(start) - way * reach + Vector3(0, FRAMING.EYE, 0)
+		look(back, back + way * 6.0 - Vector3(0, 0.2, 0))
+		(await grab(false)).save_png(out_dir + "/%d_recepcion_hacia_ascensor.png" % seed_value)
+		print("PLAN_CAPTURE recepcion hacia el ascensor %d (%.1f x %.1f)" % [int(start.id), float(start.span_x), float(start.span_z)])
 	# Dirección: a director's office seen from its secretary's, the door between open.
 	for s in all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.SECRETARY):
 		var exec := -1
@@ -174,6 +183,19 @@ func plan_run() -> void:
 		print("PLAN_CAPTURE suite: secretaria %d, direccion %d" % [int(s.id), exec])
 		break
 	await inside(manifest, all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.BOARDROOM), out_dir + "/%d_juntas.png" % seed_value)
+	# Dirección's central zone: a director's office of two bays from its doorway,
+	# and the main corridor along the zone, its doors.
+	var central: Array = all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.EXEC_OFFICE and int(r.hall) >= 0 and minf(float(r.span_x), float(r.span_z)) > 7.1)
+	await inside(manifest, central, out_dir + "/%d_central_direccion.png" % seed_value)
+	for c in central:
+		var lane: Dictionary = {}
+		for n in manifest.adjacency[int(c.id)]:
+			if bool(manifest.rooms[int(n)].get("corridor", false)) and float(manifest.rooms[int(n)].span_z) < 3.5: lane = manifest.rooms[int(n)]
+		if lane.is_empty(): continue
+		var line: Array = all.filter(func(r): return int(r.wing) == 2 and bool(r.get("corridor", false)) and is_equal_approx(float(r.pz), float(lane.pz)))
+		line.sort_custom(func(a, b): return float(a.px) < float(b.px))
+		await down(line, out_dir + "/%d_central_pasillo.png" % seed_value)
+		break
 	# The security post from the corridor it is come to by.
 	for post in all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.SECURITY):
 		for n in manifest.adjacency[int(post.id)]:
