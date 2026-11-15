@@ -69,7 +69,9 @@ func dark_rooms(least := 5.0) -> Array:
 			if FLOOR.size_of(room).x < least or FLOOR.size_of(room).y < least: continue
 			# In the real building a 7.2 m cell leaves her 5 m behind against its far
 			# wall: a nave's cell open on that side keeps her in the room.
-			if least >= 7.0 and OFFICE.real_plan_on() and not room.get("open_sides", []).has("south"): continue
+			# The spine's naves are one row, open along the building (planta_real.md 13.7).
+			var sides: Array = ["south", "east", "west"] if String(level.manifest.plans[0].get("plan", "")) == "spine" else ["south"]
+			if least >= 7.0 and OFFICE.real_plan_on() and not sides.any(func(side): return room.get("open_sides", []).has(side)): continue
 			out.append(id)
 	return out
 
@@ -134,9 +136,13 @@ func turn_case(room: int, late: bool) -> void:
 		if FLOOR.position_of(level.manifest.rooms[int(r)]).distance_to(FLOOR.position_of(level.manifest.rooms[room])) > FLOOR.position_of(level.manifest.rooms[far]).distance_to(FLOOR.position_of(level.manifest.rooms[room])): far = int(r)
 	other.body.place(floor_point(far), 0.0)
 	other.body.torch_wanted = false
-	var at := floor_point(room, Vector3(0, 0, -2.0))
+	# Its back to the room's open side: south, or along a spine's nave.
+	var open: Array = level.manifest.rooms[room].get("open_sides", [])
+	var back := Vector3(0, 0, 1) if open.has("south") or not (open.has("east") or open.has("west")) else Vector3(1, 0, 0) if open.has("east") else Vector3(-1, 0, 0)
+	var yaw := atan2(back.x, back.z)
+	var at := floor_point(room, back * -2.0)
 	a.body.place(at, 0.0)
-	a.body.look_yaw = 0.0
+	a.body.look_yaw = yaw
 	a.task = {}
 	a.state = BOT_BRAIN.State.IDLE
 	a.body.torch_wanted = false
@@ -146,7 +152,7 @@ func turn_case(room: int, late: bool) -> void:
 	if late: model.react_override[int(a.seat)] = 3.0
 	await physics_frame
 	# Five metres behind its back (it looks to -z), on her ceiling there.
-	lurker.teleport(lurker.clue_point(at + Vector3(0, 0, 5.0)), PI, &"prueba")
+	lurker.teleport(lurker.clue_point(at + back * 5.0), yaw + PI, &"prueba")
 	await physics_frame
 	lurker.thinking = true
 	lurker.brain.prey = int(a.seat)

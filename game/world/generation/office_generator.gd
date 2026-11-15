@@ -50,6 +50,7 @@ func attempts() -> int: return 12
 ## compares "version" with office_floor.GENERATOR_VERSION.
 func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 	building = draw_building(run_seed, attempt) if real_plan and not standby else {}
+	OFFICE_PALETTE.typology = String(building.get("typology", ""))
 	var result := super.candidate(run_seed, attempt, standby)
 	if not result.is_empty():
 		result["floor"] = 2
@@ -721,6 +722,10 @@ func finish_rooms(f: Dictionary, decoration: RandomNumberGenerator) -> void:
 			if String(g.kind) != "nave": continue
 			var ids: Array = g.members.map(func(m): return base + int(m))
 			var hall := int(f.rooms[int(ids[0])].hall)
+			# A nave of one row (the spine) has no seam for its aisle: a plain salon's desks.
+			var rows_in := {}
+			for id in ids: rows_in[int(f.rooms[int(id)].z)] = true
+			if rows_in.size() < 2: continue
 			if hall >= 0 and ids.all(func(id): return int(f.rooms[int(id)].hall) == hall and int(f.rooms[int(id)].type) in [palette.OPEN_OFFICE, palette.CUBICLES]):
 				for id in ids: f.rooms[int(id)].nave_axis = "x"
 	for room in f.rooms:
@@ -1570,6 +1575,7 @@ func furnish_air(job: Dictionary) -> String:
 	walls.append_array(["west", "east"] if d1.x == 0 else ["north", "south"])
 	var unit := {}
 	var unit_box := Rect2()
+	var stop := {}
 	var room_inner := LAYOUT.inner(p_room).grow(LAYOUT.INNER_PAD)
 	for wall in walls:
 		if p_room.get("open_sides", []).has(wall): continue
@@ -1577,19 +1583,22 @@ func furnish_air(job: Dictionary) -> String:
 			var box := LAYOUT.wall_rect(p_room, String(wall), along, unit_d.x / 2, unit_d.z)
 			if not LAYOUT.fits_in(room_inner, box) or box.intersects(hatch_square) or box.intersects(duct_band): continue
 			if LAYOUT.point_rect_distance(foot_local, box) < 1.0: continue
+			register(job, plant, String(wall), along, unit_d.x / 2)
+			# Its stop beside it on the same wall: a wall of 3.6 (the spine's plant)
+			# holds the handler and no stop, so the next spot is tried.
+			for at in [along + (unit_d.x / 2 + 0.5), along - (unit_d.x / 2 + 0.5)]:
+				if spot_free(job, p_room, String(wall), at, 0.3):
+					stop = wall_spot(p_room, String(wall), at, py + STOP_Y)
+					register(job, plant, String(wall), at, 0.3)
+					break
+			if stop.is_empty():
+				job.taken[plant].pop_back()
+				continue
 			unit = wall_spot(p_room, String(wall), along, py)
 			unit_box = box
-			register(job, plant, String(wall), along, unit_d.x / 2)
 			break
 		if not unit.is_empty(): break
 	if unit.is_empty(): return "unit"
-	var stop := {}
-	for along in [float(unit.along) + (unit_d.x / 2 + 0.5), float(unit.along) - (unit_d.x / 2 + 0.5)]:
-		if spot_free(job, p_room, String(unit.wall), along, 0.3):
-			stop = wall_spot(p_room, String(unit.wall), along, py + STOP_Y)
-			register(job, plant, String(unit.wall), along, 0.3)
-			break
-	if stop.is_empty(): return "stop"
 	# The shaft past the main duct's last cell.
 	var last: Dictionary = rooms[int(sp.main_cells[-1])]
 	var e := Vector2i(int(sp.main_exit[0]), int(sp.main_exit[1]))
@@ -3150,6 +3159,17 @@ func rect_of(axis: String, along0: float, along1: float, across0: float, across1
 ## and on the standby floor, and every hook below then does what it always did.
 var building := {}
 
+## The typology of a seed's building (13.7): drawn by the table's weights on a
+## stream of its own, so the ring's draws are as they were and every try of the
+## seed is the same kind of building; or the one a tool forces (--plan=).
+func typology_of(run_seed: int) -> String:
+	var forced: String = palette.forced_typology()
+	if forced != "": return forced
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, "typology"])
+	var names: Array = palette.TYPOLOGIES.keys().filter(func(t): return float(palette.TYPOLOGIES[t].weight) > 0.0)
+	return String(weighted(names.map(func(t): return {"type": t, "weight": float(palette.TYPOLOGIES[t].weight)}), rng).type)
+
 ## The building a try is drawn on, once for its three plantas (13.2): the
 ## typology's rows and columns sized, turned and mirrored; two cores at the
 ## ends of the central zone, each a lift bay and an offices bay, A's lift in
@@ -3164,7 +3184,8 @@ var building := {}
 func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([run_seed, "building", attempt])
-	var table: Dictionary = palette.TYPOLOGIES["ring"]
+	var typology := typology_of(run_seed)
+	var table: Dictionary = palette.TYPOLOGIES[typology]
 	var area: float = areas.max()
 	var closing: bool = areas.min() < area
 	# The bays along the building (13.3) and where the middle cross splits them:
@@ -3202,13 +3223,16 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	# where the planta below walks out of it. On a floor for one both cores are
 	# in A's half, B's lift against the middle cross, and the other half has none.
 	var halves: Array = []
+	# The spine's A has its lift bay at the end and its core inside: its lobby is
+	# the core's cell beside the lift (site), as far in as the ring's.
+	var a_core: Array = table.get("a_core", ["core_a", "lift_a"])
 	for side in 2:
 		var bays_in := int(counts[side])
 		var middles: Array = table.middles
 		var middle: Array = middles[rng.randi_range(0, middles.size() - 1)].duplicate()
 		while middle.size() < bays_in - 2: middle.append("hall" if rng.randf() < 0.6 else "offices")
-		if side == 0 and closing: halves.append(["core_a", "lift_a"] + middle.slice(0, bays_in - 4) + ["core_b", "lift_b"])
-		elif side == 0: halves.append(["core_a", "lift_a"] + middle.slice(0, bays_in - 2))
+		if side == 0 and closing: halves.append(a_core + middle.slice(0, bays_in - 4) + ["core_b", "lift_b"])
+		elif side == 0: halves.append(a_core + middle.slice(0, bays_in - 2))
 		elif closing:
 			halves.append(middle + ["hall", "offices"].slice(0, bays_in - middle.size()))
 			# Its first bay ends up the outermost, the reception's: a bay of 7.2, not two offices of 3.6.
@@ -3250,13 +3274,23 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	var middle_cross: int = crossings[1]
 	var a_col: int = range(width).filter(func(c): return columns[c].role == "lift_a")[0]
 	var b_col: int = range(width).filter(func(c): return columns[c].role == "lift_b")[0]
-	var site := func(column: int) -> Dictionary:
+	var site := func(column: int, plant := false) -> Dictionary:
+		# One central row (the spine): the lift bay's cell and its core's cell of
+		# 3.6 beside it. A freight lift's car is the bay's cell and its lobby the
+		# core's: a car of 3.6 would leave the lobby under it 1.26 m in front of
+		# its doors (FLOOR.LIFT_DEPTH). The air plant (no lobby under it) the
+		# core's cell, its air room the bay's.
+		if central.size() == 1:
+			var core: int = column - 1 if String(columns[column - 1].role).begins_with("core") else column + 1
+			var vest: int = column if plant else core
+			var car: int = core if plant else column
+			return {"vest": int(central[0]) * width + vest, "car": int(central[0]) * width + car, "out": Vector2i(signi(car - vest), 0)}
 		var vest: int = central[rng.randi_range(0, 1)]
 		var car: int = central[1] if vest == central[0] else central[0]
 		return {"vest": vest * width + column, "car": car * width + column, "out": Vector2i(0, signi(car - vest))}
 	var a_site: Dictionary = site.call(a_col)
 	var b_site: Dictionary = site.call(b_col)
-	var air_site: Dictionary = site.call(a_col)
+	var air_site: Dictionary = site.call(a_col, true)
 	# The reception at B's end: its outermost bay in the front or the back band
 	# (the ends are unexcavated), or the end bay of a central row, excavated for
 	# it on the first planta alone.
@@ -3274,8 +3308,10 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 		var c := 0 if from_end else width - 1
 		var way := 1 if from_end else -1
 		# The end, its cross, the core's three columns.
+		var notched: Array = []
+		for role in table.notch_rows: notched.append_array(role_rows.call(role))
 		while reach < 5:
-			for r in role_rows.call("gallery") + role_rows.call("service"): void_all.append(int(r) * width + c)
+			for r in notched: void_all.append(int(r) * width + c)
 			c += way
 			reach += 1
 	# The building's ends: the end bays, and every cross corridor's stub to the
@@ -3285,7 +3321,7 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	# shortcut: on a floor for one the half plantas need the end bay for their
 	# freight lift's depth (13.15): its ends stay as they were, with vestibules.
 	for c in (width if not closing else 0):
-		var keep: Array = [] if columns[c].role == "end" else ["main", "central", "back", "gallery"] if columns[c].role == "cross" else []
+		var keep: Array = [] if columns[c].role == "end" else (table.cross_rows if c in [crossings[0], crossings[-1]] else table.get("middle_rows", table.cross_rows)) if columns[c].role == "cross" else []
 		if columns[c].role in ["end", "cross"]:
 			for r in rows.size():
 				if not keep.has(String(rows[r].role)) and not void_all.has(int(r) * width + c): void_all.append(int(r) * width + c)
@@ -3306,7 +3342,17 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	for c in crossings:
 		if absi(int(c) - b_col) < absi(b_cross - b_col): b_cross = c
 	var toward := signi(a_col - b_col)
-	var cuts: Array = [[], [[gallery * width + b_cross, gallery * width + b_cross + toward]], []]
+	# In the spine B's lobby may open on the gallery itself: the wall goes past
+	# B's core and the bay beside it, so that stretch of gallery is come to only
+	# round by the corridor and B's lobby on it is not the deepest room (a stub of
+	# B's core alone left it at 0.973 of the walk, DEPTHS[1] tops at 0.97).
+	var wall_at := b_cross
+	if String(table.power_cut) == "core":
+		for c in width:
+			if String(columns[c].role) == "core_b" and absi(c - b_col) > absi(wall_at - b_col): wall_at = c
+		wall_at += toward
+		if String(columns[wall_at].role) == "offices" and String(columns[wall_at + toward].role) == "offices": wall_at += toward
+	var cuts: Array = [[], [[gallery * width + wall_at, gallery * width + wall_at + toward]], []]
 	for r in role_rows.call("main"):
 		for c in range(1, width - 2):
 			if closing and (c - middle_cross) * (a_col - middle_cross) < 0: continue
@@ -3314,7 +3360,7 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	# Between the two cores of a floor for one, the bays a smaller planta's
 	# through room takes (real_halls()).
 	var between: Array = range(mini(a_col, b_col) + 1, maxi(a_col, b_col)).filter(func(c): return String(columns[c].role) in ["hall", "offices"]) if closing else []
-	return {"typology": "ring", "start_kind": start_kind, "columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "gallery": gallery, "cuts": cuts, "between": between, "programme": [{}, {}, {}]}
+	return {"typology": typology, "start_kind": start_kind, "columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "gallery": gallery, "cuts": cuts, "between": between, "programme": [{}, {}, {}]}
 
 ## The zone of the programme a cell is in (palette.REAL_ZONES), "" for a lane.
 func zone_of(local: int) -> String:
@@ -3393,8 +3439,9 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 		var through: Array = []
 		for c in building.between:
 			for r in central: through.append(int(r) * width + int(c))
-		# On the second planta an archive across the central zone when it is one bay wide.
-		if through.all(func(m): return room.call(int(m))): group.call("through", through, palette.ARCHIVE if laying == 1 and building.between.size() == 1 else palette.OPEN_OFFICE)
+		# On the second planta an archive across the central zone when it is one bay
+		# wide, and the spine's one row, a straight salon, always.
+		if through.all(func(m): return room.call(int(m))): group.call("through", through, palette.ARCHIVE if laying == 1 and (building.between.size() == 1 or central.size() == 1) else palette.OPEN_OFFICE)
 	# The third planta's cut, a third to a half of the way along from its way in,
 	# and the security post on the near side of it (13.13).
 	if laying == 2 and not building.cuts[2].is_empty():
@@ -3423,8 +3470,11 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 		var c := 0
 		while c < width:
 			var run: Array = []
-			while c < width and String(columns[c].role) in ["hall", "offices"] and central.all(func(r): return room.call(int(r) * width + c)):
+			var length := 0.0
+			# No longer than a straight open run (the spine of a floor for five).
+			while c < width and String(columns[c].role) in ["hall", "offices"] and central.all(func(r): return room.call(int(r) * width + c)) and length + float(columns[c].size) <= OPEN_RUN:
 				run.append(c)
+				length += float(columns[c].size)
 				c += 1
 			if not run.is_empty():
 				var members: Array = []
@@ -3464,17 +3514,21 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 				var c := 0
 				while c < width:
 					var members: Array = []
-					while c < width and String(columns[c].role) in ["hall", "offices"] and room.call(int(r) * width + c):
+					var length := 0.0
+					while c < width and String(columns[c].role) in ["hall", "offices"] and room.call(int(r) * width + c) and length + float(columns[c].size) <= OPEN_RUN:
 						members.append(int(r) * width + c)
+						length += float(columns[c].size)
 						c += 1
 					if members.size() >= 2: group.call("archive", members, palette.ARCHIVE)
 					c += 1
+			var depots: String = palette.TYPOLOGIES[building.typology].depots
+			var run_most: int = palette.TYPOLOGIES[building.typology].get("depot_run", 1 << 20)
 			for r in rows.size():
-				if rows[r].role != "back": continue
+				if rows[r].role != depots: continue
 				var c := 0
 				while c < width:
 					var members: Array = []
-					while c < width and not columns[c].lane and columns[c].role != "end" and room.call(int(r) * width + c):
+					while c < width and not columns[c].lane and columns[c].role != "end" and room.call(int(r) * width + c) and members.size() < run_most:
 						members.append(int(r) * width + c)
 						c += 1
 					if members.size() >= 2: group.call("row", members, palette.DEPOT)
@@ -3547,12 +3601,28 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 			var wide: Array = spare.filter(func(unit): return unit.size() == 2)
 			shuffle(wide, rng)
 			# The cabinet's open office (a salon of a whole bay, as Personal's typing pools) between them.
-			for k in wide.size(): group.call("bay", wide[k], palette.ARCHIVE if k == 0 else palette.EXEC_OFFICE if k % 2 == 1 else palette.OPEN_OFFICE)
+			# With one central row (the spine) the archive is a salon open at both ends (open_doors()).
+			for k in wide.size(): group.call("archive" if k == 0 and central.size() == 1 else "bay", wide[k], palette.ARCHIVE if k == 0 else palette.EXEC_OFFICE if k % 2 == 1 else palette.OPEN_OFFICE)
 			band_suites(rows, columns, room, group, types, taken, pairs, rng)
 	# The toilets two by two in a row of each core, the rest of the core from its zone.
 	for core in ["core_a", "core_b"]:
 		var cols: Array = range(width).filter(func(k): return columns[k].role == core)
 		if cols.is_empty(): continue
+		# One central row (the spine): the core's other cell is the car's, so its
+		# toilets are one room, on the cell away from the lift; the cleaners' store
+		# in the car's cell where no lift takes it.
+		if central.size() == 1:
+			var lift_col: int = range(width).filter(func(k): return String(columns[k].role) == core.replace("core", "lift"))[0]
+			cols.sort_custom(func(x, y): return absi(int(x) - lift_col) > absi(int(y) - lift_col))
+			var cells_in: Array = cols.map(func(k): return int(central[0]) * width + int(k))
+			if room.call(int(cells_in[0])):
+				programme.toilet_rows.append(int(central[0]))
+				types[int(cells_in[0])] = palette.TOILETS
+				taken[int(cells_in[0])] = true
+			if room.call(int(cells_in[1])):
+				types[int(cells_in[1])] = palette.STORE
+				taken[int(cells_in[1])] = true
+			continue
 		var rows_in: Array = central.duplicate()
 		shuffle(rows_in, rng)
 		var cells: Array = cols.map(func(k): return int(rows_in[0]) * width + int(k))
@@ -3588,6 +3658,9 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 				break
 			if pick >= 0: break
 		if pick < 0: continue
+		if t == palette.ARCHIVE and central.size() == 1 and zone_of(pick) == "deep":
+			group.call("archive", [pick], t)
+			continue
 		types[pick] = t
 		taken[pick] = true
 	var cells: Array = alive.keys()
@@ -3718,7 +3791,8 @@ func in_core(local: int) -> bool:
 ## The same plan on every planta: the real building's (13.2).
 func deal(rng: RandomNumberGenerator, standby: bool) -> Array:
 	if building.is_empty(): return super(rng, standby)
-	return ["ring", "ring", "ring"]
+	# The manifest's plans say which typology it is (office_validator).
+	return [building.typology, building.typology, building.typology]
 
 ## The building's grid, the same for the three plantas; under a lift its
 ## anchor is the cell whose column and row stand where the lobby above does.
@@ -3815,10 +3889,8 @@ func open_doors(f: Dictionary, alive: Dictionary, corridor: Dictionary, arrival:
 	# beside it in its lift's bay (the mail room, the boardroom): the car stands
 	# against its corridor side.
 	if laying > 0 and arrival >= 0:
-		var width: int = f.width
-		for r in building.rows.size():
-			var partner: int = int(r) * width + arrival % width
-			if partner != arrival and building.rows[r].role == "central" and free.call(partner) and not partner in [int(lift.vest), int(lift.car)]: doors[arrival] = partner
+		var partner := step(f, arrival, -back)
+		if partner >= 0 and building.rows[partner / int(f.width)].role == "central" and free.call(partner) and not partner in [int(lift.vest), int(lift.car)]: doors[arrival] = partner
 	for local in cells:
 		if not free.call(local) or doors.has(local): continue
 		var service: bool = building.rows[int(at(f, local).z)].role == "service"
@@ -3839,13 +3911,35 @@ func open_doors(f: Dictionary, alive: Dictionary, corridor: Dictionary, arrival:
 		if best >= 0: doors[local] = best
 	for local in doors: link(f, base + int(local), base + int(doors[local]))
 	# The salons' doors, and the programme's between rooms.
+	# On to a corridor, the gallery only where a room has no other (the spine's
+	# depots behind it).
 	var corridor_of := func(local: int, ways: Array) -> int:
 		for way: Vector2i in ways:
 			var next := step(f, local, way)
 			if next >= 0 and corridor.has(next) and int(at(f, next).z) != gallery: return next
+		for way: Vector2i in ways:
+			var next := step(f, local, way)
+			if next >= 0 and corridor.has(next): return next
 		return -1
+	# A salon of the one central row (the spine) lies between the corridor and
+	# the gallery: a door on each, at opposite ends, the way across (13.7).
+	var one_row: bool = building.rows.filter(func(row): return row.role == "central").size() == 1
+	var across := func(members: Array) -> void:
+		var line: Array = members.duplicate()
+		line.sort()
+		var ends: Array = [int(line[0]), int(line[-1])]
+		if rng.randf() < 0.5: ends.reverse()
+		for i in 2:
+			for way: Vector2i in [Vector2i(0, -1), Vector2i(0, 1)]:
+				var next := step(f, int(ends[i]), way)
+				if next >= 0 and corridor.has(next) and (int(at(f, next).z) == gallery) == (i == 1):
+					link(f, base + int(ends[i]), base + next)
+					break
 	for g in programme.groups:
 		var members: Array = g.members
+		if one_row and String(g.kind) in ["nave", "through", "archive"]:
+			across.call(members)
+			continue
 		match String(g.kind):
 			"nave", "through":
 				# One door on each main corridor, at opposite ends: the way across.
@@ -3981,6 +4075,8 @@ func real_refuge(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i,
 	var lift: Dictionary = building.lifts[laying]
 	var turned := {"vest": int(lift.car), "car": int(lift.vest), "out": -Vector2i(lift.out)}
 	var sites: Array = [lift, turned] if rng.randf() < 0.5 else [turned, lift]
+	# The spine's car is its core's cell of 3.6 beside the lobby: the lobby never turns into it.
+	if int(lift.car) / int(f.width) == int(lift.vest) / int(f.width): sites = [lift]
 	# The lobby in the core's row without its toilets first: its one door may be
 	# on to the room beside it, and a freight lift is not reached through them.
 	var toilets: Array = building.programme[laying].get("toilet_rows", [])
@@ -4052,7 +4148,12 @@ func special_fits(room: Dictionary, room_type: int) -> bool:
 	# On a smaller planta of a floor for one its gallery is not walled (13.15): the
 	# power room in the band beside it, opening on the main corridor, so it still
 	# has no way to B along the gallery (13.12).
-	if room_type == palette.ELECTRICAL: return role == "back" if float(areas[laying]) < float(areas.max()) else role == "service"
+	# Never in the middle of a row of depots (the spine's are in the service band).
+	var backs: bool = building.rows.any(func(row): return row.role == "back")
+	# Nor past the gallery's wall on B's side, whose gallery leads to B (the spine's).
+	var cut: Array = building.cuts[1][0]
+	var a_side: bool = (int(room.x) - int(cut[0]) % int(room.cols)) * (int(cut[1]) - int(cut[0])) > 0
+	if room_type == palette.ELECTRICAL: return role == "back" if float(areas[laying]) < float(areas.max()) and backs else (role == "service" and a_side and not programme.groups.any(func(g): return String(g.kind) == "row" and g.members.has(local)))
 	if room_type == palette.SECURITY and not programme.security.is_empty(): return programme.security.has(local)
 	# The window a whole bay, on a corridor wide enough for its wait (13.13, HALL_WIDTH),
 	# and not beside a cross, whose narrower way its door could take instead.
@@ -4079,6 +4180,9 @@ func main_through(f: Dictionary, path: Array, alive: Dictionary, way: Vector2i) 
 	var air := int(building.lifts[2].vest)
 	var room := func(local: int) -> bool: return at(f, local).kind == "module" and local != air
 	var last := int(path[path.size() - 1])
+	# Out of a plant too short that way for its hatch and the handler behind it
+	# (the spine's, 3.6 across): along its long side.
+	if path.size() == 1 and along_span(at(f, last), way) < float(palette.HATCH["in"]) + float(palette.HATCH.stand) + palette.AIR_UNIT.z: return false
 	if path.size() >= 2 and room.call(last) and way != way_between(f, int(path[path.size() - 2]), last): return false
 	var next := step(f, last, way)
 	# Never over a boardroom (office_validator rooms_ok()): its table's way round.

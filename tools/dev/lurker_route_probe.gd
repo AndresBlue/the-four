@@ -244,7 +244,8 @@ func nave_trip() -> void:
 		start = foot - way * 1.5
 		target = foot + way * 1.5
 		break
-	if OFFICE.columns_on(): check("la semilla %d tiene una nave con columnas" % seed_now, from >= 0)
+	# The spine's central zone is one row (planta_real.md 13.7): no nave two cells wide, no columns.
+	if OFFICE.columns_on() and String(level.manifest.plans[0].get("plan", "")) != "spine": check("la semilla %d tiene una nave con columnas" % seed_now, from >= 0)
 	if from < 0: return
 	trip_now = -2
 	lurker.teleport(start, 0.0, &"probe")

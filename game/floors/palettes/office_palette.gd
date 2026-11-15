@@ -37,6 +37,17 @@ static func real_plan_on() -> bool:
 ## lurker_bots_test, seed 81, lost her prey for a cause not found); "pools", the share of a band's offices bays that the first planta
 ## makes one typing pool (an open office of the bay), drawn for one band of
 ## each stretch between crosses, so each side and each wing has its own rhythm.
+## "weight", how often a seed's building is this one (office_generator.typology_of());
+## "cross_rows", the rows a cross corridor keeps excavated ("middle_rows" for
+## the crosses between the end ones); "notch_rows", what the notch leaves out;
+## "depots", the band of Registro's depots in a row ("depot_run", the most of
+## them in one, so a lone store is left between runs); "power_cut", where the
+## second planta's gallery is walled off from B: at B's cross or past B's core;
+## "a_core", A's two bays from the building's end (the ring's core bay first);
+## "rooms" and "rings", the window of rooms and the rings to walk round at
+## areas 1 and below 1, where they are not the palette's (REAL_ROOMS, rings()).
+## The spine (13.7): one corridor end to end with rooms either side, its ends
+## and the gallery the only way round; its middle cross is solid.
 const TYPOLOGIES := {
 	"ring": {
 		"rows": [["front", [4.8, 6.0]], ["main", [2.4, 3.0]], ["central", [7.2]], ["central", [7.2]], ["main", [2.4, 3.0]], ["back", [4.8, 5.4, 6.0]], ["gallery", [2.4]], ["service", [4.8, 5.4, 6.0]]],
@@ -49,8 +60,44 @@ const TYPOLOGIES := {
 		"starts": ["front", "back"],
 		"pools": [0.35, 0.5, 0.7],
 		"middles": [["hall", "hall", "hall"], ["offices", "hall", "hall"], ["hall", "hall", "offices"], ["hall", "offices", "hall"]],
+		"weight": 2.0,
+		"cross_rows": ["main", "central", "back", "gallery"],
+		"notch_rows": ["gallery", "service"],
+		"depots": "back",
+		"power_cut": "cross",
+	},
+	"spine": {
+		"rows": [["front", [4.8, 5.4, 6.0]], ["main", [2.4, 3.0]], ["central", [7.2]], ["gallery", [2.4]], ["service", [4.8, 5.4, 6.0]]],
+		"ends": [4.8, 6.0],
+		"crosses": [2.4, 3.0],
+		"half_bays": 6,
+		"bays": Vector2i(12, 13),
+		"lean": 1,
+		"second_cross": 0.0,
+		"starts": ["front"],
+		"pools": [0.35, 0.5, 0.7],
+		"middles": [["offices", "hall", "offices", "hall"], ["hall", "offices", "offices", "hall"], ["offices", "hall", "hall", "offices"], ["hall", "offices", "hall", "offices"]],
+		"weight": 0.0,
+		"cross_rows": ["main", "central", "gallery"],
+		"middle_rows": ["main", "gallery"],
+		"notch_rows": ["service"],
+		"depots": "service",
+		"depot_run": 3,
+		"power_cut": "core",
+		"a_core": ["lift_a", "core_a"],
+		"rooms": Vector2i(32, 60),
+		"rings": [3, 2],
 	},
 }
+## The typology of the building being drawn or judged ("" today's plan and the
+## standby floor): office_generator.candidate() and office_validator set it, so
+## rooms_window() and rings() read the building's own.
+static var typology := ""
+## A tool or a test forces a typology with --plan=<name> on the command line.
+static func forced_typology() -> String:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--plan=") and TYPOLOGIES.has(argument.get_slice("=", 1)): return argument.get_slice("=", 1)
+	return ""
 const BAY := 7.2
 ## Rooms a planta of the real building has (up to today's 99: the standby
 ## floor, today's plan, is drawn under the same window), and the least walk to
@@ -194,7 +241,7 @@ static func areas_for(survivors: int) -> Array:
 	return [1.0 if clampi(survivors, 1, 5) == 1 else area, area, area]
 
 static func rooms_window(area: float) -> Vector2i:
-	var rooms: Vector2i = REAL_ROOMS if real_plan_on() else ROOMS
+	var rooms: Vector2i = TYPOLOGIES.get(typology, {}).get("rooms", REAL_ROOMS) if real_plan_on() else ROOMS
 	return Vector2i(roundi(float(rooms.x) * area), roundi(float(rooms.y) * area))
 
 ## No stage of this floor asks for televisions.
@@ -202,7 +249,8 @@ static func tv_rooms(_area: float) -> int:
 	return 0
 
 static func rings(area: float) -> int:
-	return 4 if area < 1.0 else 6
+	var own: Array = TYPOLOGIES.get(typology, {}).get("rings", [6, 4]) if real_plan_on() else [6, 4]
+	return int(own[1]) if area < 1.0 else int(own[0])
 
 ## Lockers per type (hide_kind()): two in the toilets' changing room and the
 ## security post, one in the store, the mail room and the break room.

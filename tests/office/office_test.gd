@@ -557,11 +557,14 @@ func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
 	# In the real building the toilets are the cores' (planta_real.md 13.4): two
 	# side by side, never one alone, and a pair on every planta.
 	if OFFICE.real_plan_on():
+		# The spine's core is one row: its toilets are one room beside the core's
+		# other cell (a lift lobby, the air plant or the cleaners' store).
+		var beside: Array = [OFFICE.TOILETS, OFFICE.STORE, OFFICE.REFUGE, OFFICE.LANDING, OFFICE.LOBBY, OFFICE.AIR_PLANT] if String(m.plans[0].get("plan", "")) == "spine" and not bool(m.get("fallback", false)) else [OFFICE.TOILETS]
 		for planta in 3:
 			var toilets := of_type(m, planta, OFFICE.TOILETS)
 			if toilets.size() < 2: note(T_TOILETS, "%s: planta %d, %d aseos" % [tag, planta, toilets.size()])
 			for room in toilets:
-				if not [Vector2i(1, 0), Vector2i(-1, 0)].any(func(way): return FLOOR.beside(room, way) >= 0 and int(m.rooms[FLOOR.beside(room, way)].type) == OFFICE.TOILETS): note(T_TOILETS, "%s: aseo suelto %d" % [tag, int(room.id)])
+				if not [Vector2i(1, 0), Vector2i(-1, 0)].any(func(way): return FLOOR.beside(room, way) >= 0 and beside.has(int(m.rooms[FLOOR.beside(room, way)].type))): note(T_TOILETS, "%s: aseo suelto %d" % [tag, int(room.id)])
 		sectors = {}
 	for key in sectors:
 		var types: Array = sectors[key].map(func(room): return int(room.type))
@@ -953,7 +956,10 @@ func validator_checks() -> void:
 	var inside := func(m: Dictionary) -> void:
 		var seam: Array = m.merged.filter(func(pair): return String(m.rooms[int(pair[0])].get("nave_axis", "")) != "" and int(m.rooms[int(pair[0])].hall) == int(m.rooms[int(pair[1])].hall))[0]
 		for k in 40: m.merged.append(seam)
-	mutation(v, "Los anillos de la planta 1 dentro de su nave no cuentan", "rings_0", inside)
+	# The spine has no nave two cells wide (13.7): nothing to mutate.
+	var spine: bool = String(seven.plans[0].get("plan", "")) == "spine"
+	if spine: check("El validador ve: Los anillos de la planta 1 dentro de su nave no cuentan (la espina no tiene nave de dos filas)", true)
+	else: mutation(v, "Los anillos de la planta 1 dentro de su nave no cuentan", "rings_0", inside)
 	var on_aisle := func(m: Dictionary) -> void:
 		var cell: Dictionary = m.rooms.filter(func(r): return not OFFICE.aisle_strips(r).is_empty())[0]
 		for slot in cell.sockets.size():
@@ -961,7 +967,8 @@ func validator_checks() -> void:
 			if OFFICE.aisle_strips(cell).any(func(strip: Rect2): return OFFICE_VALIDATOR.prop_rect(cell, prop).intersects(strip)):
 				cell.props.append(prop)
 				return
-	mutation(v, "Una pieza de esquina en el pasillo de la nave", "nave_aisle_", on_aisle)
+	if spine: check("El validador ve: Una pieza de esquina en el pasillo de la nave (la espina no tiene nave de dos filas)", true)
+	else: mutation(v, "Una pieza de esquina en el pasillo de la nave", "nave_aisle_", on_aisle)
 	var change_1 := func(m: Dictionary) -> void:
 		var lobby: Dictionary = m.rooms[int(m.refuges[0])]
 		m.ducts.nodes.append([float(lobby.px), float(lobby.py) + 3.7, float(lobby.pz), int(lobby.id), "exit"])
@@ -1227,6 +1234,7 @@ func nave_checks() -> void:
 	OFFICE.columns_test = true
 	var floors: Array = []
 	var naves := 0
+	var spines := 0
 	var columns := 0
 	var bad: Array = []
 	for run_seed in range(1, 9):
@@ -1238,6 +1246,12 @@ func nave_checks() -> void:
 			continue
 		var nave: Array = m.rooms.filter(func(r): return String(r.get("nave_axis", "")) != "")
 		if nave.size() >= 2: naves += 1
+		# The spine's central zone is one row of 7.2 m (planta_real.md 13.7): no
+		# nave two cells wide, so no aisle nor columns; its naves are salons of the
+		# row with a door on the corridor and one on the gallery, the way across.
+		if String(m.plans[0].get("plan", "")) == "spine":
+			spines += 1
+			if spine_naves(m) >= 1: naves += 1
 		for room in m.rooms:
 			var id := int(room.id)
 			var axis := String(room.get("nave_axis", ""))
@@ -1271,11 +1285,23 @@ func nave_checks() -> void:
 	var stray: Array = off.rooms.filter(func(r): return not r.get("columns", []).is_empty())
 	check("Naves: con columnas, cada piso vale, sin reserva y sale igual dos veces", floors.is_empty(), str(floors))
 	check("Naves: la planta 1 tiene nave en la mayoría de pisos", naves * 2 > 8, "%d de 8" % naves)
-	check("Naves: cada columna en la junta de una nave de dos celdas de ancho, a 2,1 m del pasillo, ninguna placa libre a menos de 0,6 m y ningún mueble ni pieza de esquina en el pasillo", columns > 0 and bad.is_empty(), "%d columnas %s" % [columns, str(bad.slice(0, 4))])
+	check("Naves: cada columna en la junta de una nave de dos celdas de ancho, a 2,1 m del pasillo, ninguna placa libre a menos de 0,6 m y ningún mueble ni pieza de esquina en el pasillo", (columns > 0 or spines == 8) and bad.is_empty(), "%d columnas, %d espinas %s" % [columns, spines, str(bad.slice(0, 4))])
 	# Once COLUMNS is on, columns_on() is true whatever the test asks: no case.
 	check("Naves: con las columnas apagadas no sale ninguna", OFFICE.COLUMNS or stray.is_empty(), str(stray.map(func(r): return int(r.id))))
 
 # --- Física ------------------------------------------------------------------
+
+## The spine's naves on planta 1 (planta_real.md 13.7): open offices or cubicles
+## of the central row, a salon, with a door on the main corridor and one on
+## the gallery.
+static func spine_naves(m: Dictionary) -> int:
+	var halls := {}
+	for room in m.rooms:
+		if int(room.wing) != 0 or int(room.hall) < 0 or not int(room.type) in [OFFICE.OPEN_OFFICE, OFFICE.CUBICLES]: continue
+		for n in m.adjacency[int(room.id)]:
+			var other: Dictionary = m.rooms[int(n)]
+			if bool(other.get("corridor", false)): halls[int(room.hall)] = int(halls.get(int(room.hall), 0)) | (2 if int(other.type) == OFFICE.GALLERY else 1)
+	return halls.values().filter(func(v): return int(v) == 3).size()
 
 ## With smaller modules, more of them (spec_proporcion, acceptance 6).
 const PHYSICS_SEEDS := [7, 21, 33, 3, 12, 19, 28, 38]
@@ -1288,6 +1314,7 @@ func physics_checks() -> void:
 	# With their naves' columns (spec_rediseno 3.4), whatever COLUMNS says.
 	OFFICE.columns_test = true
 	var columns := 0
+	var spines := 0
 	var raised: Array = []
 	var raise_points := 0
 	var signs: Array = []
@@ -1304,6 +1331,8 @@ func physics_checks() -> void:
 		for i in 4: await physics_frame
 		built.append(int(level.manifest.get("seed", -1)))
 		columns += level.manifest.rooms.filter(func(r): return not r.get("columns", []).is_empty()).size()
+		# The spine has no nave two cells wide, so no columns (nave_checks()).
+		if String(level.manifest.plans[0].get("plan", "")) == "spine": spines += 1
 		var errors: Array = level.kind.VALIDATOR.new().validate_physics(level.get_world_3d(), level.manifest)
 		if not errors.is_empty(): found.append("%d: %s" % [run_seed, str(errors.slice(0, 5))])
 		raise_points += revival_clear(level, run_seed, raised)
@@ -1313,7 +1342,7 @@ func physics_checks() -> void:
 		level.queue_free()
 		for i in 2: await physics_frame
 	OFFICE.columns_test = false
-	check("Los pisos de oficinas montados, con columnas en sus naves, pasan la comprobación física", found.is_empty() and built == PHYSICS_SEEDS and columns > 0, "%s %s %d" % [str(built), str(found), columns])
+	check("Los pisos de oficinas montados, con columnas en sus naves, pasan la comprobación física", found.is_empty() and built == PHYSICS_SEEDS and (columns > 0 or spines == PHYSICS_SEEDS.size()), "%s %s %d" % [str(built), str(found), columns])
 	check("Donde se reanima cada etapa cabe un cuerpo, en el punto y en los cuatro extremos del reparto", raised.is_empty() and raise_points > 0, "%s %d" % [str(raised.slice(0, 5)), raise_points])
 	check("Los carteles de salida de los vestíbulos cuelgan dentro de la sala", signs.is_empty() and sign_count > 0, "%s %d" % [str(signs.slice(0, 5)), sign_count])
 

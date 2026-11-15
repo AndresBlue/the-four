@@ -75,6 +75,9 @@ func plan_run() -> void:
 	var ring: Array = rooms.filter(func(r): return int(r.type) == OFFICE.CORRIDOR and String(r.kind) == "lane" and float(r.span_z) < 3.5 and float(r.span_x) >= 3.5)
 	ring.sort_custom(func(a, b): return float(a.px) < float(b.px) or (float(a.px) == float(b.px) and int(a.id) < int(b.id)))
 	await down(ring, out_dir + "/%d_anillo.png" % seed_value)
+	# The spine's corridor end to end (13.7): from its second cell down the whole of it.
+	if String(manifest.get("plans", [{}])[0].get("plan", "")) == "spine" and ring.size() >= 2:
+		await down(ring, out_dir + "/%d_espina.png" % seed_value, float(ring[-1].px) - float(ring[1].px))
 	# An office one bay wide, from its doorway.
 	var offices: Array = rooms.filter(func(r): return int(r.type) == OFFICE.OFFICE and minf(float(r.span_x), float(r.span_z)) < 3.7 and int(r.hall) < 0)
 	if offices.is_empty(): print("PLAN_CAPTURE no office of 3.6")
@@ -234,14 +237,14 @@ func inside(manifest: Dictionary, rooms: Array, path: String) -> void:
 
 ## Looking east down the first stretch of `cells` (sorted west to east) from the
 ## middle of its second cell, at eye height.
-func down(cells: Array, path: String) -> void:
+func down(cells: Array, path: String, length := DOWN) -> void:
 	if cells.size() < 2:
 		print("PLAN_CAPTURE nothing for %s" % path)
 		return
 	var start: Dictionary = cells[1]
 	var from := FLOOR.position_of(start) + Vector3(0, FRAMING.EYE, 0)
-	var at := from + Vector3(DOWN, 0, 0)
-	for door in level.hotel.doors_near(from + Vector3(DOWN * 0.5, 0, 0), DOWN * 0.5):
+	var at := from + Vector3(length, 0, 0)
+	for door in level.hotel.doors_near(from + Vector3(length * 0.5, 0, 0), length * 0.5):
 		if door.has_method("open_immediately"): door.open_immediately()
 	look(from, at)
 	(await grab(false)).save_png(path)

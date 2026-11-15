@@ -15,6 +15,11 @@ const PLENUM_KEYS := ["ceiling", "slab", "duct_y", "main", "duct", "branch"]
 const HIDE := preload("res://game/world/interactables/hiding_place.gd")
 
 func validate(data: Dictionary) -> Array[String]:
+	# The real building's own window of rooms and rings (office_palette.typology):
+	# its plans name its typology; today's plan and the standby floor have none.
+	var plans: Array = data.get("plans", [])
+	var plan: String = String(plans[0].get("plan", "")) if not plans.is_empty() and plans[0] is Dictionary else ""
+	OFFICE.typology = plan if int(data.get("floor", 1)) == 2 and not bool(data.get("fallback", false)) and OFFICE.real_plan_on() and OFFICE.TYPOLOGIES.has(plan) else ""
 	var errors := super.validate(data)
 	if int(data.get("floor", 1)) == 2: errors.append_array(office(data))
 	return errors
