@@ -61,11 +61,15 @@ func run() -> void:
 ## first: room to stand in and nothing tall about; `least` metres a side.
 func dark_rooms(least := 5.0) -> Array:
 	var out: Array = []
-	for kind in [1, OFFICE.CORRIDOR, 15, 3]:
+	# The real building's naves are open offices or cubicles.
+	for kind in [1, OFFICE.CORRIDOR, 15, 3] + ([2] if OFFICE.real_plan_on() else []):
 		for room in level.manifest.rooms:
 			var id := int(room.id)
 			if int(room.type) != kind or FLOOR.is_void(room) or int(room.get("wing", -1)) != 0 or level.off_limits_rooms().has(id) or level.hotel.lit(id) or not lurker.shell.tray_of.has(id): continue
 			if FLOOR.size_of(room).x < least or FLOOR.size_of(room).y < least: continue
+			# In the real building a 7.2 m cell leaves her 5 m behind against its far
+			# wall: a nave's cell open on that side keeps her in the room.
+			if least >= 7.0 and OFFICE.real_plan_on() and not room.get("open_sides", []).has("south"): continue
 			out.append(id)
 	return out
 

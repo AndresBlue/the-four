@@ -325,7 +325,7 @@ static func lay_corner(room: Dictionary, zones: Array, gone: Array, kind: String
 ## table recipe's, every one of TABLE_KINDS and its near side's chair.
 static func kinds(t: int) -> Array:
 	var out: Array = []
-	for entry in OFFICE.ROOM_FURNITURE.get(t, []):
+	for entry in OFFICE.ROOM_FURNITURE.get(t, []) + (OFFICE.SMALL_FURNITURE[t][1] if OFFICE.SMALL_FURNITURE.has(t) else []):
 		if String(entry[1]) == "lattice":
 			for kind in OFFICE.LATTICE_KINDS.get(t, []):
 				if not out.has(String(kind)): out.append(String(kind))

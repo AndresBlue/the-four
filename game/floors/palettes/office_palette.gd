@@ -43,6 +43,59 @@ const BAY := 7.2
 const REAL_ROOMS := Vector2i(45, 99)
 const REAL_LEAST_WALKS := [75.0, 0.0, 0.0]
 
+## The real building's programme (planta_real.md 13.4, 13.9), decided before its
+## doors: what each zone of a planta holds, {type: weight}, by planta (Personal,
+## Registro y Archivo, Dirección). Zones: "office", a band cell of an offices bay
+## (3.6 x band); "bay", one of a hall or lift bay (7.2 x band); "corner" and
+## "end", the end columns' cells in a band and in the central rows; "deep" and
+## "narrow", central cells of a hall bay and of an offices bay; "lift", a lift
+## bay's central cell no lift or lobby takes; "core", a core's cells besides its
+## two toilets; "service", the service band. "back" stands for "office" and
+## "bay" in the band beside the gallery where a planta has its own (the second's
+## depots). The salons (naves, archives, directors' suites) are laid first.
+const REAL_ZONES := [
+	{"office": {OFFICE: 10.0, STORE: 0.5}, "bay": {OFFICE: 1.0}, "corner": {OFFICE: 1.0}, "end": {OFFICE: 2.0, STORE: 1.0}, "deep": {BOARDROOM: 1.0, BREAK_ROOM: 1.0, OPEN_OFFICE: 1.0}, "narrow": {COPY_ROOM: 1.0, STORE: 1.0, MOBILE_ARCHIVE: 1.0}, "lift": {BREAK_ROOM: 1.0, BOARDROOM: 1.0}, "core": {COPY_ROOM: 1.0, DEPOT: 1.0}, "service": {STORE: 3.0, DEPOT: 2.0}},
+	{"office": {MOBILE_ARCHIVE: 2.0, OFFICE: 1.5, STORE: 0.5}, "bay": {OFFICE: 3.0, MAIL: 0.3, COPY_ROOM: 0.5}, "back": {DEPOT: 1.0}, "corner": {OFFICE: 1.0}, "end": {MOBILE_ARCHIVE: 1.0, STORE: 1.0}, "deep": {ARCHIVE: 1.0}, "narrow": {MOBILE_ARCHIVE: 1.0}, "lift": {MAIL: 1.0, COPY_ROOM: 1.0}, "core": {DEPOT: 1.0}, "service": {STORE: 2.0, DEPOT: 2.0}},
+	{"office": {OFFICE: 1.0}, "bay": {OFFICE: 1.0}, "corner": {OFFICE: 1.0}, "end": {STORE: 1.0, OFFICE: 1.0}, "deep": {BOARDROOM: 1.0, BREAK_ROOM: 1.0}, "narrow": {STORE: 1.0, COPY_ROOM: 1.0}, "lift": {BOARDROOM: 1.0, BREAK_ROOM: 1.0}, "core": {DEPOT: 1.0, COPY_ROOM: 0.5}, "service": {STORE: 2.0, DEPOT: 2.0}},
+]
+## What each planta must have, in the zone it is put in first, before the
+## zones are drawn (MUSTS as the programme lays them): [type, zones in turn].
+const REAL_MUSTS := [
+	[[BOARDROOM, ["lift", "deep", "bay"]], [BREAK_ROOM, ["lift", "deep", "bay"]], [MAIL, ["bay", "end"]], [COPY_ROOM, ["core", "bay", "narrow"]]],
+	[[MAIL, ["lift", "bay", "end"]], [COPY_ROOM, ["bay", "lift", "narrow"]]],
+	[[BOARDROOM, ["deep", "lift"]], [BREAK_ROOM, ["deep", "lift", "end"]]],
+]
+## The cells each type is laid in by the programme (13.4): [short side at
+## least, at most, long side at least, at most] as ROOM_BANDS, the real
+## building's cells measured. office_test and the plans judge by these.
+const REAL_ROOM_BANDS := {
+	RECEPTION: [4.8, 0.0, 6.0, 0.0],
+	OFFICE: [3.6, 0.0, 4.8, 7.2],
+	SECRETARY: [3.6, 0.0, 4.8, 7.2],
+	EXEC_OFFICE: [4.8, 0.0, 7.2, 0.0],
+	MAIL: [4.8, 0.0, 7.2, 0.0],
+	COPY_ROOM: [3.6, 0.0, 6.0, 0.0],
+	STORE: [3.6, 0.0, 4.8, 0.0],
+	DEPOT: [3.6, 0.0, 4.8, 0.0],
+	TOILETS: [3.6, 3.6, 7.2, 7.2],
+	BOARDROOM: [7.2, 0.0, 7.2, 0.0],
+	BREAK_ROOM: [4.8, 0.0, 7.2, 0.0],
+	ARCHIVE: [7.2, 0.0, 0.0, 0.0],
+	MOBILE_ARCHIVE: [3.6, 0.0, 4.8, 0.0],
+	WINDOW: [3.6, 0.0, 4.8, 7.2],
+	SECURITY: [3.6, 0.0, 4.8, 7.2],
+	ELECTRICAL: [3.6, 0.0, 4.8, 0.0],
+	REFUGE: [7.2, 7.2, 7.2, 7.2],
+	AIR_ROOM: [7.2, 7.2, 7.2, 7.2],
+}
+## Whether a cell is one a type wants on the plan being drawn: REAL_ROOM_BANDS
+## with the real plan on, ROOM_BANDS without.
+static func fits_band_now(room_type: int, room: Dictionary) -> bool:
+	if not real_plan_on(): return fits_band(room_type, room)
+	return in_band(REAL_ROOM_BANDS.get(room_type, []), room)
+## Departments a planta of the real building is cut into along its length (13.9).
+const REAL_DEPARTMENTS := Vector2i(5, 7)
+
 ## The least walks the plan being drawn keeps (the validator asks here).
 static func least_walks() -> Array:
 	return REAL_LEAST_WALKS if real_plan_on() else LEAST_WALKS
@@ -388,6 +441,9 @@ const GAP_SHARE := [0.03, 0.045, 0.06]
 const ARCHIVE_LAYOUT := {"shelf": 2.1, "row": 0.6, "aisle": 1.0, "spine": 1.6, "end_min": 1.0, "door_depth": 1.5, "door_band": 1.0, "inset": 0.15, "wall_gap": [0.0, 0.9]}
 ## Share of wing 1's corridor cells a timer lights.
 const TIMER_COVER := 0.5
+## Where a timer's button may go along a corridor cell's wall in the real
+## building, from its middle, those within its length less 0.6.
+const TIMER_SPOTS := [0.0, 1.2, -1.2, 1.8, -1.8, 2.4, -2.4, 3.0, -3.0]
 ## Corridor lines that are service corridors.
 const GALLERY_SHARE := 0.15
 const WALL_GRILLE_Y := 0.35
@@ -401,6 +457,9 @@ const FURNITURE_TOP := 2.2
 ## offices, the director's, the window, the security post (spec_rediseno
 ## 3.6) and the secretary's.
 const GLAZED_TYPES := [3, 16, 17, 21, 24]
+## In the real building each department's share of them glazed, drawn: its
+## offices glass to the corridor, or blind to it.
+const REAL_GLAZED := [0.9, 0.1]
 ## The zones' stripes, one per department of a planta.
 const STRIPES := [Color("8a7a3c"), Color("5f6b3a"), Color("8b5a3c"), Color("4f6470"), Color("7a6a55"), Color("a39a7a"), Color("6e3b3b"), Color("3f5a4c")]
 ## Departments per planta: [name, focus types]. The first is the one of the
@@ -578,6 +637,30 @@ const ROOM_FURNITURE := {
 	AIR_PLANT: [["air_desk", "spare", 1, 1, 1]],
 	CORRIDOR: [["bin_floor", "hall", 0, 1, 1], ["bench_slat", "hall", 0, 1, 1], ["plant_floor", "hall", 0, 1, 1]],
 }
+## The recipes of the real building's narrow rooms (13.5): [the short side a
+## room keeps under, its recipe], by type. The 3.6 m office's desk of 1.5 x
+## 1.4 in the middle of the far wall between two filing cabinets, a credenza
+## and a cabinet against a side wall; the toilets' cubicles along a long wall;
+## the window's, the copy room's and the secretary's without their tables;
+## the mail room's pigeonholes and sorting table against the walls; the
+## director's office of a band, its lounge where it fits. SMALL_SIDE: a cell
+## this narrow is one bay of 3.6 m.
+const SMALL_SIDE := 4.5
+const SMALL_FURNITURE := {
+	OFFICE: [4.5, [["work_desk", "center", 1, 1, 1], ["filing", "run", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["filing", "side", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bookcase", "spare", 0, 1, 1]]],
+	SECRETARY: [4.5, [["work_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 2], ["printer_cart", "spare", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
+	TOILETS: [4.5, [["cubicles", "wall", 1, 1, 1], ["locker_bank", "spare", 1, 1, 1], ["bench_slat", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
+	WINDOW: [6.5, [["filing", "run", 1, 1, 2], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]]],
+	COPY_ROOM: [6.5, [["copier", "back", 1, 1, 1], ["copier", "side", 1, 1, 1], ["reader_table", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
+	MAIL: [6.5, [["pigeonholes", "wall", 1, 1, 2], ["sorting_table", "side", 1, 1, 1], ["mail_cart", "spare", 1, 1, 2], ["filing", "spare", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]]],
+	EXEC_OFFICE: [6.5, [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["sideboard", "spare", 1, 1, 1], ["lounge", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
+}
+## A room's recipe: SMALL_FURNITURE's where the real building's cell is narrow
+## enough for it, else ROOM_FURNITURE's.
+static func recipe_of(room: Dictionary) -> Array:
+	var small: Array = SMALL_FURNITURE.get(int(room.type), [])
+	if not small.is_empty() and real_plan_on() and minf(float(room.span_x), float(room.span_z)) < float(small[0]): return small[1]
+	return ROOM_FURNITURE.get(int(room.type), [])
 ## A nave's islands, the most desks first, and what stands against an island's
 ## ends in its group (office_generator.lay_islands()), all under 1.3 m.
 const ISLAND_KINDS := ["desk_island_6", "desk_island", "desk_pair"]
@@ -599,7 +682,7 @@ const NAVE_WALL_DEPTH := 0.7
 ## What flanks a piece laid "center" (office_recipes.lay_center()): the director's
 ## desk between two bookcases, as in its reference (spec_proporcion D7); an
 ## office's between its filing cabinets, in sight from its door.
-const CENTER_FLANKS := {"exec_desk": "bookcase", "office_suite": "filing"}
+const CENTER_FLANKS := {"exec_desk": "bookcase", "office_suite": "filing", "work_desk": "filing"}
 ## The corner pieces (RECIPES) a type's furniture stands in for, each with the
 ## piece of its recipe that does: they come back only where it was not laid
 ## (office_recipes.restore()); "", a corner that always
@@ -765,7 +848,11 @@ static func floor_finish(room: Dictionary) -> String:
 
 ## Whether a cell is one a type wants (ROOM_BANDS).
 static func fits_band(room_type: int, room: Dictionary) -> bool:
-	var band: Array = ROOM_BANDS.get(room_type, [])
+	return in_band(ROOM_BANDS.get(room_type, []), room)
+
+## Whether a cell's sides keep to a band ([short at least, at most, long at
+## least, at most], 0 no bound; [] any cell).
+static func in_band(band: Array, room: Dictionary) -> bool:
 	if band.is_empty(): return true
 	var short_side := minf(float(room.span_x), float(room.span_z))
 	var long_side := maxf(float(room.span_x), float(room.span_z))

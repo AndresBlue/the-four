@@ -173,6 +173,8 @@ func built() -> void:
 	var ducts = lurker.ducts
 	var room := -1
 	for id in ducts.room_tiles:
+		# The real building's rooms are as narrow as 3.6 m: one long enough along x for "3 to 6 m behind".
+		if OFFICE.real_plan_on() and float(level.manifest.rooms[int(id)].span_x) < 7.0: continue
 		if int(level.manifest.rooms[int(id)].get("wing", -1)) == 0 and lurker.shell.tray_of.has(int(id)) and not level.hotel.lit(int(id)) and (ducts.room_tiles[id] as Array).size() >= 8:
 			room = int(id)
 			break

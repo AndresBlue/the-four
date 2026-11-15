@@ -3,9 +3,11 @@ extends "res://tools/capture/office_rooms_capture.gd"
 ## put up as the game does, every room lit, and three pictures with the game's
 ## own camera on the first planta: a stretch of the ring corridor looked down,
 ## an office one bay wide (3.6 m) from its doorway, and the service gallery
-## looked down. With a window:
+## looked down; then from their doorways the reception, a nave, a core's
+## toilets, an archive of the second planta and a director's office of the
+## third. With a window:
 ##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent --real-plan [--seed=7] [--quality=2]
-## Writes evidence/planta/capturas/<seed>_{anillo,despacho,galeria}.png. Quits
+## Writes evidence/planta/capturas/<seed>_{anillo,despacho,galeria,...}.png. Quits
 ## saying so when the floor that came up is not the real plan's.
 ## How far down a corridor the eye looks.
 const DOWN := 20.0
@@ -80,7 +82,31 @@ func plan_run() -> void:
 	var gallery: Array = rooms.filter(func(r): return int(r.type) == OFFICE.GALLERY and float(r.span_z) < 3.0)
 	gallery.sort_custom(func(a, b): return float(a.px) < float(b.px) or (float(a.px) == float(b.px) and int(a.id) < int(b.id)))
 	await down(gallery, out_dir + "/%d_galeria.png" % seed_value)
+	# And from their doorways: the reception, a nave, a core's toilets, an
+	# archive of the second planta and a director's office of the third.
+	var all: Array = manifest.rooms.filter(func(r): return not FLOOR.is_void(r))
+	await inside(manifest, all.filter(func(r): return int(r.id) == int(manifest.start)), out_dir + "/%d_recepcion.png" % seed_value)
+	await inside(manifest, all.filter(func(r): return int(r.wing) == 0 and int(r.type) in [OFFICE.OPEN_OFFICE, OFFICE.CUBICLES] and int(r.hall) >= 0), out_dir + "/%d_nave.png" % seed_value)
+	await inside(manifest, all.filter(func(r): return int(r.wing) == 0 and int(r.type) == OFFICE.TOILETS), out_dir + "/%d_aseos.png" % seed_value)
+	await inside(manifest, all.filter(func(r): return int(r.wing) == 1 and int(r.type) == OFFICE.ARCHIVE and int(r.hall) >= 0), out_dir + "/%d_archivo.png" % seed_value)
+	await inside(manifest, all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.EXEC_OFFICE), out_dir + "/%d_direccion.png" % seed_value)
 	quit()
+
+## The first of `rooms` with a doorway, looked into from it.
+func inside(manifest: Dictionary, rooms: Array, path: String) -> void:
+	# A cell with a doorway of its own first: a salon's others only open on to it.
+	rooms.sort_custom(func(a, b): return FLOOR.doorways(a).size() > FLOOR.doorways(b).size())
+	for room in rooms:
+		var door: Dictionary = FRAMING.door_of(manifest.rooms, room)
+		open_doors(door.portal)
+		var hidden: Array = hide_leaves(door.portal)
+		var view := FRAMING.view_of(room, door)
+		look(view.from, view.at)
+		(await grab(false)).save_png(path)
+		for mesh in hidden: mesh.visible = true
+		print("PLAN_CAPTURE %s from %d (%s %.1f x %.1f)" % [path, int(room.id), OFFICE.label(room), float(room.span_x), float(room.span_z)])
+		return
+	print("PLAN_CAPTURE nothing for %s" % path)
 
 ## Looking east down the first stretch of `cells` (sorted west to east) from the
 ## middle of its second cell, at eye height.

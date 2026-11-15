@@ -3,7 +3,9 @@ extends SceneTree
 ## nothing built: whether each seed gives a floor without the standby one and
 ## why tries fail, the validator's codes on what comes out, the metres from
 ## the way in to the exit per planta, where the reception, the lifts and the
-## air room fall and how that spreads, and the rules of 13.11 to 13.14.
+## air room fall and how that spreads, and the rules of 13.11 to 13.14; and
+## per planta its rings, lockers, square metres and rooms by size, and the
+## light layers each floor takes (room_layers, as light_layers_scan counts them).
 ##   godot --headless --script tools/dev/office_plan_metrics.gd -- 200 [--survivors=N]
 ## The floor of a seed is the first try that comes out (office_plan.floor_of()),
 ## so a validator not yet rewritten for the real plan does not hide it.
@@ -14,6 +16,7 @@ const VALIDATOR := preload("res://game/world/generation/office_validator.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const METRICS := preload("res://tools/dev/office_metrics.gd")
+const LAYERS := preload("res://game/world/hotel/room_layers.gd")
 
 func _initialize() -> void:
 	var floors := 200
@@ -41,6 +44,13 @@ func _initialize() -> void:
 	var stations: Array = []
 	var naves := 0
 	var times: Array = []
+	var lockers := [[], [], []]
+	var rings := [[], [], []]
+	var floor_m2 := [[], [], []]
+	var sizes := [{}, {}, {}]
+	var layers_most := 0
+	var layers_full := 0
+	var clashes := 0
 	for run_seed in range(1, floors + 1):
 		var generator = GEN.new()
 		generator.areas = OFFICE.areas_for(survivors)
@@ -76,6 +86,36 @@ func _initialize() -> void:
 				if area < 30.0: under += 1
 			rooms[p].append(count)
 			small[p].append(float(under) / maxf(1.0, float(count)))
+			# Rings as the validator counts them, the floor's square metres, the
+			# rooms' sizes by band (a salon whole) and the lockers.
+			var doors := 0
+			var cells := 0
+			var m2 := 0.0
+			var seen_size := {}
+			for room in data.rooms:
+				if int(room.wing) != p or FLOOR.is_void(room): continue
+				cells += 1
+				doors += data.adjacency[int(room.id)].size()
+				m2 += float(room.span_x) * float(room.span_z)
+				if bool(room.corridor) or int(room.type) in [OFFICE.LANDING, OFFICE.LOBBY]: continue
+				var key := int(room.hall) if int(room.hall) >= 0 else int(room.id)
+				seen_size[key] = float(seen_size.get(key, 0.0)) + float(room.span_x) * float(room.span_z)
+			# Less the rings inside a salon, as the validator (rings_ok()).
+			var hall_cells := {}
+			var seams := {}
+			for room in data.rooms:
+				if int(room.wing) == p and int(room.hall) >= 0 and not FLOOR.is_void(room): hall_cells[int(room.hall)] = int(hall_cells.get(int(room.hall), 0)) + 1
+			for pair in data.merged:
+				var a: Dictionary = data.rooms[int(pair[0])]
+				if int(a.wing) == p and int(a.hall) >= 0 and int(a.hall) == int(data.rooms[int(pair[1])].hall): seams[int(a.hall)] = int(seams.get(int(a.hall), 0)) + 1
+			var inside := 0
+			for hall in hall_cells: inside += maxi(0, int(seams.get(hall, 0)) - int(hall_cells[hall]) + 1)
+			rings[p].append(doors / 2 - cells + 1 - inside)
+			floor_m2[p].append(m2)
+			for key in seen_size:
+				var a: float = seen_size[key]
+				var band := "<15" if a < 15.0 else "15-30" if a < 30.0 else "30-50" if a < 50.0 else "50-100" if a < 100.0 else ">=100"
+				sizes[p][band] = int(sizes[p].get(band, 0)) + 1
 		for want in [["window", 0, OFFICE.WINDOW], ["electrical", 1, OFFICE.ELECTRICAL], ["security", 2, OFFICE.SECURITY]]:
 			var found := VALIDATOR.of_type(data, int(want[1]), int(want[2]))
 			specials[want[0]].append(VALIDATOR.share_in(data, int(want[1]), int(found[0].id)) if found.size() == 1 else -1.0)
@@ -105,6 +145,15 @@ func _initialize() -> void:
 			power_zones.append(zones.size())
 			power_ceiling.append(float(lined) / maxf(1.0, float(path.size())))
 		var m := METRICS.floor_measures(data)
+		for p in 3: lockers[p].append(int(m.lockers[p]))
+		var assigned := LAYERS.assign(data)
+		var used := {}
+		for bit in assigned.layer:
+			if bit != 0: used[bit] = true
+		for room in assigned.cars: used[assigned.cars[room]] = true
+		layers_most = maxi(layers_most, used.size())
+		if used.size() >= 16: layers_full += 1
+		clashes += int(assigned.clashes)
 		timers.append(float(m.timer_cover))
 		stations.append(int(m.stations))
 		if not data.get("nave", {}).is_empty() or data.rooms.any(func(r): return String(r.get("nave_axis", "")) != ""): naves += 1
@@ -134,6 +183,15 @@ func _initialize() -> void:
 	print("PLAN_METRICS cuadro a B: zonas cruzadas %s, bajo falso techo %s, pisos con 3 zonas o más %d de %d" % [str(spread(power_zones)), str(spread(power_ceiling)), power_zones.filter(func(n): return int(n) >= 3).size(), power_zones.size()])
 	print("PLAN_METRICS minuteros (cobertura de la planta 2) %s, estaciones %s, pisos con nave %d" % [str(spread(timers)), str(spread(stations)), naves])
 	print("PLAN_METRICS ms por semilla %s" % str(spread(times)))
+	for p in 3:
+		print("PLAN_METRICS planta %d: vueltas %s, taquillas %s, m2 %s, salas por tamaño (m2) %s" % [p + 1, str(spread(rings[p])), str(spread(lockers[p])), str(spread(floor_m2[p])), str(sizes[p])])
+		out["rings_%d" % p] = spread(rings[p])
+		out["lockers_%d" % p] = spread(lockers[p])
+		out["m2_%d" % p] = spread(floor_m2[p])
+		out["sizes_%d" % p] = sizes[p]
+	print("PLAN_METRICS capas de luz: como mucho %d de 16, pisos que llegan a 16: %d, choques %d" % [layers_most, layers_full, clashes])
+	out["layers_most"] = layers_most
+	out["layers_full"] = layers_full
 	out["power_zones"] = spread(power_zones)
 	out["power_ceiling"] = spread(power_ceiling)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://evidence/planta"))

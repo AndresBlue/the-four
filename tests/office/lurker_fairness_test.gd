@@ -408,7 +408,8 @@ func find_corridor() -> Dictionary:
 	for room in level.manifest.rooms:
 		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR: continue
 		var span := FLOOR.size_of(room)
-		if maxf(span.x, span.y) < 8.0 or not level.creature.shell.tray_of.has(int(room.id)): continue
+		# The real building's corridor cells are a bay long, 7.2 m at most.
+		if maxf(span.x, span.y) < (7.0 if OFFICE.real_plan_on() else 8.0) or not level.creature.shell.tray_of.has(int(room.id)): continue
 		if level.manifest.adjacency[int(room.id)].any(func(other): return off.has(int(other))): continue
 		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
 		return {"room": int(room.id), "centre": FLOOR.position_of(room), "along": along}

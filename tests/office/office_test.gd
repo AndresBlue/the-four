@@ -8,7 +8,9 @@ extends SceneTree
 ## furniture as the design asks, in time, without moving the hotel's.
 ## verify.ps1 runs it as three parts side by side (`part`, set by
 ## office_test_generator.gd, office_test_validator.gd and
-## office_test_physics.gd); on its own it runs all of them.
+## office_test_physics.gd); on its own it runs all of them. With --real-plan
+## it judges the real building (.claude/specs/planta_real.md 13) by its own
+## figures where they differ.
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const HOTEL := preload("res://game/floors/palettes/hotel_palette.gd")
 const KIND := preload("res://game/floors/office_floor.gd")
@@ -138,8 +140,10 @@ func palette_tables() -> void:
 	var sizes_same := true
 	for survivors in range(0, 7):
 		if OFFICE.area_for(survivors) != HOTEL.area_for(survivors) or OFFICE.areas_for(survivors) != HOTEL.areas_for(survivors): sizes_same = false
+	# The real building's window of rooms is its own (planta_real.md 13.20).
 	for area in [0.5, 1.0, 1.2, 1.35]:
-		if OFFICE.rooms_window(area) != HOTEL.rooms_window(area) or OFFICE.rings(area) != HOTEL.rings(area) or OFFICE.tv_rooms(area) != 0: sizes_same = false
+		var window: Vector2i = Vector2i(roundi(float(OFFICE.REAL_ROOMS.x) * area), roundi(float(OFFICE.REAL_ROOMS.y) * area)) if OFFICE.real_plan_on() else HOTEL.rooms_window(area)
+		if OFFICE.rooms_window(area) != window or OFFICE.rings(area) != HOTEL.rings(area) or OFFICE.tv_rooms(area) != 0: sizes_same = false
 	check("El tamaño del piso, sus ventanas y sus anillos son los del hotel, y no pide teles", sizes_same)
 	check("Nada es doméstico, y uno se esconde en taquillas", range(TYPE_COUNT).all(func(type): return not OFFICE.domestic({"type": type})) and OFFICE.hide_kind({"type": OFFICE.TOILETS}) == "locker")
 	check("Un manifiesto del piso 2 es de la paleta de oficinas; uno sin piso, del hotel", FLOOR.palette({"floor": 2}) == OFFICE and FLOOR.palette({}) == HOTEL)
@@ -484,14 +488,17 @@ func floor_specials(m: Dictionary, tag: String) -> void:
 	var freight := share_of(m, int(m.refuges[1]))
 	if freight < 0.8: note(T_FREIGHT, "%s: montacargas a %.2f" % [tag, freight])
 	var walk := float(FLOOR.route_metres(m, int(m.entries[0])).get(int(m.refuges[0]), 0.0))
-	if walk < float(OFFICE.LEAST_WALKS[0]) * sqrt(float(m.areas[0])): note(T_FREIGHT, "%s: paseo %.1f" % [tag, walk])
+	if walk < float(OFFICE.least_walks()[0]) * sqrt(float(m.areas[0])) - (0.5 if OFFICE.real_plan_on() else 0.0): note(T_FREIGHT, "%s: paseo %.1f" % [tag, walk])
 
 ## What finish() promises: the musts, the archive salon, toilets by sector,
 ## the mobile archives, the depots and the departments.
 func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
 	var specials := [OFFICE.WINDOW, OFFICE.ELECTRICAL, OFFICE.SECURITY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT, OFFICE.RECEPTION, OFFICE.LANDING, OFFICE.LOBBY, OFFICE.REFUGE]
 	for planta in 3:
-		var musts: Dictionary = OFFICE.MUSTS[planta]
+		var musts: Dictionary = OFFICE.MUSTS[planta].duplicate()
+		# A real building's smaller planta of a floor for one keeps the half with
+		# its two cores: no room there for the archives' salons.
+		if OFFICE.real_plan_on() and float(m.areas[planta]) < float(m.areas.max()): musts.erase(OFFICE.ARCHIVE)
 		for t in musts:
 			var units := 0
 			var halls := {}
@@ -505,7 +512,7 @@ func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
 			var free := 0
 			for room in m.rooms:
 				if int(room.wing) != planta or int(room.type) == OFFICE.VOID or String(room.kind) != "module" or bool(room.corridor) or bool(room.service) or int(room.hall) >= 0: continue
-				if not OFFICE.fits_band(OFFICE.BOARDROOM, room) or specials.has(int(room.type)) or musts.has(int(room.type)): continue
+				if not OFFICE.fits_band_now(OFFICE.BOARDROOM, room) or specials.has(int(room.type)) or musts.has(int(room.type)): continue
 				if planta == 2 and m.air.main.cells.has(int(room.id)): continue
 				free += 1
 			if int(t) != OFFICE.BOARDROOM or free > 0: note(T_MUSTS, "%s: planta %d tipo %d, %d de %d, %d candidatas" % [tag, planta, int(t), units, int(musts[t]), free])
@@ -547,6 +554,15 @@ func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
 			ordered.sort_custom(func(x, y): return int(x.min()) < int(y.min()))
 			for members in ordered.slice(0, int(OFFICE.MUSTS[planta][t])):
 				for id in members: kept[int(id)] = true
+	# In the real building the toilets are the cores' (planta_real.md 13.4): two
+	# side by side, never one alone, and a pair on every planta.
+	if OFFICE.real_plan_on():
+		for planta in 3:
+			var toilets := of_type(m, planta, OFFICE.TOILETS)
+			if toilets.size() < 2: note(T_TOILETS, "%s: planta %d, %d aseos" % [tag, planta, toilets.size()])
+			for room in toilets:
+				if not [Vector2i(1, 0), Vector2i(-1, 0)].any(func(way): return FLOOR.beside(room, way) >= 0 and int(m.rooms[FLOOR.beside(room, way)].type) == OFFICE.TOILETS): note(T_TOILETS, "%s: aseo suelto %d" % [tag, int(room.id)])
+		sectors = {}
 	for key in sectors:
 		var types: Array = sectors[key].map(func(room): return int(room.type))
 		if types.size() < 5 or types.has(OFFICE.TOILETS): continue
@@ -795,7 +811,7 @@ func floor_recipes(m: Dictionary, tag: String, tally: Dictionary) -> void:
 		var t := int(room.type)
 		var id := int(room.id)
 		var furniture: Array = room.get("furniture", [])
-		var recipe: Array = OFFICE.ROOM_FURNITURE.get(t, [])
+		var recipe: Array = OFFICE.recipe_of(room)
 		if not recipe.is_empty():
 			tally.rooms = int(tally.rooms) + 1
 			if String(room.get("feature", "")) == "": tally.featureless = int(tally.featureless) + 1
@@ -1342,6 +1358,9 @@ func revival_clear(level, run_seed: int, bad: Array) -> int:
 static func sizes_fit(room: Dictionary) -> bool:
 	var x := float(room.span_x)
 	var z := float(room.span_z)
+	# The real building: every side a multiple of the 0.6 m tile, from the
+	# gallery's 2.4 to the structure's 7.2 (planta_real.md 13.2).
+	if OFFICE.real_plan_on(): return [x, z].all(func(side): return absf(snappedf(side, 0.6) - side) < 0.001 and side > 2.4 - 0.001 and side < OFFICE.BAY + 0.001)
 	match String(room.get("kind", "module")):
 		"module": return among(x, OFFICE.MODULE_SIZES) and among(z, OFFICE.MODULE_SIZES)
 		"cross": return among(x, OFFICE.LANE_WIDTHS) and among(z, OFFICE.LANE_WIDTHS)
