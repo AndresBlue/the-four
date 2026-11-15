@@ -1391,7 +1391,9 @@ func duct_cuts(boundary: Node3D, x: float, length: float, height: float) -> Arra
 			var p: Vector3 = to_local * box.get_endpoint(i)
 			low = low.min(p)
 			high = high.max(p)
-		if low.z > 0.09 or high.z < -0.09 or low.y >= height: continue
+		# Under the wall's floor too: in the real building a planta 1 wall stands
+		# over planta 3's duct in plan, and its cut stretched the wall down to it.
+		if low.z > 0.09 or high.z < -0.09 or low.y >= height or high.y <= 0.0: continue
 		var a := maxf(low.x, x - length * 0.5)
 		var b := minf(high.x, x + length * 0.5)
 		if b - a > 0.01: cuts.append([a, b, maxf(low.y, 0.0), minf(high.y, height)])

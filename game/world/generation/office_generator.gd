@@ -385,8 +385,9 @@ func place_air(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i, r
 	var tried: Array = []
 	var security := try_security(f, alive, arrival, back, refuge, rng, standby, pool, band, tried)
 	# The band gives way before the planta is drawn again (spec_proporcion D9): the
-	# cells out of it, once every one in it was refused.
-	if security < 0 and not standby:
+	# cells out of it, once every one in it was refused. Not in the real building,
+	# where the post is at the cut of the ring or the try is drawn again (13.13).
+	if security < 0 and not standby and (building.is_empty() or building.programme[2].security.is_empty()):
 		var rest: Array = candidates(f, alive, arrival, refuge, shares, band, standby, false, [air_room, air_plant], false, -1).filter(func(entry): return not tried.has(int(entry.room)))
 		security = try_security(f, alive, arrival, back, refuge, rng, standby, rest, band, tried)
 	if security < 0:
@@ -1609,6 +1610,14 @@ func furnish_glass(job: Dictionary) -> String:
 			done = true
 			break
 	if not done: return "window_glass"
+	# The real building's security post looks out through glass on the corridor
+	# it is come to by, at the cut of the ring (13.13).
+	if not building.is_empty():
+		var post := int(f.specials[2].security)
+		for n in f.adjacency[post]:
+			if not bool(rooms[int(n)].corridor): continue
+			var wall := LAYOUT.wall_of(Vector2i(int(rooms[n].x) - int(rooms[post].x), int(rooms[n].z) - int(rooms[post].z)))
+			if wall != "" and glazable(job, rooms[post], wall): glaze(job, rooms[post], wall)
 	# In the real building a department's offices are glazed to its corridor or
 	# blind to it, all alike (13.10, the long ring broken in stretches).
 	var share := {}
@@ -1628,7 +1637,7 @@ func furnish_glass(job: Dictionary) -> String:
 func glazable(job: Dictionary, room: Dictionary, wall: String) -> bool:
 	var f: Dictionary = job.f
 	var rooms: Array = f.rooms
-	if not palette.GLAZED_TYPES.has(int(room.type)) or room.get("open_sides", []).has(wall): return false
+	if not palette.GLAZED_TYPES.has(int(room.type)) or room.get("open_sides", []).has(wall) or room.get("glazed", []).has(wall): return false
 	var way := LAYOUT.way_of(wall)
 	var n := FLOOR.beside(room, way)
 	if n < 0: return false
@@ -2079,17 +2088,22 @@ func lay_wall_rows(room: Dictionary, zones: Array) -> void:
 ## A cubicles nave's islands shut their ends as well. A desk pair's island
 ## screens none: its own screen is drawn with it.
 func island_screens(room: Dictionary, island: Dictionary, b: int) -> void:
-	if String(island.kind) == "desk_pair": return
+	# In the real building's cubicles nave a pair is often all that fits, between a
+	# doorway's street to the aisle and a column (13.2's cells of 3.6 and 7.2): its
+	# ends shut as a booth's all the same, so a cubicles nave has its screens.
+	var pair := String(island.kind) == "desk_pair"
+	if pair and (building.is_empty() or int(room.type) != palette.CUBICLES): return
 	var foot := LAYOUT.footprint(island)
 	var long: float = foot.size[b]
 	var turn := int(island.turn)
 	var group := int(island.extra.group)
-	room.furniture.append(item("partition", foot.get_center(), turn, group, long))
-	var pairs: int = maxi(1, roundi(long / ISLAND_PITCH))
-	for k in pairs - 1:
-		var at := foot.get_center()
-		at[b] += (float(k) + 1.0 - float(pairs) / 2.0) * ISLAND_PITCH
-		room.furniture.append(item("partition", at, (turn + 1) % 4, group, ISLAND_PITCH))
+	if not pair:
+		room.furniture.append(item("partition", foot.get_center(), turn, group, long))
+		var pairs: int = maxi(1, roundi(long / ISLAND_PITCH))
+		for k in pairs - 1:
+			var at := foot.get_center()
+			at[b] += (float(k) + 1.0 - float(pairs) / 2.0) * ISLAND_PITCH
+			room.furniture.append(item("partition", at, (turn + 1) % 4, group, ISLAND_PITCH))
 	# Cubicles: each end shut too, every desk in a booth of screens.
 	if int(room.type) != palette.CUBICLES: return
 	for side: float in [-1.0, 1.0]:
@@ -2122,6 +2136,14 @@ func lay_table(room: Dictionary, zones: Array) -> void:
 	var along_x: Array = [[Vector2(0, TABLE_OFFSET), 0], [Vector2(0, -TABLE_OFFSET), 2]]
 	var along_z: Array = [[Vector2(TABLE_OFFSET, 0), 1], [Vector2(-TABLE_OFFSET, 0), 3]]
 	var spots: Array = along_x + along_z if float(room.span_x) >= float(room.span_z) else along_z + along_x
+	# The real building's boardroom is one bay square with a door on two of its
+	# sides, and the ways in from them cross both middle spots: the table also
+	# slid along its own length toward a quieter end.
+	if not building.is_empty():
+		for spot in spots.duplicate():
+			for slide: float in [0.6, -0.6, 1.0, -1.0]:
+				var shift := Vector2(slide, 0) if int(spot[1]) % 2 == 0 else Vector2(0, slide)
+				spots.append([(spot[0] as Vector2) + shift, spot[1]])
 	for kind in palette.TABLE_KINDS:
 		for spot in spots:
 			var piece := item(String(kind), spot[0], int(spot[1]), 0)
@@ -2140,7 +2162,8 @@ func lay_near_chairs(room: Dictionary, zones: Array) -> void:
 	if room.furniture.is_empty(): return
 	var table: Dictionary = room.furniture[0]
 	var spot := Vector2(float(table.at[0]), float(table.at[1]))
-	var outward := spot.normalized()
+	# Off the middle across the table's length (a table slid along it, lay_table()).
+	var outward := Vector2(0.0, signf(spot.y)) if int(table.turn) % 2 == 0 else Vector2(signf(spot.x), 0.0)
 	var sideways := Vector2(-outward.y, outward.x)
 	var chair: Vector2 = palette.FURNITURE.table_chair.size
 	var line := spot - outward * (float(table.size[1]) + chair.y) / 2
@@ -3260,7 +3283,11 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 			c += 1
 		shuffle(runs, rng)
 		runs.sort_custom(func(a, b): return a.size() > b.size())
-		for members in runs: group.call("nave", members, palette.CUBICLES if rng.randf() < 0.5 else palette.OPEN_OFFICE)
+		# Personal works in both (planta_real.md 6): the first nave drawn, the next the other kind.
+		var kind: int = palette.CUBICLES if rng.randf() < 0.5 else palette.OPEN_OFFICE
+		for members in runs:
+			group.call("nave", members, kind)
+			kind = palette.OPEN_OFFICE if kind == palette.CUBICLES else palette.CUBICLES
 	match laying:
 		1:
 			# An archive along each central row, from a core to the middle cross;
@@ -3309,27 +3336,7 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 						taken[secretary] = true
 						pairs.append([one if secretary == one - 1 else two, secretary])
 						break
-			# The suites: in each band a director's office is a whole bay of 7.2 m
-			# (a hall or lift bay), its secretary's the cell beside it, a door
-			# between them; a bay of 3.6 m left between suites, two advisers'
-			# offices. Taken in a drawn order, so suites fall on either side.
-			for r in rows.size():
-				if not String(rows[r].role) in ["front", "back"]: continue
-				var bays: Array = []
-				for c in width:
-					if String(columns[c].role) in ["hall", "lift_a", "lift_b"] and room.call(int(r) * width + c): bays.append(int(r) * width + c)
-				shuffle(bays, rng)
-				for director in bays:
-					if taken.has(director): continue
-					var sides: Array = [director - 1, director + 1]
-					if rng.randf() < 0.5: sides.reverse()
-					for secretary: int in sides:
-						if secretary / width != director / width or not room.call(secretary): continue
-						group.call("exec", [director], palette.EXEC_OFFICE)
-						types[secretary] = palette.SECRETARY
-						taken[secretary] = true
-						pairs.append([director, secretary])
-						break
+			band_suites(rows, columns, room, group, types, taken, pairs, rng)
 	# The toilets two by two in a row of each core, the rest of the core from its zone.
 	for core in ["core_a", "core_b"]:
 		var cols: Array = range(width).filter(func(k): return columns[k].role == core)
@@ -3367,6 +3374,60 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 		types[int(local)] = int(weighted(weight_list(weights), rng).type)
 	programme["sectors"] = departments_of(alive, into)
 	return programme
+
+## The third planta's bands (13.4): suites of whole bays, no partition down
+## the middle of one. Each run of bays between two crosses alternates a
+## director's office and a secretary's, the directors on the offices bays as
+## far as the run lets them (their two cells of 3.6 one room, palette
+## NARROW_EXEC) and the secretaries on the bays of 7.2; each director a door to one secretary beside it, each
+## secretary to one director at least (a run of suites crossed through its
+## anterooms, 6). A bay alone between crosses, or with a cell already taken
+## (the security post's), is left to its zone.
+func band_suites(rows: Array, columns: Array, room: Callable, group: Callable, types: Dictionary, taken: Dictionary, pairs: Array, rng: RandomNumberGenerator) -> void:
+	var width := columns.size()
+	for r in rows.size():
+		if not String(rows[r].role) in ["front", "back"]: continue
+		var runs: Array = [[]]
+		var c := 0
+		while c < width:
+			var role := String(columns[c].role)
+			var cells: Array = [int(r) * width + c]
+			if role in ["offices", "core_a", "core_b"]: cells.append(int(r) * width + c + 1)
+			c += cells.size()
+			if columns[c - cells.size()].lane or role == "end" or not cells.all(func(m): return room.call(int(m))):
+				if not runs[-1].is_empty(): runs.append([])
+				continue
+			runs[-1].append(cells)
+		for run: Array in runs:
+			if run.size() < 2: continue
+			# The parity that puts the most offices bays under a director, a tie drawn.
+			var wide := [0, 0]
+			for i in run.size():
+				if run[i].size() == 2: wide[i % 2] += 1
+			var first: int = 0 if wide[0] > wide[1] else 1 if wide[1] > wide[0] else rng.randi_range(0, 1)
+			var paired := {}
+			for i in run.size():
+				if (i + first) % 2 != 0:
+					for m in run[i]:
+						types[int(m)] = palette.SECRETARY
+						taken[int(m)] = true
+			for i in run.size():
+				if (i + first) % 2 != 0: continue
+				group.call("exec", run[i], palette.EXEC_OFFICE)
+				var sides: Array = [i - 1, i + 1].filter(func(j): return j >= 0 and j < run.size())
+				var j: int = sides[rng.randi_range(0, sides.size() - 1)]
+				var mine := int(run[i][0]) if j < i else int(run[i][-1])
+				var theirs := int(run[j][-1]) if j < i else int(run[j][0])
+				pairs.append([mine, theirs])
+				paired[theirs] = true
+			# A secretary no director chose: the one beside it, or none (an adviser's office).
+			for i in run.size():
+				if (i + first) % 2 == 0: continue
+				for m in run[i]:
+					if paired.has(int(m)): continue
+					var by: Array = [int(m) - 1, int(m) + 1].filter(func(n): return int(types.get(n, -1)) == palette.EXEC_OFFICE and run.any(func(bay): return bay.has(n)))
+					if by.is_empty(): types[int(m)] = palette.OFFICE
+					else: pairs.append([int(by[rng.randi_range(0, by.size() - 1)]), int(m)])
 
 ## The departments of the planta (13.9): its bays cut into REAL_DEPARTMENTS
 ## runs along the building, as even as the bays let them, never across a cross
@@ -3570,6 +3631,16 @@ func open_doors(f: Dictionary, alive: Dictionary, corridor: Dictionary, arrival:
 				for m in outs:
 					var to: int = corridor_of.call(int(m), WAYS)
 					if to >= 0: link(f, base + int(m), base + to)
+				# A smaller planta of a floor for one has its gallery come to only at its
+				# two ends, and its middle was the deepest of the planta, past B (13.15):
+				# the row's middle depot opens on to it too, where the goods come in.
+				if float(areas[laying]) < float(areas.max()):
+					var middle := int(members[members.size() / 2])
+					for way in WAYS:
+						var next := step(f, middle, way)
+						if next >= 0 and corridor.has(next) and int(at(f, next).z) == gallery:
+							link(f, base + middle, base + next)
+							break
 	for pair in programme.pairs: link(f, base + int(pair[0]), base + int(pair[1]))
 	for local in cells:
 		if int(programme.types.get(local, -1)) != palette.BOARDROOM or grouped.has(local): continue
@@ -3711,9 +3782,10 @@ func special_fits(room: Dictionary, room_type: int) -> bool:
 	var role: String = building.rows[int(room.z)].role
 	var local := int(room.z) * int(room.cols) + int(room.x)
 	var programme: Dictionary = building.programme[laying]
-	# On a smaller planta of a floor for one its half of the gallery may hold no
-	# cell at that depth: the band beside the gallery too (13.15).
-	if room_type == palette.ELECTRICAL: return role == "service" or (role == "back" and float(areas[laying]) < float(areas.max()))
+	# On a smaller planta of a floor for one its gallery is not walled (13.15): the
+	# power room in the band beside it, opening on the main corridor, so it still
+	# has no way to B along the gallery (13.12).
+	if room_type == palette.ELECTRICAL: return role == "back" if float(areas[laying]) < float(areas.max()) else role == "service"
 	if room_type == palette.SECURITY and not programme.security.is_empty(): return programme.security.has(local)
 	if room_type == palette.WINDOW: return role in ["front", "back"] and int(programme.types.get(local, -1)) == palette.OFFICE and not programme.security.has(local)
 	return role in ["front", "back"]

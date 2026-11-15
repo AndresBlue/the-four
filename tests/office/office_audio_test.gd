@@ -359,6 +359,11 @@ func shriek_and_car() -> void:
 	var ear: Vector3 = level.player.camera.global_position
 	var forward: Vector3 = -level.player.camera.global_basis.z
 	var at: Vector3 = ear + Vector3(forward.x, 0, forward.z).normalized() * 3.0
+	# The real building's office is 3.6 m across: 3 m ahead of its middle is
+	# through its wall, so the shriek goes 2 m along its long side, still in it.
+	if OFFICE.real_plan_on():
+		var long := Vector3(1, 0, 0) if float(room_r.span_x) >= float(room_r.span_z) else Vector3(0, 0, 1)
+		at = ear + long * 2.0
 	level.player.sanity = 80.0
 	level.sanity.sight_rest = 0.0
 	level.sanity.sight_paid = 0.0

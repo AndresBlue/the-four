@@ -21,8 +21,10 @@ const WIDE := 48
 const HIGH := 32
 ## How high a corner piece counts in the frame.
 const CORNER_TOP := 1.2
-## What a main piece is, by kinds (the board and the handler are the manifest's).
-const MAIN_KINDS := {"recepcion": ["reception_counter_l"], "correo": ["pigeonholes"], "aseos": ["locker_bank"], "juntas": ["meeting_table_s", "meeting_table_m", "meeting_table_l"], "reprografia": ["copier", "work_table"], "descanso": ["kitchen", "dining_set"], "despacho": ["office_suite"], "direccion": ["exec_desk"], "secretaria": ["secretary_desk"]}
+## What a main piece is, by kinds (the board and the handler are the manifest's);
+## the work desk is the real building's office, secretary's and director's of
+## 3.6 m, and the cubicles its toilets' (SMALL_FURNITURE, NARROW_EXEC).
+const MAIN_KINDS := {"recepcion": ["reception_counter_l"], "correo": ["pigeonholes"], "aseos": ["locker_bank", "cubicles"], "juntas": ["meeting_table_s", "meeting_table_m", "meeting_table_l"], "reprografia": ["copier", "work_table"], "descanso": ["kitchen", "dining_set"], "despacho": ["office_suite", "work_desk"], "direccion": ["exec_desk", "work_desk"], "secretaria": ["secretary_desk", "work_desk"]}
 ## The mobile archive: a floor may have none, and its rows fill past MOST_FLOOR.
 const NO_CAP := ["archivo_movil"]
 ## The types that must keep to their band in half their rooms or more.
@@ -229,7 +231,7 @@ func run() -> void:
 			for room in m.rooms:
 				if (row[1] as Array).has(int(room.type)) and not FLOOR.is_void(room):
 					floors[name_of].append(floor_taken(room, things_of(m, room)))
-					bands[name_of].append(100.0 if OFFICE.fits_band(int(room.type), room) else 0.0)
+					bands[name_of].append(100.0 if OFFICE.fits_band_now(int(room.type), room) else 0.0)
 			var framed := first_room(m, row[4])
 			if framed.is_empty(): continue
 			var camera := camera_of(FRAMING.view_of(framed, FRAMING.door_of(m.rooms, framed)))

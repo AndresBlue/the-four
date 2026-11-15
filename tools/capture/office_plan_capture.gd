@@ -5,9 +5,11 @@ extends "res://tools/capture/office_rooms_capture.gd"
 ## an office one bay wide (3.6 m) from its doorway, and the service gallery
 ## looked down; then from their doorways the reception, a nave, a core's
 ## toilets, an archive of the second planta and a director's office of the
-## third. With a window:
-##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent --real-plan [--seed=7] [--quality=2]
-## Writes evidence/planta/capturas/<seed>_{anillo,despacho,galeria,...}.png. Quits
+## third; the reception from its lift's doors, a director's office from its
+## secretary's, the third's boardroom and its security post from the corridor.
+## With a window:
+##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent --real-plan [--seed=7] [--quality=2] [--out=evidence/planta/capturas]
+## Writes <out>/<seed>_{anillo,despacho,galeria,...}.png. Quits
 ## saying so when the floor that came up is not the real plan's.
 ## How far down a corridor the eye looks.
 const DOWN := 20.0
@@ -25,6 +27,8 @@ func plan_run() -> void:
 		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
 		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
 	var out_dir := "res://evidence/planta/capturas"
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--out="): out_dir = "res://" + argument.trim_prefix("--out=").trim_prefix("res://")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	level.settings.values = level.settings.DEFAULTS.duplicate()
 	level.settings.set_designed(quality)
@@ -90,6 +94,47 @@ func plan_run() -> void:
 	await inside(manifest, all.filter(func(r): return int(r.wing) == 0 and int(r.type) == OFFICE.TOILETS), out_dir + "/%d_aseos.png" % seed_value)
 	await inside(manifest, all.filter(func(r): return int(r.wing) == 1 and int(r.type) == OFFICE.ARCHIVE and int(r.hall) >= 0), out_dir + "/%d_archivo.png" % seed_value)
 	await inside(manifest, all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.EXEC_OFFICE), out_dir + "/%d_direccion.png" % seed_value)
+	# The reception as the hotel's lift opens on it: from just inside its doors.
+	var start: Dictionary = manifest.rooms[int(manifest.start)]
+	if manifest.has("arrival_lift"):
+		var way := Vector3(float(manifest.arrival_lift[0]), 0, float(manifest.arrival_lift[1]))
+		var reach: float = (float(start.span_x) if absf(way.x) > 0.5 else float(start.span_z)) * 0.5 - 0.5
+		var from := FLOOR.position_of(start) + way * reach + Vector3(0, FRAMING.EYE, 0)
+		look(from, from - way * 6.0 - Vector3(0, 0.3, 0))
+		(await grab(false)).save_png(out_dir + "/%d_recepcion_ascensor.png" % seed_value)
+		print("PLAN_CAPTURE recepcion desde el ascensor %d" % int(start.id))
+	# Dirección: a director's office seen from its secretary's, the door between open.
+	for s in all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.SECRETARY):
+		var exec := -1
+		for n in manifest.adjacency[int(s.id)]:
+			if int(manifest.rooms[int(n)].type) == OFFICE.EXEC_OFFICE: exec = int(n)
+		if exec < 0: continue
+		var e: Dictionary = manifest.rooms[exec]
+		var portal := FLOOR.portal_between(s, e)
+		open_doors(portal)
+		var hidden: Array = hide_leaves(portal)
+		var into := (portal - FLOOR.position_of(s))
+		into.y = 0.0
+		var from := portal - into.normalized() * minf(into.length() + 1.0, 3.2) + Vector3(0, FRAMING.EYE, 0)
+		look(from, FLOOR.position_of(e) + Vector3(0, 1.1, 0))
+		(await grab(false)).save_png(out_dir + "/%d_suite.png" % seed_value)
+		for mesh in hidden: mesh.visible = true
+		print("PLAN_CAPTURE suite: secretaria %d, direccion %d" % [int(s.id), exec])
+		break
+	await inside(manifest, all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.BOARDROOM), out_dir + "/%d_juntas.png" % seed_value)
+	# The security post from the corridor it is come to by.
+	for post in all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.SECURITY):
+		for n in manifest.adjacency[int(post.id)]:
+			var c: Dictionary = manifest.rooms[int(n)]
+			if not bool(c.get("corridor", false)): continue
+			var across := FLOOR.position_of(c) - FLOOR.position_of(post)
+			across.y = 0.0
+			var along := Vector3(across.z, 0, -across.x).normalized()
+			var from := FLOOR.position_of(c) + across.normalized() * 0.4 + along * 4.0 + Vector3(0, FRAMING.EYE, 0)
+			look(from, FLOOR.position_of(post) + Vector3(0, 1.3, 0))
+			(await grab(false)).save_png(out_dir + "/%d_seguridad.png" % seed_value)
+			print("PLAN_CAPTURE seguridad %d desde %d, cristal %s" % [int(post.id), int(n), str(post.get("glazed", []))])
+			break
 	quit()
 
 ## The first of `rooms` with a doorway, looked into from it.

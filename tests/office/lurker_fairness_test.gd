@@ -547,9 +547,12 @@ func mate_torch() -> void:
 	var along: Vector3 = corridor.along
 	var side := Vector3(-along.z, 0, along.x)
 	var bad: Array = []
+	# The real building's corridor cell is 7.2 m long: 4 m on is the next cell,
+	# past a fire door where a department ends; 3 m keeps the mate in this one.
+	var ahead := 3.0 if OFFICE.real_plan_on() else 4.0
 	for torch in [true, false]:
 		await set_up(true, false)
-		var other = mate((corridor.centre as Vector3) + along * 4.0 + side * 0.8, along)
+		var other = mate((corridor.centre as Vector3) + along * ahead + side * 0.8, along)
 		other.torch.visible = torch
 		var aimed := [false]
 		var entry := await run_cue(6.0, func(brain):
