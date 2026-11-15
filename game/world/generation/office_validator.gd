@@ -794,6 +794,13 @@ func corners_ok(data: Dictionary, errors: Array[String]) -> void:
 ## nothing on it, and the window always glazed toward a corridor.
 func glazed_ok(data: Dictionary, errors: Array[String]) -> void:
 	var rooms: Array = data.rooms
+	# The security post's card reader stands on the solid stretch by its door's
+	# frame, the glass in the rest of that wall (office_geometry.wall_run()).
+	var reader := {}
+	if data.has("air"):
+		var sec: Dictionary = data.air.security
+		reader = LAYOUT.fixture_of(rooms[int(sec.outside)], sec.reader)
+		reader["room"] = int(sec.outside)
 	for room in rooms:
 		for side in room.get("glazed", []):
 			var wall := String(side)
@@ -811,7 +818,7 @@ func glazed_ok(data: Dictionary, errors: Array[String]) -> void:
 					if [int(gate.room), int(gate.beyond)].has(int(room.id)) and [int(gate.room), int(gate.beyond)].has(n): ok = false
 				for h in room.get("hides", []):
 					if String(LAYOUT.hide_wall(h).wall) == wall: ok = false
-				if spots.get(int(room.id), []).any(func(s): return String(s.wall) == wall): ok = false
+				if spots.get(int(room.id), []).any(func(s): return String(s.wall) == wall and not (int(reader.get("room", -1)) == int(room.id) and String(reader.get("wall", "")) == wall and absf(float(s.along) - float(reader.get("along", INF))) < 0.002)): ok = false
 			if not ok:
 				errors.append("glazed_%d" % int(room.id))
 				break
@@ -996,10 +1003,10 @@ func columns_ok(data: Dictionary, errors: Array[String]) -> void:
 			var other: int = FLOOR.beside(room, way) if way != Vector2i.ZERO else -1
 			if other < 0 or not room.get("open_sides", []).has(LAYOUT.wall_of(way)) or not OFFICE.column_rects(rooms[other]).any(func(r): return r.get_center().distance_to(world.get_center()) < 0.002): ok = false
 			elif LAYOUT.blocked(local.grow(OFFICE.COLUMN_PAD - SLACK), zones): ok = false
-			elif FLOOR.doorways(room).any(func(w): return LAYOUT.wall_rect(room, String(w.wall), float(w.along), FLOOR.PORTAL / 2 + LAYOUT.DOOR_SIDE, LAYOUT.DOOR_BAND).intersects(local.grow(OFFICE.COLUMN_CLEAR - SLACK))): ok = false
+			elif FLOOR.doorways(room).any(func(w): return LAYOUT.wall_rect(room, String(w.wall), float(w.along), FLOOR.PORTAL / 2 + LAYOUT.DOOR_SIDE, LAYOUT.DOOR_BAND).intersects(local.grow(OFFICE.column_clear(room) - SLACK))): ok = false
 			elif OFFICE.troffers(room).any(func(t): return LAYOUT.point_rect_distance(t.centre, world) < OFFICE.COLUMN_LAMP - SLACK): ok = false
-			elif room.get("furniture", []).any(func(it): return LAYOUT.footprint(it).intersects(local.grow(OFFICE.COLUMN_CLEAR - SLACK))): ok = false
-			elif room.get("props", []).any(func(p): return prop_rect(room, p).intersects(local.grow(OFFICE.COLUMN_CLEAR - SLACK))): ok = false
+			elif room.get("furniture", []).any(func(it): return LAYOUT.footprint(it).intersects(local.grow(OFFICE.column_clear(room) - SLACK))): ok = false
+			elif room.get("props", []).any(func(p): return prop_rect(room, p).intersects(local.grow(OFFICE.column_clear(room) - SLACK))): ok = false
 			elif exits.any(func(e): return int(e.room) == id and String(e.kind) == "ceiling" and LAYOUT.segment_rect_distance(Vector2(float(e.point[0]), float(e.point[2])), middle, world) < OFFICE.COLUMN_PAD - SLACK): ok = false
 			if not ok: break
 		if not ok: errors.append("column_%d" % id)

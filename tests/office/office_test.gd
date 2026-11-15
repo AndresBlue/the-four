@@ -1241,7 +1241,7 @@ func nave_checks() -> void:
 		for room in m.rooms:
 			var id := int(room.id)
 			var axis := String(room.get("nave_axis", ""))
-			if axis != "" and (int(room.wing) != 0 or int(room.hall) < 0 or nave.any(func(o): return int(o.hall) != int(room.hall))): bad.append("%d: eje en %d" % [run_seed, id])
+			if axis != "" and (int(room.wing) != 0 or int(room.hall) < 0 or (not OFFICE.real_plan_on() and nave.any(func(o): return int(o.hall) != int(room.hall)))): bad.append("%d: eje en %d" % [run_seed, id])
 			var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
 			var open: Array = room.get("open_sides", [])
 			var strips: Array = []

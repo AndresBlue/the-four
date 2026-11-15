@@ -62,11 +62,18 @@ const REAL_ZONES := [
 ]
 ## What each planta must have, in the zone it is put in first, before the
 ## zones are drawn (MUSTS as the programme lays them): [type, zones in turn].
+## Registro y Archivo has its clerks' break room and the registry's own mail
+## room besides the one by the lift: the planta's tops for the papers
+## (document_placement), none of them by its way in.
 const REAL_MUSTS := [
 	[[BOARDROOM, ["lift", "deep", "bay"]], [BREAK_ROOM, ["lift", "deep", "bay"]], [MAIL, ["bay", "end"]], [COPY_ROOM, ["core", "bay", "narrow"]]],
-	[[MAIL, ["lift", "bay", "end"]], [COPY_ROOM, ["bay", "lift", "narrow"]]],
+	[[MAIL, ["lift", "bay", "end"]], [COPY_ROOM, ["bay", "lift", "narrow"]], [BREAK_ROOM, ["bay", "lift", "end"]], [MAIL, ["bay", "end"]]],
 	[[BOARDROOM, ["deep", "lift"]], [BREAK_ROOM, ["deep", "lift", "end"]]],
 ]
+## How far along the building from a planta's way in a type with a top for
+## the papers is put first (office_generator.draw_programme()), a share of its
+## length: past document_placement's least (25 m, or a fifth of the walk).
+const REAL_TOPS_FROM := 0.35
 ## The cells each type is laid in by the programme (13.4): [short side at
 ## least, at most, long side at least, at most] as ROOM_BANDS, the real
 ## building's cells measured. office_test and the plans judge by these.
@@ -285,6 +292,18 @@ const COLUMN_PAD := 0.3
 const COLUMN_CLEAR := 1.3
 const COLUMN_LAMP := 0.9
 const COLUMN_TILE := 0.6
+## The real building's columns stand on its 7.2 m structure (13.2), where an
+## office packs its islands up to them: furniture keeps only a street's half
+## from one (REAL_COLUMN_CLEAR), so a bay of 7.2 takes an island of six.
+const REAL_COLUMN_CLEAR := 0.6
+
+## How far furniture, corner props and door sweeps keep from a column of this
+## cell: by its size, not the switch (a cell of a bay or half one is the real
+## building's; today's modules are never 3.6 nor 7.2), as recipe_of() chooses.
+static func column_clear(room: Dictionary) -> float:
+	for side in [float(room.span_x), float(room.span_z)]:
+		if is_equal_approx(side, BAY) or is_equal_approx(side, BAY / 2.0): return REAL_COLUMN_CLEAR
+	return COLUMN_CLEAR
 ## The tests and probes switch the columns on before COLUMNS is.
 static var columns_test := false
 

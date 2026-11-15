@@ -1429,8 +1429,17 @@ func wall_core(boundary: Node3D, pos: Vector3, size: Vector3, inner: int) -> voi
 func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
 	var side := String(SIDE_OF.get(String(boundary.name), ""))
 	if not building_room.is_empty() and building_room.get("glazed", []).has(side):
-		glazed_run(boundary, x, length, height, inner)
-		return
+		var solid := reader_stretch(boundary, x, length)
+		if solid == Vector2.ZERO:
+			glazed_run(boundary, x, length, height, inner)
+			return
+		# The security post's reader on a stretch of plain wall, glass either side.
+		var low := x - length * 0.5
+		var high := x + length * 0.5
+		if solid.x - low > 0.01: glazed_run(boundary, (low + solid.x) * 0.5, solid.x - low, height, inner)
+		if high - solid.y > 0.01: glazed_run(boundary, (solid.y + high) * 0.5, high - solid.y, height, inner)
+		x = (solid.x + solid.y) * 0.5
+		length = solid.y - solid.x
 	# The main duct through a tall room's wall: the stretch either side as
 	# usual, and over the opening only the wall under and over it.
 	var cuts := duct_cuts(boundary, x, length, height) if height > 3.0 else []
@@ -1645,6 +1654,25 @@ func personal_sign(boundary: Node3D, x: float, length: float, height: float, inn
 	var face := inner * 0.09
 	box(boundary, Vector3(x, y, face + inner * SIGN_DEPTH * 0.5), Vector3(PERSONAL_SIGN.x, PERSONAL_SIGN.y, SIGN_DEPTH), "plaque")
 	text(boundary, "PERSONAL", Vector3(x, y, face + inner * (SIGN_DEPTH + 0.001)), 0.0 if inner > 0 else PI, 14, NUMBER_REACH, Color("d3bd8e"))
+
+## The plain wall a glazed run of the security post keeps for its card reader
+## (office_generator.furnish_glass()), in the boundary's x: from the run's end
+## nearer the reader, the door's frame, to READER_SOLID past it; ZERO on any
+## other run.
+const READER_SOLID := 0.4
+func reader_stretch(boundary: Node3D, x: float, length: float) -> Vector2:
+	var sec: Dictionary = manifest.get("air", {}).get("security", {})
+	if sec.is_empty(): return Vector2.ZERO
+	var pair: Array = [int(sec.room), int(sec.outside)]
+	if not pair.has(int(building_room.id)) or not pair.has(int(room_across(boundary).get("id", -1))): return Vector2.ZERO
+	var room_node := boundary.get_parent() as Node3D
+	var p: Array = sec.reader.point
+	var local := boundary.transform.affine_inverse() * (Vector3(float(p[0]), float(p[1]), float(p[2])) - (room_node.position if room_node != null else Vector3.ZERO))
+	var low := x - length * 0.5
+	var high := x + length * 0.5
+	if local.x < low or local.x > high: return Vector2.ZERO
+	if local.x - low < high - local.x: return Vector2(low, minf(local.x + READER_SOLID, high))
+	return Vector2(maxf(local.x - READER_SOLID, low), high)
 
 ## The room on the other side of a wall boundary of the room being built, or
 ## {} past the planta's edge.

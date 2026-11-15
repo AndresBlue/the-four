@@ -76,12 +76,14 @@ static func fits(room: Dictionary, zones: Array, piece: Dictionary) -> bool:
 
 ## Gives each capsule zone its bounds grown by its radius, which hits() tries
 ## first: a rect clear of them is at least that far from the capsule's segment.
+## A millimetre more, so a rect at the radius to the hair is tried, as
+## LAYOUT.blocked() tries it (seed 15: a dining set the generator let stand).
 static func prepare(zones: Array) -> void:
 	for zone in zones:
 		if zone.has("rect") or zone.has("bound"): continue
 		var a: Vector2 = zone.a
 		var b: Vector2 = zone.b
-		zone["bound"] = Rect2(a, Vector2.ZERO).expand(b).grow(float(zone.r))
+		zone["bound"] = Rect2(a, Vector2.ZERO).expand(b).grow(float(zone.r) + 0.001)
 
 ## LAYOUT.blocked() with each capsule's bounds tried first: the same answer,
 ## cheaper.
