@@ -51,6 +51,11 @@ func _initialize() -> void:
 	var layers_most := 0
 	var layers_full := 0
 	var clashes := 0
+	# The building from seed to seed (planta_real.md 13.3, 13.14): its typology,
+	# length and depth, bays, crosses and where the middle ones stand, where the
+	# reception is, the notch, the order of its bays and whether its two bands
+	# of the first planta run alike.
+	var build := {"typology": {}, "length": [], "depth": [], "bays": [], "crosses": {}, "cross_at": [], "start": {}, "notch": 0, "orders": {}, "bands_alike": 0}
 	for run_seed in range(1, floors + 1):
 		var generator = GEN.new()
 		generator.areas = OFFICE.areas_for(survivors)
@@ -64,6 +69,7 @@ func _initialize() -> void:
 		if data.is_empty(): continue
 		made += 1
 		attempts.append(int(data.attempt))
+		measure_building(generator, data, build)
 		var errors: Array = VALIDATOR.new().validate(data)
 		if not errors.is_empty(): rejected += 1
 		for code in PLAN.codes(errors): codes[code] = int(codes.get(code, 0)) + 1
@@ -189,6 +195,9 @@ func _initialize() -> void:
 		out["lockers_%d" % p] = spread(lockers[p])
 		out["m2_%d" % p] = spread(floor_m2[p])
 		out["sizes_%d" % p] = sizes[p]
+	print("PLAN_METRICS edificio: tipologías %s, largo %s, fondo %s, vanos %s, transversales %s, transversales del medio a %s del largo" % [str(build.typology), str(spread(build.length)), str(spread(build.depth)), str(spread(build.bays)), str(build.crosses), str(spread(build.cross_at))])
+	print("PLAN_METRICS edificio: recepción %s, con muesca %d, órdenes de vanos distintos %d de %d, bandas de la planta 1 iguales %d" % [str(build.start), int(build.notch), build.orders.size(), made, int(build.bands_alike)])
+	out["building"] = {"typology": build.typology, "length": spread(build.length), "depth": spread(build.depth), "bays": spread(build.bays), "crosses": build.crosses, "cross_at": spread(build.cross_at), "start": build.start, "notch": build.notch, "orders": build.orders.size(), "bands_alike": build.bands_alike}
 	print("PLAN_METRICS capas de luz: como mucho %d de 16, pisos que llegan a 16: %d, choques %d" % [layers_most, layers_full, clashes])
 	out["layers_most"] = layers_most
 	out["layers_full"] = layers_full
@@ -199,11 +208,49 @@ func _initialize() -> void:
 	if file != null: file.store_string(JSON.stringify(out, "\t"))
 	quit()
 
+## The building a seed came out on (generator.building, the try that came out).
+static func measure_building(generator, data: Dictionary, build: Dictionary) -> void:
+	var b: Dictionary = generator.building
+	if b.is_empty(): return
+	tally(build.typology, String(b.get("typology", "ring")))
+	tally(build.start, String(b.get("start_kind", "")))
+	if String(b.shape) == "notch": build.notch += 1
+	# Planta 2 has no end bay for a reception: the building's own outline.
+	var box := used_box(data, 1)
+	build.length.append(snappedf(box.size.x, 0.1))
+	build.depth.append(snappedf(box.size.y, 0.1))
+	var bays := 0.0
+	var order := ""
+	var crosses: Array = []
+	for column in b.columns:
+		var role := String(column.role)
+		if role in ["hall", "lift_a", "lift_b"]: bays += 1.0
+		elif role in ["offices", "core_a", "core_b"]: bays += 0.5
+		if role == "cross": crosses.append(float(column.centre))
+		order += {"hall": "h", "offices": "o", "core_a": "c", "core_b": "c", "lift_a": "a", "lift_b": "b", "cross": "|", "end": ""}.get(role, "?")
+	build.bays.append(bays)
+	tally(build.crosses, crosses.size())
+	var start := float(b.columns[0].centre) - float(b.columns[0].size) * 0.5
+	var length := float(b.columns[-1].centre) + float(b.columns[-1].size) * 0.5 - start
+	for i in range(1, crosses.size() - 1): build.cross_at.append(snappedf((float(crosses[i]) - start) / length, 0.01))
+	build.orders[order] = true
+	# The first planta's two bands, each the widths of its rooms along it.
+	var bands := {}
+	for room in data.rooms:
+		if int(room.wing) != 0 or FLOOR.is_void(room) or bool(room.corridor): continue
+		var role := String(b.rows[int(room.z)].role)
+		if not role in ["front", "back"]: continue
+		if not bands.has(role): bands[role] = {}
+		var key := int(room.hall) if int(room.hall) >= 0 else int(room.id)
+		bands[role][key] = int(bands[role].get(key, 0)) + 1
+	var shapes: Array = ["front", "back"].map(func(role): return str(bands.get(role, {}).values()))
+	if shapes[0] == shapes[1]: build.bands_alike += 1
+
 ## [min, p10, p50, p90, max] of a list of numbers.
 static func spread(values: Array) -> Array:
 	return [0.0, 0.1, 0.5, 0.9, 1.0].map(func(q): return snappedf(METRICS.quantile(values, q), 0.01))
 
-static func tally(counts: Dictionary, key: int) -> void:
+static func tally(counts: Dictionary, key: Variant) -> void:
 	counts[key] = int(counts.get(key, 0)) + 1
 
 ## The way from one point to another in eight sectors, the building's own

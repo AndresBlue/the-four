@@ -94,6 +94,24 @@ func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dict
 		# way from the spine to the doorway (seed 33, room 329).
 		var into: Dictionary = b if int(doors[key].swing) > 0 else a
 		if int(into.type) in [palette.ARCHIVE, palette.MOBILE_ARCHIVE] and absf(offset) > 0.001: doors[key].hinge = 1 if offset > 0.0 else -1
+		# In the real building a leaf that, open, would lie along a side wall over
+		# a doorway in it hangs from its other jamb, or a door between corridor
+		# cells swings the other way (seed 33: the ring's fire door over the
+		# window's doorway, office_bots_test).
+		if not building.is_empty() and leaf_covers(f, into, b if into == a else a, offset, int(doors[key].hinge)):
+			var swing := int(doors[key].swing)
+			var hinge := int(doors[key].hinge)
+			# [swing, hinge, offset]: a fire door keeps by a side wall, hung from its jamb there (map_validator).
+			var options: Array = [[swing, -hinge, offset]]
+			if bool(a.corridor) and bool(b.corridor): options = [[-swing, hinge, offset], [swing, -hinge, -offset], [-swing, -hinge, -offset]]
+			for option: Array in options:
+				var other_into: Dictionary = b if int(option[0]) > 0 else a
+				# Never into a crossing, whose sides are the other corridor going on.
+				if other_into.kind == "cross" or leaf_covers(f, other_into, b if other_into == a else a, float(option[2]), int(option[1])): continue
+				doors[key].swing = int(option[0])
+				doors[key].hinge = int(option[1])
+				offset = float(option[2])
+				break
 		if is_equal_approx(offset, float(doors[key].offset)): continue
 		doors[key].offset = offset
 		for entry in a.doors:
@@ -101,6 +119,26 @@ func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dict
 		for entry in b.doors:
 			if int(entry[0]) == int(a.id): entry[1] = offset
 	return doors
+
+## Whether a leaf hung from `hinge` at `offset` in the wall of `into` toward
+## `other`, open into `into`, lies over a doorway of it: with its jamb by a
+## side wall it rests along that wall, LEAF_WIDTH out from the door's.
+func leaf_covers(f: Dictionary, into: Dictionary, other: Dictionary, offset: float, hinge: int) -> bool:
+	var way := Vector2i(signi(int(other.x) - int(into.x)), signi(int(other.z) - int(into.z)))
+	var half_along := float(into.span_z if way.x != 0 else into.span_x) * 0.5
+	var half_across := float(into.span_x if way.x != 0 else into.span_z) * 0.5
+	var jamb := offset + float(hinge) * FLOOR.PORTAL * 0.5
+	# Off a side wall by less than a body and a half, the leaf shuts what is behind it.
+	if half_along - absf(jamb) > 0.9: return false
+	var side := Vector2i(0, signi(jamb)) if way.x != 0 else Vector2i(signi(jamb), 0)
+	var wall := float(way.x + way.y) * half_across
+	var low := minf(wall, wall - float(way.x + way.y) * FLOOR.LEAF_WIDTH)
+	var high := maxf(wall, wall - float(way.x + way.y) * FLOOR.LEAF_WIDTH)
+	for entry in into.doors:
+		var n: Dictionary = f.rooms[int(entry[0])]
+		if Vector2i(signi(int(n.x) - int(into.x)), signi(int(n.z) - int(into.z))) != side: continue
+		if float(entry[1]) - FLOOR.PORTAL * 0.5 < high and float(entry[1]) + FLOOR.PORTAL * 0.5 > low: return true
+	return false
 
 ## A locker also keeps out of the band of a doorway in a wall beside its own
 ## (office_layout.locker_in_doorway()): what the passage and the leaf of that
@@ -1899,7 +1937,7 @@ func furnish_furniture(job: Dictionary) -> String:
 		if first_wall != "" and palette.FEATURE_FIRST_PIECE.has(t): room.feature = first_wall
 	for hall in heads: once_elsewhere(job, view, int(hall), rng)
 	# The corridors' floor furniture, on a stream of its own.
-	var halls := RECIPES.lay_halls(view, job.taken, stream(int(job.seed), int(job.attempt), "halls"))
+	var halls := RECIPES.lay_halls(view, job.taken, stream(int(job.seed), int(job.attempt), "halls"), -1 if building.is_empty() else int(f.specials[0].window))
 	for id in halls:
 		if not job.wall_items.has(int(id)): job.wall_items[int(id)] = []
 		job.wall_items[int(id)].append_array(halls[id])
@@ -3117,8 +3155,10 @@ var building := {}
 ## ends of the central zone, each a lift bay and an offices bay, A's lift in
 ## one and B's in the other (on a floor for one, B's by the middle cross and
 ## the far half closed below the first planta, 13.15), the air room in A's;
-## the reception at B's end, in a corner of the front band or in the middle of
-## the end band (13.13); now and then the notch, the end of the service band
+## its bays, where the middle cross falls and now and then a second one, drawn
+## from the table (13.3, 13.14); the reception at B's end, in a corner of the
+## front or the back band or in the middle of the end (13.13), its main
+## corridor the wider; now and then the notch, the end of the service band
 ## left unexcavated (13.1); and each planta's cuts (13.6). Cells are local:
 ## row * columns + column, the same on every planta.
 func draw_building(run_seed: int, attempt: int) -> Dictionary:
@@ -3127,11 +3167,30 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	var table: Dictionary = palette.TYPOLOGIES["ring"]
 	var area: float = areas.max()
 	var closing: bool = areas.min() < area
+	# The bays along the building (13.3) and where the middle cross splits them:
+	# not always in the middle. A floor for one keeps its halves even (13.15).
 	var half := maxi(int(table.half_bays), roundi(float(table.half_bays) * area))
+	var counts: Array = [half, half]
+	if not closing:
+		var drawn: int = rng.randi_range(int(table.bays.x), int(table.bays.y))
+		# A bigger floor (area over 1) keeps its length of before, two halves of
+		# half_bays grown: 15 or 16 bays left straight runs past OPEN_RUN.
+		var total := drawn if area <= 1.0 else 2 * half
+		counts[0] = total / 2 + rng.randi_range(-int(table.lean), int(table.lean))
+		counts[1] = total - int(counts[0])
+	# Where the reception is at B's end (13.13): on a floor for one, as before.
+	var starts: Array = table.starts
+	var start_kind: String = "front" if closing else String(starts[rng.randi_range(0, starts.size() - 1)])
 	var rows: Array = []
 	for entry in table.rows:
 		var sizes: Array = entry[1]
 		rows.append({"lane": entry[0] in ["main", "gallery"], "size": float(sizes[rng.randi_range(0, sizes.size() - 1)]), "role": String(entry[0])})
+	# The reception's stretch of the ring as wide as its main corridor comes
+	# (13.2), where the window's wait fits too (HALL_WIDTH).
+	var band: String = start_kind if start_kind != "end" else "front" if rng.randf() < 0.5 else "back"
+	var band_row: int = range(rows.size()).filter(func(r): return rows[r].role == band)[0]
+	for r in [band_row - 1, band_row + 1]:
+		if r >= 0 and r < rows.size() and rows[r].role == "main": rows[r].size = float(table.rows[r][1].max())
 	if rng.randf() < 0.5: rows.reverse()
 	# Each half's bays from its end in. A's half: its core's offices bay against
 	# the end cross and the lift inside it, so the lift is not the far end's
@@ -3140,16 +3199,26 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	# in A's half, B's lift against the middle cross, and the other half has none.
 	var halves: Array = []
 	for side in 2:
+		var bays_in := int(counts[side])
 		var middles: Array = table.middles
 		var middle: Array = middles[rng.randi_range(0, middles.size() - 1)].duplicate()
-		while middle.size() < half - 2: middle.append("hall" if rng.randf() < 0.6 else "offices")
-		if side == 0 and closing: halves.append(["core_a", "lift_a"] + middle.slice(0, half - 4) + ["core_b", "lift_b"])
-		elif side == 0: halves.append(["core_a", "lift_a"] + middle.slice(0, half - 2))
-		elif closing: halves.append(middle + ["hall", "offices"].slice(0, half - middle.size()))
-		else: halves.append(["lift_b", "core_b"] + middle.slice(0, half - 2))
+		while middle.size() < bays_in - 2: middle.append("hall" if rng.randf() < 0.6 else "offices")
+		if side == 0 and closing: halves.append(["core_a", "lift_a"] + middle.slice(0, bays_in - 4) + ["core_b", "lift_b"])
+		elif side == 0: halves.append(["core_a", "lift_a"] + middle.slice(0, bays_in - 2))
+		elif closing: halves.append(middle + ["hall", "offices"].slice(0, bays_in - middle.size()))
+		else: halves.append(["lift_b", "core_b"] + middle.slice(0, bays_in - 2))
+	# Now and then a second cross cuts the longer half, two bays or more either
+	# side of it (13.14): one more stretch of ring, and shorter naves and archives.
+	# Within 13.3's length: the longest building has neither the second cross nor wide crosses.
+	var longest: bool = int(counts[0]) + int(counts[1]) >= roundi(float(table.bays.y) * maxf(area, 1.0))
+	if not closing and not longest and rng.randf() < float(table.second_cross):
+		var longer: int = 0 if int(counts[0]) >= int(counts[1]) else 1
+		var between: int = int(counts[longer]) - 2
+		if between >= 4: halves[longer].insert(2 + rng.randi_range(2, between - 2), "middle")
 	var ends: Array = table.ends
 	var crosses: Array = table.crosses
 	var cross := float(crosses[rng.randi_range(0, crosses.size() - 1)])
+	if longest and not closing: cross = float(crosses.min())
 	var columns: Array = [{"lane": false, "size": float(ends[rng.randi_range(0, ends.size() - 1)]), "role": "end"}, {"lane": true, "size": cross, "role": "cross"}]
 	var east: Array = halves[1].duplicate()
 	east.reverse()
@@ -3181,12 +3250,13 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	var a_site: Dictionary = site.call(a_col)
 	var b_site: Dictionary = site.call(b_col)
 	var air_site: Dictionary = site.call(a_col)
-	# The reception at B's end: its outermost bay in the front band (the ends are unexcavated).
+	# The reception at B's end: its outermost bay in the front or the back band
+	# (the ends are unexcavated), or the end bay of a central row, excavated for
+	# it on the first planta alone.
 	var b_end: int = 0 if absi(b_col - 0) < absi(b_col - (width - 1)) else width - 1
 	if closing: b_end = 0 if a_col > middle_cross else width - 1
-	var front: int = role_rows.call("front")[0]
 	var outermost: int = b_end + (2 if b_end == 0 else -2)
-	var start: int = front * width + outermost
+	var start: int = int(role_rows.call(start_kind)[0]) * width + outermost if start_kind != "end" else int(central[rng.randi_range(0, 1)]) * width + b_end
 	# The notch: the service band and its gallery left out at one end, as far as the first bay past the core.
 	var void_all: Array = []
 	var shape := "rect"
@@ -3219,6 +3289,7 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 			for c in width:
 				if (c - middle_cross) * (a_col - middle_cross) < 0:
 					for r in rows.size(): cells.append(int(r) * width + c)
+		if planta == 0: cells.erase(start)
 		voids.append(cells)
 	# Cuts (13.6): the second planta's gallery walled next to B's cross, so its
 	# power room has no straight way to B; the third's ring walled across one of
@@ -3236,7 +3307,7 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	# Between the two cores of a floor for one, the bays a smaller planta's
 	# through room takes (real_halls()).
 	var between: Array = range(mini(a_col, b_col) + 1, maxi(a_col, b_col)).filter(func(c): return String(columns[c].role) in ["hall", "offices"]) if closing else []
-	return {"columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "gallery": gallery, "cuts": cuts, "between": between, "programme": [{}, {}, {}]}
+	return {"typology": "ring", "start_kind": start_kind, "columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "gallery": gallery, "cuts": cuts, "between": between, "programme": [{}, {}, {}]}
 
 ## The zone of the programme a cell is in (palette.REAL_ZONES), "" for a lane.
 func zone_of(local: int) -> String:
@@ -3361,6 +3432,23 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 		for members in runs:
 			group.call("nave", members, kind)
 			kind = palette.OPEN_OFFICE if kind == palette.CUBICLES else palette.CUBICLES
+		# Typing pools: in each band and each stretch between crosses its own share
+		# of offices bays made one open office of the bay, so the two sides and
+		# the wings do not run alike (planta_real.md 13.2, the director, ronda 5).
+		var pools: Array = palette.TYPOLOGIES[building.typology].get("pools", [0.0])
+		var share := {}
+		for bay in bays_of():
+			var cols: Array = bay.filter(func(k): return String(columns[int(k)].role) == "offices")
+			if cols.size() != 2: continue
+			var stretch: int = range(int(cols[0])).filter(func(k): return columns[int(k)].lane).size()
+			# Each stretch pools in one band only, drawn, so its two sides differ.
+			if not share.has(stretch): share[stretch] = ["front", "back"][rng.randi_range(0, 1)]
+			for r in rows.size():
+				if not String(rows[r].role) in ["front", "back"]: continue
+				var key := Vector2i(int(r), stretch)
+				if not share.has(key): share[key] = float(pools[rng.randi_range(0, pools.size() - 1)]) if String(rows[r].role) == String(share[stretch]) else 0.0
+				var members: Array = cols.map(func(k): return int(r) * width + int(k))
+				if rng.randf() < float(share[key]) and members.all(func(m): return room.call(int(m))): group.call("bay", members, palette.OPEN_OFFICE)
 	match laying:
 		1:
 			# An archive along each central row, from a core to the middle cross;
@@ -3852,6 +3940,9 @@ func real_refuge(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i,
 		var saved := save(f)
 		var tried := alive.duplicate()
 		var trial := try_refuge(f, tried, arrival, back, pick, rng, population)
+		# Its depth over the whole planta as office_test measures it, a hair inside
+		# the band: on the band's edge B came out at 0.79999999 (seed 32).
+		if not trial.is_empty() and int(trial.hits) == 0 and trial.fits and float(depth_shares(f, tried, arrival).get(int(site.vest), 0.0)) < depth_wanted().x + 0.001: trial.fits = false
 		if not trial.is_empty() and int(trial.hits) == 0 and trial.fits:
 			alive.clear()
 			alive.merge(tried)
@@ -3908,7 +3999,8 @@ func special_fits(room: Dictionary, room_type: int) -> bool:
 	# has no way to B along the gallery (13.12).
 	if room_type == palette.ELECTRICAL: return role == "back" if float(areas[laying]) < float(areas.max()) else role == "service"
 	if room_type == palette.SECURITY and not programme.security.is_empty(): return programme.security.has(local)
-	if room_type == palette.WINDOW: return role in ["front", "back"] and int(programme.types.get(local, -1)) == palette.OFFICE and not programme.security.has(local)
+	# The window a whole bay, on a corridor wide enough for its wait (13.13, HALL_WIDTH).
+	if room_type == palette.WINDOW: return role in ["front", "back"] and float(room.span_x) >= palette.BAY - 0.01 and int(programme.types.get(local, -1)) == palette.OFFICE and not programme.security.has(local) and [int(room.z) - 1, int(room.z) + 1].any(func(r): return r >= 0 and r < building.rows.size() and String(building.rows[r].role) == "main" and float(building.rows[r].size) >= palette.HALL_WIDTH - 0.01)
 	return role in ["front", "back"]
 
 ## The real building's departments (13.9): each cell's sector, its column's run

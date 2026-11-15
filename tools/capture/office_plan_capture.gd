@@ -3,10 +3,12 @@ extends "res://tools/capture/office_rooms_capture.gd"
 ## put up as the game does, every room lit, and three pictures with the game's
 ## own camera on the first planta: a stretch of the ring corridor looked down,
 ## an office one bay wide (3.6 m) from its doorway, and the service gallery
-## looked down; then from their doorways the reception, a nave, a core's
-## toilets, an archive of the second planta and a director's office of the
-## third; the reception from its lift's doors, a director's office from its
-## secretary's, the third's boardroom and its security post from the corridor.
+## looked down; then the reception from its doorway, the biggest nave down its
+## aisle, the window from across its corridor (its glass and its wait) and from
+## its doorway; from their doorways a core's toilets, an archive of the second
+## planta and a director's office of the third; the reception from its lift's
+## doors, a director's office from its secretary's, the third's boardroom and
+## its security post from the corridor, on the side away from its door.
 ## With a window:
 ##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent --real-plan [--seed=7] [--quality=2] [--out=evidence/planta/capturas]
 ## Writes <out>/<seed>_{anillo,despacho,galeria,...}.png. Quits
@@ -90,7 +92,57 @@ func plan_run() -> void:
 	# archive of the second planta and a director's office of the third.
 	var all: Array = manifest.rooms.filter(func(r): return not FLOOR.is_void(r))
 	await inside(manifest, all.filter(func(r): return int(r.id) == int(manifest.start)), out_dir + "/%d_recepcion.png" % seed_value)
-	await inside(manifest, all.filter(func(r): return int(r.wing) == 0 and int(r.type) in [OFFICE.OPEN_OFFICE, OFFICE.CUBICLES] and int(r.hall) >= 0), out_dir + "/%d_nave.png" % seed_value)
+	# A nave down its length from its aisle at one end, its islands either side.
+	var nave_cells: Array = all.filter(func(r): return int(r.wing) == 0 and int(r.type) in [OFFICE.OPEN_OFFICE, OFFICE.CUBICLES] and int(r.hall) >= 0)
+	var halls := {}
+	for r in nave_cells: halls[int(r.hall)] = int(halls.get(int(r.hall), 0)) + 1
+	var biggest := -1
+	for h in halls:
+		if biggest < 0 or int(halls[h]) > int(halls[biggest]): biggest = int(h)
+	if biggest >= 0:
+		var cells: Array = nave_cells.filter(func(r): return int(r.hall) == biggest)
+		var low := INF
+		var high := -INF
+		var mid := 0.0
+		for r in cells:
+			low = minf(low, float(r.px) - float(r.span_x) * 0.5)
+			high = maxf(high, float(r.px) + float(r.span_x) * 0.5)
+			mid += float(r.pz) / cells.size()
+		var from := Vector3(low + 0.6, FRAMING.EYE + 0.4, mid)
+		look(from, Vector3(high, 0.9, mid))
+		(await grab(false)).save_png(out_dir + "/%d_nave.png" % seed_value)
+		print("PLAN_CAPTURE nave %d, %d celdas, %.1f m" % [biggest, cells.size(), high - low])
+	# The window: from the corridor, its glass and its wait; and inside, from its doorway.
+	for w in all.filter(func(r): return int(r.wing) == 0 and int(r.type) == OFFICE.WINDOW):
+		for n in manifest.adjacency[int(w.id)]:
+			var c: Dictionary = manifest.rooms[int(n)]
+			if not bool(c.get("corridor", false)): continue
+			var portal := FLOOR.portal_between(w, c)
+			var out := FLOOR.position_of(c) - FLOOR.position_of(w)
+			out.y = 0.0
+			out = out.normalized()
+			var along := Vector3(out.z, 0, -out.x)
+			# Along the corridor from a few metres off, by the counter's wall: its
+			# glass to one side and the wait on the wall across from its doorway.
+			var wide := minf(float(c.span_x), float(c.span_z))
+			# Toward the side the corridor goes on.
+			for way in [along, -along]:
+				var spot := FLOOR.room_at(manifest.rooms, Vector3(portal.x, 0.5, portal.z) + out * 0.7 + way * 3.5)
+				if not spot.is_empty() and bool(spot.get("corridor", false)):
+					along = way
+					break
+			var from := Vector3(portal.x, 0, portal.z) + out * 0.7 + along * 3.5 + Vector3(0, FRAMING.EYE, 0)
+			look(from, Vector3(portal.x, 0.6, portal.z) + out * wide * 0.85 - along * 0.5)
+			var wait: Array = []
+			for r in manifest.rooms.filter(func(r): return int(r.wing) == 0 and bool(r.get("corridor", false))):
+				for it in r.get("furniture", []):
+					var at_it := Vector3(float(r.px) + float(it.at[0]), 0, float(r.pz) + float(it.at[1]))
+					if String(it.kind) == "bench_slat" and at_it.distance_to(Vector3(portal.x, 0, portal.z)) < 5.0: wait.append(snappedf(at_it.distance_to(Vector3(portal.x, 0, portal.z)), 0.1))
+			print("PLAN_CAPTURE bancos a menos de 5 m de la puerta de la ventanilla: %s" % str(wait))
+			(await grab(false)).save_png(out_dir + "/%d_ventanilla_pasillo.png" % seed_value)
+			print("PLAN_CAPTURE ventanilla %d desde %d (%.1f x %.1f)" % [int(w.id), int(n), float(w.span_x), float(w.span_z)])
+			break
+		await inside(manifest, [w], out_dir + "/%d_ventanilla.png" % seed_value)
 	await inside(manifest, all.filter(func(r): return int(r.wing) == 0 and int(r.type) == OFFICE.TOILETS), out_dir + "/%d_aseos.png" % seed_value)
 	await inside(manifest, all.filter(func(r): return int(r.wing) == 1 and int(r.type) == OFFICE.ARCHIVE and int(r.hall) >= 0), out_dir + "/%d_archivo.png" % seed_value)
 	await inside(manifest, all.filter(func(r): return int(r.wing) == 2 and int(r.type) == OFFICE.EXEC_OFFICE), out_dir + "/%d_direccion.png" % seed_value)
@@ -130,9 +182,14 @@ func plan_run() -> void:
 			var across := FLOOR.position_of(c) - FLOOR.position_of(post)
 			across.y = 0.0
 			var along := Vector3(across.z, 0, -across.x).normalized()
-			var from := FLOOR.position_of(c) + across.normalized() * 0.4 + along * 4.0 + Vector3(0, FRAMING.EYE, 0)
-			look(from, FLOOR.position_of(post) + Vector3(0, 1.3, 0))
+			# From the side away from its door, whose leaf is hidden: the glass whole.
+			var portal := FLOOR.portal_between(post, c)
+			if (portal - FLOOR.position_of(post)).dot(along) > 0.0: along = -along
+			var hidden: Array = hide_leaves(portal)
+			var from := FLOOR.position_of(c) + across.normalized() * 0.6 + along * 3.0 + Vector3(0, FRAMING.EYE, 0)
+			look(from, FLOOR.position_of(post) - along * 0.8 + Vector3(0, 1.3, 0))
 			(await grab(false)).save_png(out_dir + "/%d_seguridad.png" % seed_value)
+			for mesh in hidden: mesh.visible = true
 			print("PLAN_CAPTURE seguridad %d desde %d, cristal %s" % [int(post.id), int(n), str(post.get("glazed", []))])
 			break
 	quit()

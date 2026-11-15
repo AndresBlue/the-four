@@ -27,12 +27,27 @@ static func real_plan_on() -> bool:
 ## two of a half its core, and how the bays between run. Every size a multiple
 ## of 0.6 (the ceiling's tiles); the front band and the ends of 1.2, so the
 ## reception's middle, the floor's origin, falls on the lattice too.
+## What a seed draws besides (13.3, 13.13, 13.14): "bays", the building's bays
+## at area 1 (on a floor for one, "half_bays" a half, as before); "lean", how
+## many bays the middle cross may stand off the middle; "second_cross", how
+## often a half of six bays or more is cut by one more cross; "starts", where
+## the reception may be at B's end: a corner of the front band or of the back
+## band ("end", the end bay of a central row excavated for it on the first
+## planta, is drawn by office_generator.draw_building() but left out: with it
+## lurker_bots_test, seed 81, lost her prey for a cause not found); "pools", the share of a band's offices bays that the first planta
+## makes one typing pool (an open office of the bay), drawn for one band of
+## each stretch between crosses, so each side and each wing has its own rhythm.
 const TYPOLOGIES := {
 	"ring": {
 		"rows": [["front", [4.8, 6.0]], ["main", [2.4, 3.0]], ["central", [7.2]], ["central", [7.2]], ["main", [2.4, 3.0]], ["back", [4.8, 5.4, 6.0]], ["gallery", [2.4]], ["service", [4.8, 5.4, 6.0]]],
 		"ends": [4.8, 6.0],
 		"crosses": [2.4, 3.0],
 		"half_bays": 5,
+		"bays": Vector2i(11, 12),
+		"lean": 1,
+		"second_cross": 0.4,
+		"starts": ["front", "back"],
+		"pools": [0.35, 0.5, 0.7],
 		"middles": [["hall", "hall", "hall"], ["offices", "hall", "hall"], ["hall", "hall", "offices"], ["hall", "offices", "hall"]],
 	},
 }
@@ -674,7 +689,11 @@ const SMALL_FURNITURE := {
 	OFFICE: [4.5, [["work_desk", "center", 1, 1, 1], ["filing", "run", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["filing", "side", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bookcase", "spare", 0, 1, 1]]],
 	SECRETARY: [4.5, [["work_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 2], ["printer_cart", "spare", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
 	TOILETS: [4.5, [["cubicles", "wall", 1, 1, 1], ["locker_bank", "spare", 1, 1, 1], ["bench_slat", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
-	WINDOW: [6.0, [["filing", "run", 1, 1, 2], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]]],
+	# The window of a bay (7.2 x band, office_generator.special_fits()): the
+	# staff records along its walls, a sorting table and the forms' counter
+	# against them (the work table, 1.8 m deep, does not clear a band's middle),
+	# cabinets, card indexes and shelves (spec_proporcion: 20 % of its floor).
+	WINDOW: [6.0, [["filing", "run", 1, 1, 2], ["wood_shelving", "side", 1, 1, 1], ["sorting_table", "spare", 1, 1, 1], ["card_index", "spare", 1, 2, 1], ["filing", "spare", 1, 2, 3], ["pigeon_counter", "spare", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
 	COPY_ROOM: [6.0, [["copier", "back", 1, 1, 1], ["copier", "side", 1, 1, 1], ["reader_table", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],
 	MAIL: [6.0, [["pigeonholes", "wall", 1, 1, 2], ["sorting_table", "side", 1, 1, 1], ["mail_cart", "spare", 1, 1, 2], ["filing", "spare", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]]],
 	EXEC_OFFICE: [6.0, [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 1, 2, 1], ["sideboard", "spare", 1, 1, 1], ["lounge", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]],

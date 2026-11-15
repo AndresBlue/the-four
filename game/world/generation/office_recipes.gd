@@ -695,7 +695,9 @@ static func lay_middle(room: Dictionary, zones: Array, kind: String, row := 1) -
 ## each line of wall of a corridor HALL_WIDTH wide or more, a piece of HALL_KINDS
 ## every HALL_STEP metres. `taken` is job.taken. Returns each room's wall runs
 ## {wall, along, half} (office_generator.wall_exit() keeps off them).
-static func lay_halls(view: Dictionary, taken: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+static func lay_halls(view: Dictionary, taken: Dictionary, rng: RandomNumberGenerator, window := -1) -> Dictionary:
+	var out := {}
+	if window >= 0: lay_wait(view, taken, view.rooms[window], out)
 	var lines := {}
 	for room in view.rooms:
 		var t := int(room.type)
@@ -708,9 +710,65 @@ static func lay_halls(view: Dictionary, taken: Dictionary, rng: RandomNumberGene
 			lines[key].append(room)
 	var keys: Array = lines.keys()
 	keys.sort()
-	var out := {}
 	for key in keys: lay_line(view, taken, lines[key], String(key).get_slice(":", 1), rng, out)
 	return out
+
+## The corridor fittings mounted under a bench's 0.5 m (office_walls.PIECES).
+const WAIT_LOW := ["extinguisher", "socket"]
+
+## Whether a low fitting's slot falls within `half` of `pos` (the world's
+## coordinate along a corridor wall), as office_walls.corridor() hangs them.
+static func under_low(wall: String, pos: float, half: float) -> bool:
+	var rhythm: Array = OFFICE.CORRIDOR_RHYTHM
+	var pitch: float = OFFICE.CORRIDOR_PITCH
+	var quarter: int = ["north", "east", "south", "west"].find(wall) * rhythm.size() / 4
+	for k in range(ceili((pos - half) / pitch), floori((pos + half) / pitch) + 1):
+		if WAIT_LOW.has(String(rhythm[posmod(k + quarter, rhythm.size())])): return true
+	return false
+
+## The window's wait (planta_real.md 13.13): in the corridor its doorway opens
+## on, WAIT_BENCHES benches against the wall across from the counter, as near
+## facing it as they fit, else on its own wall beside the doorway; only where a
+## corridor's floor furniture fits (HALL_WIDTH, HALL_PASS), as lay_line() lays it.
+const WAIT_BENCHES := 2
+const WAIT_TRIES := [0.0, -0.8, 0.8, -1.6, 1.6, -2.4, 2.4, -3.2, 3.2, -4.0, 4.0]
+static func lay_wait(view: Dictionary, taken: Dictionary, window: Dictionary, out: Dictionary) -> void:
+	for way in FLOOR.doorways(window):
+		var hall: Dictionary = view.rooms[int(way.other)]
+		if int(hall.type) != OFFICE.CORRIDOR or minf(float(hall.span_x), float(hall.span_z)) < float(OFFICE.HALL_WIDTH) - 0.001: continue
+		var along_x := String(way.wall) in ["north", "south"]
+		var door: float = (float(window.px) if along_x else float(window.pz)) + float(way.along)
+		# The corridor's line: its cells side by side along it.
+		var line: Array = view.rooms.filter(func(r): return int(r.type) == OFFICE.CORRIDOR and int(r.wing) == int(hall.wing) and is_equal_approx(float(r.pz) if along_x else float(r.px), float(hall.pz) if along_x else float(hall.px)))
+		var near := LAYOUT.wall_of(Vector2i(int(window.x) - int(hall.x), int(window.z) - int(hall.z)))
+		var across := LAYOUT.wall_of(Vector2i(int(hall.x) - int(window.x), int(hall.z) - int(window.z)))
+		var tries: Array = []
+		for d in WAIT_TRIES: tries.append([across, door + float(d)])
+		for d in WAIT_TRIES:
+			if absf(float(d)) > FLOOR.PORTAL: tries.append([near, door + float(d)])
+		var laid := 0
+		var zones_of := {}
+		for spot in tries:
+			if laid >= WAIT_BENCHES: return
+			var wall := String(spot[0])
+			var room := hall_cell(line, wall, along_x, float(spot[1]))
+			if room.is_empty(): continue
+			var id := int(room.id)
+			if not zones_of.has(id):
+				var spots: Array = taken.get(id, [])
+				zones_of[id] = keep_clear(view, room, spots) + ways_in(room, spots) + hall_signs(room, wall)
+			var a: float = float(spot[1]) - hall_mid(room, along_x)
+			var piece := hall_piece(room, "bench_slat", wall, a)
+			# Not off every wall fitting's slot as lay_line() keeps (a bench of 1.5 m
+			# never clears them, CORRIDOR_PITCH 2 m): at 0.5 m high it stands under
+			# them, but for the ones mounted lower (WAIT_LOW).
+			if piece.is_empty() or not fits(room, zones_of[id], piece) or under_low(wall, float(spot[1]), float(piece.size[0]) / 2 + 0.1): continue
+			if hall_gap(room, room.furniture + [piece]) < float(OFFICE.HALL_PASS): continue
+			room.furniture.append(piece)
+			if not out.has(id): out[id] = []
+			out[id].append({"wall": wall, "along": a, "half": float(piece.size[0]) / 2})
+			laid += 1
+		return
 
 ## One line of wall: a window of HALL_STEP's spread at a time, a place drawn in
 ## it and then the rest of it, half a metre apart; with none, the next window.

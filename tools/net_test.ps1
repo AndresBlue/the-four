@@ -1,4 +1,4 @@
-param([string]$GodotPath = $env:GODOT_PATH, [int]$Port = 24600, [int]$TimeoutSeconds = 420, [ValidateSet('coop','versus','late','observer','office_coop')][string]$Scenario = 'coop')
+param([string]$GodotPath = $env:GODOT_PATH, [int]$Port = 24600, [int]$TimeoutSeconds = 420, [ValidateSet('coop','versus','late','observer','office_coop')][string]$Scenario = 'coop', [switch]$RealPlan)
 # Online play test: starts a host and guests as separate headless Godot
 # processes on this machine and collects their checks (evidence/net_*.json).
 # coop: host and two guests; versus: host survivor and a guest as The Locust.
@@ -14,7 +14,7 @@ foreach ($role in $roles) {
     $json = Join-Path $projectPath "evidence/net_$role.json"
     if (Test-Path $json) { Remove-Item $json }
     $log = Join-Path $projectPath "evidence/verify_net_$role.log"
-    $arguments = @('--headless', '--path', $projectPath, '--rendering-method', 'forward_plus', '--script', 'res://tests/net/net_test.gd', '--log-file', $log, '--', '--automation', '--test-profile', '--silent', "--role=$role", "--port=$Port")
+    $arguments = @('--headless', '--path', $projectPath, '--rendering-method', 'forward_plus', '--script', 'res://tests/net/net_test.gd', '--log-file', $log, '--', '--automation', '--test-profile', '--silent', "--role=$role", "--port=$Port") + @(if ($RealPlan) { '--real-plan' })
     $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $processes += [PSCustomObject]@{ role = $role; log = $log; json = $json; process = (Start-Process -FilePath $GodotPath -ArgumentList $quoted -WindowStyle Hidden -PassThru) }
     Start-Sleep -Milliseconds 700
