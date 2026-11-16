@@ -4,6 +4,36 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 **Última actualización:** 14 de noviembre de 2026 (frente visual: las doce fotos del autor, quince modelos y el acabado de la recepción). El tope del **60 % semanal** era de una tarea anterior; el autor no lo ha repetido. La semana se renovó el 14 de noviembre a las 08:00 UTC; la siguiente, el 21.
 
+### Lo primero al retomar (16 de noviembre de 2026, madrugada): la máquina de café
+
+**Hecho en esta sesión, todo subido** (hasta `7b16580`):
+- Al ganar el piso 1, «Bajar al piso 2» en solitario y en cooperativo; el desbloqueo por dificultad en el ajuste `floor2` (`085f4b9`).
+- Versus: lo que hacen los supervivientes suena más en la máquina del cazador y lo suyo, menos; la estática de las teles y de sus viajes se apaga con la distancia, nunca del todo (`0f5a81f`).
+- Sugerencias de controles en las primeras partidas (`game/app/control_hints.gd`, `tests/hotel/hints_test.gd`; `8f81d7d` a `03c8abf`).
+- Asomarse: 0,5 m y unos 8° (`922e26e`).
+- La tele del hotel es «Old TV» de shadowowy, CC BY (`7b16580`). La escena de entrada conserva la Trinitron.
+
+**Pide el autor y falta: una máquina de café que devuelve la cordura.**
+- **Modelo:** `models/scp-294-the-coffee-machine.zip` (`source/scp-294.glb` y texturas). «SCP-294 "The Coffee Machine"», de Anquietas System (anquietas-sys), Sketchfab, CC BY 4.0. Su descripción dice que se basa en el artículo SCP-294 de la wiki SCP, que es CC BY-SA. En el juego no se usa el nombre ni la idea de SCP: es una máquina de café. Crédito en ASSETS.md y en `CREDITS` de `hotel_ui.gd`.
+  - Se hornea con `tools/props/build_model_props.gd`, como la tele (`assets/props/tv_b`).
+  - Las texturas toman los parámetros de importación de las de `assets/props/tv` (VRAM, mipmaps, 1024; el mapa de normales con `normal_map=1`). `godot --headless --import` las importa.
+- **Cuántas y dónde:** de 3 a 5 por piso, según su tamaño.
+  - Hotel: en sitios amplios. La sala de inicio, los vestíbulos (`LOBBY`), las salas altas (`HALL_ROOMS`, `HALL_HEIGHT`) y los salones grandes.
+  - Piso 2: en las salas de descanso (`BREAK_ROOM` de `office_palette.gd`) y lugares parecidos.
+  - Contra una pared libre, como reparte `tv_placement.gd` sus teles: determinista por semilla, sin tocar el manifiesto, porque `manifest_golden_test` vigila el hotel.
+- **Uso:**
+  - E ante ella: «Tomar un café». Sale en las sugerencias de controles como tipo propio en `hint_aimed()` de `interaction.gd`.
+  - Unos segundos después de tomarlo, abajo, donde salen las sugerencias, aparece «Te sientes mejor...». Debe salir aunque las sugerencias estén apagadas.
+  - Los efectos de la cordura se van a lo largo de un segundo y el medidor vuelve a 100.
+- **En red:** la cordura la lleva el anfitrión (`sanity.gd`: `minds`, `pack()` y `apply()` dos veces por segundo). Por eso tomarse un café es una petición al anfitrión, que sube el medidor de ese asiento en un segundo.
+- **Por decidir al hacerlo:** cuántos cafés da cada máquina. Si da cafés sin límite, la cordura deja de pesar. Lo propuesto es un café por jugador y máquina.
+- **Prueba:** una prueba corta del tipo de `hints_test`: cuántas máquinas hay por piso y que un café devuelve la cordura entera en un segundo.
+
+**Decisión que espera al autor: la Miku.** Pidió cambiar «Realistic Female» (CC BY-SA, `docs/ASSETS.md`) por una Hatsune Miku.
+- La de `models/YYB Miku Default.zip` (YYB y MarieMMD) prohíbe por escrito el uso comercial y la violencia.
+- La de Sketchfab (`d418e988c3de40f79e0b329886883241`, de oscar3dmodel) dice CC BY. Pero el personaje es de Crypton Future Media, y su licencia de personaje (PCL) solo permite usos no comerciales: quien sube el modelo no puede ceder los derechos del personaje.
+- No se ha integrado ninguna. Hay que esperar a que el autor decida.
+
 ### En curso: plan del port a Unreal (el autor, 14 de noviembre, noche)
 
 Sus palabras: portear a Unreal **para mejorar las visuales** («el gameplay ya se siente más o menos bien»); revisar todo «para que no quede ninguna duda antes de arrancar»; instalar lo que acelere; «priorizar más la velocidad y amplitud del port antes que cuota»; primero **una prueba de concepto visual del piso 1 y del piso 2** y, con su visto bueno, el port completo. **«No hagamos nada de código. Sólo la planificación.»** El 15 de noviembre añadió: **detener los agentes al 90 % de la ventana de 5 horas.**
