@@ -53,14 +53,16 @@ var hints_read := {}
 var hints_mine: Array = []
 
 ## The electrical panels of the floor (hotel_panel.gd), in build order, and
-## the one key that opens them (the author's word, 22 October 2026): the piece
-## of furniture it is shut in (an index into `containers`, -1 when there is
-## none) and the seat that took it (-1 while nobody has). Only whoever has it
-## opens a panel, and from an open panel gives a wing in the blackout its
-## lights back (the stage's goal, `restored`). Nothing of this is needed.
+## the keys that open them: two a stage (the author, 16 November 2026; one a
+## floor from 22 October), any of them opening any panel. The pieces of
+## furniture they are shut in (indices into `containers`) and, by piece, the
+## seat that took each. Only whoever has one opens a panel, and from an open
+## panel gives a wing in the blackout its lights back (the stage's goal,
+## `restored`). Nothing of this is needed.
 var panels: Array = []
-var key_in := -1
-var key_holder := -1
+var key_in: Array = []
+var key_holders := {}
+const KEYS_A_STAGE := 2
 
 ## The keypad of the last door, and what is being typed into it.
 var lock: Node3D
@@ -85,8 +87,8 @@ func place_containers() -> void:
 	typed = ""
 	lock = null
 	panels.clear()
-	key_in = -1
-	key_holder = -1
+	key_in.clear()
+	key_holders.clear()
 	close_lock()
 	if level.manifest.get("gates", []).is_empty(): return
 	for spot in level.hotel.containers:
@@ -165,37 +167,45 @@ func place_panels() -> void:
 		room_node.add_child(panel)
 		panels.append(panel)
 
-## The key: in a drawer of a piece of the first two plantas (a commode, the
-## office's drawers or the painted cabinet; never one with a page, a hint or a
-## document in it, nor in a refuge or a lift lobby), the same one on every
-## machine. Its ring hangs out of the drawer it is shut in, as a note would.
+## The keys: KEYS_A_STAGE in each planta, each in a drawer of a piece (a
+## commode, the office's drawers or the painted cabinet; never one with a
+## page, a hint or a document in it, nor in a refuge or a lift lobby), the
+## same ones on every machine. A ring hangs out of the drawer it is shut in,
+## as a note would.
 const KEY_IN := ["GothicCommode_01", "drawer_cabinet", "painted_wooden_cabinet"]
 func place_key() -> void:
-	key_in = -1
-	key_holder = -1
+	key_in.clear()
+	key_holders.clear()
 	if containers.is_empty(): return
 	var refuges: Array = level.manifest.get("refuges", [])
-	var spots: Array = []
+	var by_wing := {}
 	for index in containers.size():
 		var piece = containers[index]
 		if not KEY_IN.has(String(piece.note_spot.get("model", ""))) or piece.digit >= 0 or piece.hint >= 0 or not piece.document.is_empty(): continue
 		var room: Dictionary = level.manifest.rooms[int(level.hotel.containers[index].room)]
-		if int(room.get("wing", 0)) > 1 or refuges.has(int(room.id)) or bool(room.get("landing", false)): continue
-		spots.append(index)
-	if spots.is_empty(): return
+		if refuges.has(int(room.id)) or bool(room.get("landing", false)): continue
+		by_wing.get_or_add(int(room.get("wing", 0)), []).append(index)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([int(level.manifest.seed), "key"])
-	key_in = int(spots[rng.randi_range(0, spots.size() - 1)])
-	containers[key_in].key = true
-	containers[key_in].plant_key()
+	var wings: Array = by_wing.keys()
+	wings.sort()
+	for wing in wings:
+		var spots: Array = by_wing[wing]
+		for n in mini(KEYS_A_STAGE, spots.size()):
+			var index := int(spots.pop_at(rng.randi_range(0, spots.size() - 1)))
+			key_in.append(index)
+			containers[index].key = true
+			containers[index].plant_key()
 
 ## Whether this machine's player has the key.
 func has_key() -> bool: return holds_key(level.player.slot)
 
-## The key is its finder's alone, until they have gone: it went with them, and
-## the panels with it.
+## A key is its finder's alone, until they have gone: then it is anybody's.
 func holds_key(seat: int) -> bool:
-	return key_holder >= 0 and (key_holder == seat or gone(key_holder))
+	for index in key_holders:
+		var holder := int(key_holders[index])
+		if holder == seat or gone(holder): return true
+	return false
 
 ## Out of the match, for now or for good: what they found has nobody to say it
 ## out loud, and the furniture has already been searched.
@@ -418,9 +428,9 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 		if seat == level.player.slot and not level.match_net.local_is_locust():
 			own_hint(piece.hint)
 			if not quiet and not level.bot_match: level.interaction.read_hint(piece.hint)
-	# The key goes to whoever finds it, and it is theirs alone.
+	# A key goes to whoever finds it, and it is theirs alone.
 	if piece.key:
-		key_holder = seat
+		key_holders[containers.find(piece)] = seat
 		piece.take_key()
 		if seat == level.player.slot and not quiet and not level.bot_match: level.ui.flash("LLAVE DEL CUADRO ELÉCTRICO", 3.0)
 	if piece.digit >= 0:

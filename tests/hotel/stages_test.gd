@@ -366,12 +366,23 @@ func run() -> void:
 	check("Buscando a nadie junto a una tele, sale por otra al rato", level.creature_at_television() == lit[1] and level.hop_rest > 0.0)
 	level.locust.set_physics_process(true)
 	level.player.global_position = parked
-	# The floor's key (code_lock.place_key(), the author's word, 22 October
-	# 2026): in a drawer of the first two plantas, its ring out of it; only
-	# whoever takes it opens an electrical panel, and from an open one the wing
-	# in the blackout has its lights back, for good.
-	var key_piece = level.containers[level.code.key_in] if level.code.key_in >= 0 else null
-	check("La llave del cuadro está en un cajón de las dos primeras plantas, y asoma", key_piece != null and level.code.KEY_IN.has(String(key_piece.note_spot.model)) and int(FLOOR.room_at(level.manifest.rooms, key_piece.global_position).wing) <= 1 and is_instance_valid(key_piece.key_shown) and key_piece.digit < 0 and key_piece.hint < 0)
+	# The keys (code_lock.place_key()): two in each planta (the author, 16
+	# November 2026; one a floor before), each in a drawer, its ring out of it;
+	# only whoever takes one opens an electrical panel, and from an open one
+	# the wing in the blackout has its lights back, for good.
+	var keys_by_wing := {}
+	for index in level.code.key_in:
+		var wing := int(FLOOR.room_at(level.manifest.rooms, level.containers[index].global_position).wing)
+		keys_by_wing[wing] = int(keys_by_wing.get(wing, 0)) + 1
+	print("  llaves por planta: ", keys_by_wing)
+	check("Dos llaves del cuadro por planta", [0, 1, 2].all(func(wing): return int(keys_by_wing.get(wing, 0)) == level.code.KEYS_A_STAGE))
+	var key_index: int = int(level.code.key_in[0]) if not level.code.key_in.is_empty() else -1
+	var key_piece = level.containers[key_index] if key_index >= 0 else null
+	var drawers_ok := true
+	for index in level.code.key_in:
+		var piece = level.containers[index]
+		if not level.code.KEY_IN.has(String(piece.note_spot.model)) or not is_instance_valid(piece.key_shown) or piece.digit >= 0 or piece.hint >= 0: drawers_ok = false
+	check("Cada una en un cajón, y asoma", drawers_ok)
 	var panel_wing := func(panel) -> int: return int(FLOOR.room_at(level.manifest.rooms, panel.global_position).get("wing", -1))
 	check("Cada planta tiene su cuadro eléctrico", [0, 1, 2].all(func(wing): return level.code.panels.any(func(panel): return panel_wing.call(panel) == wing)))
 	var board = level.code.panels.filter(func(panel): return panel_wing.call(panel) == 1)[0]
@@ -379,7 +390,7 @@ func run() -> void:
 	level.match_net.use_panel(board_index, "open")
 	await frames(2)
 	check("Sin la llave el cuadro no se abre", not board.opened and not level.code.has_key())
-	level.apply_search(level.code.key_in, true, false, level.player.slot)
+	level.apply_search(key_index, true, false, level.player.slot)
 	await frames(2)
 	check("Quien registra ese mueble se lleva la llave", level.code.has_key() and not is_instance_valid(key_piece.key_shown) and key_piece.searched)
 	level.match_net.use_panel(board_index, "open")
@@ -465,7 +476,7 @@ func run() -> void:
 	check("Como mucho un papel de ayuda por piso queda en una maleta: los demás, a la vista", suitcases.filter(func(piece): return piece.hint >= 0 or not piece.document.is_empty()).size() <= 1)
 	check("Las maletas tumbadas se registran, y nunca guardan un número", suitcases.size() > 10 and suitcases.all(func(piece): return piece.digit < 0 and not piece.main.is_empty() and String(piece.note_spot.get("model", "")) == "vintage_suitcase_b"))
 	var muebles: int = level.containers.size()
-	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched or level.containers.find(piece) == level.code.key_in))
+	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched or level.code.key_in.has(level.containers.find(piece))))
 	# Each sounds like what it is when gone through (hotel_container.SEARCH_SOUNDS):
 	# it knows which piece it is, and those with a recording of their own use it.
 	var models := {}
@@ -520,16 +531,16 @@ func run() -> void:
 	check("Y son los cuatro trozos de una carta, uno por número del código", level.notes_found().map(func(note): return int(note.slot)) == [1, 2, 3, 4])
 	# What another found is theirs to say out loud; once they have gone there is
 	# nobody to say it, and the furniture has already been searched.
-	var key_before: int = level.code.key_holder
+	var key_before: Dictionary = level.code.key_holders.duplicate()
 	level.found_by[1] = 2
-	level.code.key_holder = 2
+	level.code.key_holders = {key_index: 2}
 	level.net.players = {2: {"connected": true}}
 	check("Lo que encontró otro no está en tus notas, ni su llave", level.notes_found().size() == DIG.COUNT - 1 and level.code_so_far(true).begins_with("–") and not level.code.has_key())
 	level.net.players[2].connected = false
 	check("Pero lo de quien se ha ido queda para los demás", level.notes_found().size() == DIG.COUNT and not level.code_so_far(true).contains("–") and level.code.has_key())
 	level.net.players = {}
 	level.found_by[1] = level.player.slot
-	level.code.key_holder = key_before
+	level.code.key_holders = key_before
 	# The third sector counts both: the sets, and the numbers found.
 	level.refresh_briefing()
 	check("En el sector 3 la pausa cuenta televisores y números", level.ui.briefing.progress.size() == 2 and String(level.ui.briefing.progress[1][1]) == "%d / %d" % [DIG.COUNT, DIG.COUNT])

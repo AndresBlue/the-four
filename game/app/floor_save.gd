@@ -57,7 +57,7 @@ static func take(level) -> Dictionary:
 		"doors": level.hotel.doors.map(func(door): return door.opened),
 		"sets": level.televisions.map(func(set): return is_instance_valid(set) and set.on),
 		"searched": searched,
-		# The electrical panels left open (the key comes back with the drawer
+		# The electrical panels left open (each key comes back with the drawer
 		# it was in, gone through).
 		"panels": level.code.opened_panels(),
 		# The hints read where they lie; the ones taken from drawers come back

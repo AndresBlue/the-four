@@ -44,7 +44,7 @@ func run() -> void:
 	level.apply_lens(false, true)
 	level.player.torch.visible = true
 	for i in 120: await process_frame
-	var piece = level.containers[level.code.key_in]
+	var piece = level.containers[level.code.key_in[0]]
 	var at: Vector3 = piece.key_shown.global_position
 	var out: Vector3 = piece.global_basis.z.normalized()
 	var side: Vector3 = piece.global_basis.x.normalized()
@@ -59,7 +59,7 @@ func run() -> void:
 	await shot("drawer_close")
 	look(Vector3(at.x, floor_y + 1.64, at.z) + out * 1.6 + side * 0.4, at)
 	await shot("drawer_room")
-	level.apply_search(level.code.key_in, true, false, level.player.slot)
+	level.apply_search(level.code.key_in[0], true, false, level.player.slot)
 	for i in 30: await process_frame
 	await shot("taken")
 	var panel = level.code.panels[0]
