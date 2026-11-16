@@ -9,12 +9,12 @@ extends RefCounted
 ## preloads it, and the generator and the validator load it headless.
 
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
-const VERSION := 2
+const VERSION := 3
 
 ## The plan drawn as a real office building (.claude/specs/planta_real.md 13):
 ## off until it is accepted; a tool or a test turns it on with --real-plan on
 ## the command line or real_plan_test (office_generator.real_plan).
-const REAL_PLAN := false
+const REAL_PLAN := true
 static var real_plan_test := false
 
 static func real_plan_on() -> bool:
