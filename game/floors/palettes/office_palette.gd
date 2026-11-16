@@ -265,6 +265,9 @@ const WARDROBES := {4: 2, 8: 1, 14: 1, 15: 1, 21: 2}
 ## Not read on this floor: hard_floor() asks floor_finish().
 const HARD_FLOORS := []
 const TYPES := ["recepcion_interna", "oficina_abierta", "cubiculos", "despacho", "aseos", "sala_juntas", "archivo", "reprografia", "almacen", "montacargas", "vestibulo_llegada", "pasillo", "pasillo_servicio", "archivo_movil", "correo", "sala_descanso", "despacho_direccion", "ventanilla", "cuarto_electrico", "vestibulo_montacargas", "vacio", "puesto_seguridad", "sala_climatizacion", "climatizadora", "secretaria", "deposito"]
+## What the way signs call the company's other places they point to
+## (office_landmarks.ways(), the author's nerf of 16 November 2026).
+const WAY_PLACES := {TOILETS: "ASEOS", BOARDROOM: "SALA DE JUNTAS", ARCHIVE: "ARCHIVO", COPY_ROOM: "REPROGRAFÍA", STORE: "ALMACÉN", MOBILE_ARCHIVE: "ARCHIVO MÓVIL", MAIL: "CORREO", BREAK_ROOM: "SALA DE DESCANSO", EXEC_OFFICE: "DIRECCIÓN", SECRETARY: "SECRETARÍA", DEPOT: "DEPÓSITO"}
 const NAMES := ["Recepción interna", "Oficina abierta", "Cubículos", "Despacho", "Aseos y vestuario", "Sala de juntas", "Archivo", "Reprografía y microfichas", "Almacén", "Montacargas", "Vestíbulo de llegada", "Pasillo", "Pasillo de servicio", "Archivo móvil", "Correo", "Sala de descanso", "Despacho de dirección", "Ventanilla de Personal", "Cuarto eléctrico", "Vestíbulo del montacargas", "Vacío", "Puesto de seguridad", "Sala de climatización", "Climatizadora", "Secretaría", "Depósito"]
 ## How tools/dev/office_plan.gd draws each type on a planta's plan: its fill
 ## and its short label, by type like NAMES.

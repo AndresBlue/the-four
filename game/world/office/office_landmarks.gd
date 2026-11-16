@@ -98,12 +98,11 @@ const ACCENT_ENERGY := 6.0
 ## the console DESK_MIDDLE out, its key 0.45 right and 0.13 before that).
 const CONSOLE_KEY := Vector3(0.45, 0.79, 0.355)
 ## The way signs: their panel, its bottom's height; one to a planta for its
-## landmarks, and up to DECOYS_MOST to its other places, named as WAY_PLACES
-## (room type -> words).
+## landmarks, and up to DECOYS_MOST to its other places, named as the
+## palette's WAY_PLACES (room type -> words).
 const WAY := Vector3(1.0, 0.2, 0.02)
 const WAY_Y := 2.25
 const DECOYS_MOST := 6
-const WAY_PLACES := {4: "ASEOS", 5: "SALA DE JUNTAS", 6: "ARCHIVO", 7: "REPROGRAFÍA", 8: "ALMACÉN", 13: "ARCHIVO MÓVIL", 14: "CORREO", 15: "SALA DE DESCANSO", 16: "DIRECCIÓN", 24: "SECRETARÍA", 25: "DEPÓSITO"}
 ## The banner across the corridor over a landmark's door: off since the
 ## author's nerf (its bulkhead lamp stays).
 const BANNERS := false
@@ -496,17 +495,17 @@ static func ways(b: Node3D) -> Dictionary:
 		var taken := {}
 		for target: Array in landmarks: taken[int(target[0])] = true
 		var places: Array = []
-		for type in WAY_PLACES:
+		for place_kind in OFFICE.WAY_PLACES:
 			var best := -1
 			var best_size := 1 << 30
 			for id in parent:
 				var room: Dictionary = manifest.rooms[int(id)]
-				if int(room.type) != int(type) or taken.has(int(id)) or not kind_of(manifest, int(id)).is_empty(): continue
+				if int(room.type) != int(place_kind) or taken.has(int(id)) or not kind_of(manifest, int(id)).is_empty(): continue
 				var length := path_to(parent, int(id)).size()
 				if length < best_size:
 					best_size = length
 					best = int(id)
-			if best >= 0: places.append([best, String(WAY_PLACES[type]), best_size])
+			if best >= 0: places.append([best, String(OFFICE.WAY_PLACES[place_kind]), best_size])
 		places.sort_custom(func(a: Array, c: Array): return int(a[2]) < int(c[2]) or (int(a[2]) == int(c[2]) and int(a[0]) < int(c[0])))
 		var decoys := 0
 		for place: Array in places:
