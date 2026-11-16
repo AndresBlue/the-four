@@ -29,7 +29,6 @@ const CREDITS := [
 		"The Locust: modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).",
 		"«detective», de haider706 (Sketchfab, CC BY 4.0).",
 		"«Debra - Detective Woman (Game Model)», de Zukomazi (Sketchfab, CC BY 4.0).",
-		"«Realistic Female», de Biviyt (Sketchfab, CC BY-SA 4.0).",
 	]],
 	["MOBILIARIO Y OBJETOS", [
 		"«Sofa (Game Ready / 2K PBR)», de Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).",
@@ -119,7 +118,7 @@ const CREDITS := [
 		"Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["LICENCIAS PENDIENTES", [
-		"El modelo de The Locust lleva cláusulas No Comercial y Sin Obras Derivadas, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.",
+		"El modelo de The Locust lleva cláusulas No Comercial y Sin Obras Derivadas: mientras siga aquí, esto no se puede vender.",
 		"El registro completo, con enlaces y condiciones, está en docs/ASSETS.md.",
 	]],
 ]
@@ -900,8 +899,10 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 ## author and friends: it unlocks what it names, kept in the setting "codes".
 ## Known by its SHA-256, so its words are not in the game's files.
 const CODES := {"5a9e67380adf22a6d0766b17fd607c4be780a50333aebeb2471538b464148e90": "miku"}
-## What a code unlocked, as the panel says it.
+## What a code unlocked, as the panel says it, and its credit (in the credits
+## only once it is had: the author, 16 November 2026).
 const CODE_NAMES := {"miku": "MIKU"}
+const UNLOCKED_CREDITS := {"miku": "«hatsune miku», de 雨宮レン (oscar3dmodel) (Sketchfab, CC BY 4.0). Hatsune Miku es un personaje de Crypton Future Media."}
 ## The way in from the credits: a small word in the top right corner, gone
 ## with the screen (clear()).
 var corner_button: Button
@@ -1864,6 +1865,10 @@ func credits_roll() -> void:
 	for block in CREDITS:
 		label(list, block[0], 18).add_theme_color_override("font_color", STYLE.AMBER)
 		for line in block[1]: paragraph(list, line, 17, 660)
+		# What a code unlocked is credited only once it is had.
+		if block[0] == "PERSONAJES":
+			for id in UNLOCKED_CREDITS:
+				if unlocked(id): paragraph(list, UNLOCKED_CREDITS[id], 17, 660)
 		spacer(list, 12)
 	start_roll(roll, list)
 
@@ -2079,6 +2084,8 @@ func show_characters(back := "multiplayer") -> void:
 	var visual := visual_script.new()
 	var chosen := STYLE.text("", 20, STYLE.AMBER)
 	for index in visual_script.NAMES.size():
+		# Miku only with her code (CODES).
+		if index == 2 and not unlocked("miku"): continue
 		buttons["character_%d" % index] = entry(column, visual_script.NAMES[index], func():
 			settings.set_value("character", index)
 			if net != null and net.active(): net.set_character(index)

@@ -6,7 +6,7 @@ extends SceneTree
 ##   godot --path . --script tools/capture/avatar_capture.gd
 ## Writes evidence/avatar_<id>_body.png and evidence/avatar_<id>_face.png.
 const AVATAR := preload("res://game/player/avatars/avatar_visual.tscn")
-const IDS := ["detective", "detective_woman", "realistic_female"]
+const IDS := ["detective", "detective_woman", "miku"]
 
 func _initialize() -> void: run.call_deferred()
 

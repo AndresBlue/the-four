@@ -1,10 +1,12 @@
 extends Node3D
 ## Presentation only. Never changes capsule, speed, or saved floor state.
-const IDS := ["detective", "detective_woman", "realistic_female"]
-const NAMES := ["Detective Masculino", "Detective Femenino", "Exploradora"]
+## The third is Miku, chosen only with her code (hotel_ui CODES, the author's,
+## 16 November 2026); the Exploradora (Realistic Female, CC BY-SA) went.
+const IDS := ["detective", "detective_woman", "miku"]
+const NAMES := ["Detective Masculino", "Detective Femenino", "Miku"]
 ## The capture's own measures (how a body folds up with no room to lie).
 const SCORE := preload("res://game/app/capture_score.gd")
-@export_enum("Detective Masculino", "Detective Femenino", "Exploradora") var character := 0
+@export_enum("Detective Masculino", "Detective Femenino", "Miku") var character := 0
 @export var first_person := false
 ## The two skeletons the survivors come with. Keys: hip, spine, chest, head,
 ## and per side the shoulder (s), upper arm (a), forearm (e), hand (h), thigh
@@ -16,13 +18,21 @@ const MIXAMO := {
 	"lt": "mixamorig_LeftUpLeg", "lk": "mixamorig_LeftLeg", "lf": "mixamorig_LeftFoot", "lo": "mixamorig_LeftToeBase",
 	"rt": "mixamorig_RightUpLeg", "rk": "mixamorig_RightLeg", "rf": "mixamorig_RightFoot", "ro": "mixamorig_RightToeBase",
 }
-const CHARACTER_CREATOR := {
-	"hip": "CC_Base_Hip", "spine": "CC_Base_Spine01", "chest": "CC_Base_Spine02", "head": "CC_Base_Head",
-	"ls": "CC_Base_L_Clavicle", "la": "CC_Base_L_Upperarm", "le": "CC_Base_L_Forearm", "lh": "CC_Base_L_Hand",
-	"rs": "CC_Base_R_Clavicle", "ra": "CC_Base_R_Upperarm", "re": "CC_Base_R_Forearm", "rh": "CC_Base_R_Hand",
-	"lt": "CC_Base_L_Thigh", "lk": "CC_Base_L_Calf", "lf": "CC_Base_L_Foot", "lo": "CC_Base_L_ToeBase",
-	"rt": "CC_Base_R_Thigh", "rk": "CC_Base_R_Calf", "rf": "CC_Base_R_Foot", "ro": "CC_Base_R_ToeBase",
+## Miku's (assets/players/miku: an MMD skeleton, its bones in Japanese). Her
+## legs are skinned to the D bones, not to the leg bones beside them, and the
+## hips are the waist that carries both halves of the body.
+const MMD := {
+	"hip": "腰", "spine": "上半身", "chest": "上半身2", "head": "頭",
+	"ls": "肩.L", "la": "腕.L", "le": "ひじ.L", "lh": "手首.L",
+	"rs": "肩.R", "ra": "腕.R", "re": "ひじ.R", "rh": "手首.R",
+	"lt": "足D.L", "lk": "ひざD.L", "lf": "足首D.L", "lo": "足先EX.L",
+	"rt": "足D.R", "rk": "ひざD.R", "rf": "足首D.R", "ro": "足先EX.R",
 }
+## Where each one's model is: Miku's was prepared in Blender (her outline
+## shell taken out, her textures put on, her misplaced bones put back) and
+## comes as a GLB.
+static func model_path(id: String) -> String:
+	return "res://assets/players/%s/model.%s" % [id, "glb" if id == "miku" else "fbx"]
 ## How high the ankle sits above the sole, so a planted foot rests on the
 ## floor instead of sinking into it.
 const ANKLE_HEIGHT := 0.09
@@ -56,11 +66,11 @@ func configure(index: int, local_view: bool) -> void:
 	bones.clear()
 	locks.clear()
 	meshes.clear()
-	model = load("res://assets/players/%s/model.fbx" % IDS[character]).instantiate()
+	model = load(model_path(IDS[character])).instantiate()
 	if character == 0: dress_detective()
 	model.name = "Model"
-	# The Exploradora's FBX brings the camera it was shown with ("Preview_Camera").
-	# First into a viewport, it became that viewport's camera: the character
+	# A model's file may bring the camera it was shown with (the Exploradora's
+	# "Preview_Camera" did). First into a viewport, it became that viewport's camera: the character
 	# screen, opened with her already chosen, framed her from there, too close
 	# and off to one side. Whatever a model brings to look or light with is
 	# not the body.
@@ -69,13 +79,7 @@ func configure(index: int, local_view: bool) -> void:
 		stray.free()
 	add_child(model)
 	# Imported demonstration clips are preserved but never drive game root motion.
-	for animation in model.find_children("*", "AnimationPlayer", true, false):
-		if character == 2:
-			forget_strays(animation)
-			animation.play(animation.get_animation_list()[0])
-			animation.advance(0.0)
-			animation.pause()
-		else: animation.stop()
+	for animation in model.find_children("*", "AnimationPlayer", true, false): animation.stop()
 	if model is MeshInstance3D: meshes.append(model)
 	for mesh in model.find_children("*", "MeshInstance3D", true, false): meshes.append(mesh)
 	refine_materials()
@@ -96,7 +100,7 @@ func configure(index: int, local_view: bool) -> void:
 		# Some models carry a small accessory skeleton too; animate the body one.
 		rigs.sort_custom(func(a, b): return a.get_bone_count() > b.get_bone_count())
 		rig = rigs[0]
-		var names := CHARACTER_CREATOR if character == 2 else MIXAMO
+		var names := MMD if character == 2 else MIXAMO
 		for key in names: bones[key] = rig.find_bone(names[key])
 		# The lengths of the limbs in the rest pose, which is what the IK
 		# solves against.
@@ -123,17 +127,6 @@ func dress_detective() -> void:
 		var wanted: String = DETECTIVE_PARTS.get(String(mesh.name), "")
 		if mesh.mesh == null or not materials.has(wanted): continue
 		for surface in mesh.mesh.get_surface_count(): mesh.set_surface_override_material(surface, materials[wanted])
-
-## The clips of a model still move what was taken out of it (its camera):
-## those tracks go too, or every body made of it warns that it cannot find
-## them. On the clip as it is in memory, which every body shares.
-func forget_strays(player: AnimationPlayer) -> void:
-	var from := player.get_node_or_null(player.root_node)
-	if from == null: return
-	for clip_name in player.get_animation_list():
-		var clip := player.get_animation(clip_name)
-		for track in range(clip.get_track_count() - 1, -1, -1):
-			if from.get_node_or_null(NodePath(clip.track_get_path(track).get_concatenated_names())) == null: clip.remove_track(track)
 
 ## The copies refine_materials() hung on the meshes are taken off before the
 ## body goes. Left on, they died with their mesh a moment before the mesh was

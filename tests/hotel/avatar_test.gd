@@ -133,8 +133,9 @@ func run() -> void:
 	avatar.character = 2
 	body.add_child(avatar)
 	await process_frame
-	var occlusion: Array = avatar.meshes.filter(func(mesh): return String(mesh.name).to_lower().contains("eyeocclusion"))
-	check("La Exploradora no mira a través de dos bolas blancas", not occlusion.is_empty() and occlusion.all(func(mesh): return not mesh.visible))
+	# Miku (the third, with her code): her MMD skeleton, every bone the body
+	# moves found, and her own clips.
+	check("Miku tiene su esqueleto, cada hueso que la mueve y sus pasos", avatar.rig != null and avatar.bones.size() == avatar.MMD.size() and avatar.bones.values().all(func(bone): return int(bone) >= 0) and avatar.gait != null)
 	var hair_ok := true
 	var chalk := false
 	for mesh in avatar.meshes:

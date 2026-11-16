@@ -27,7 +27,7 @@ func run() -> void:
 	level.net.host("Andrés", 0, 24650)
 	# Pretend guests, only for the picture.
 	level.net.players[2] = {"name": "Camila", "character": 1, "peer": 0, "connected": true}
-	level.net.players[3] = {"name": "Tomás", "character": 2, "peer": 0, "connected": true}
+	level.net.players[3] = {"name": "Tomás", "character": 1, "peer": 0, "connected": true}
 	level.net.players[4] = {"name": "Vale", "character": 1, "peer": 0, "connected": true}
 	level.net.options.mode = level.net.Mode.VERSUS
 	level.net.options.locust = 3
@@ -35,7 +35,7 @@ func run() -> void:
 	await shot("lobby")
 	# A sixth seat: versus takes five survivors and the creature.
 	level.net.players[5] = {"name": "Nico", "character": 0, "peer": 0, "connected": true}
-	level.net.players[6] = {"name": "Josefa", "character": 2, "peer": 0, "connected": false}
+	level.net.players[6] = {"name": "Josefa", "character": 1, "peer": 0, "connected": false}
 	level.ui.menu("lobby")
 	await shot("lobby_seis")
 	level.net.shutdown("")

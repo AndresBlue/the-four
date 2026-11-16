@@ -686,7 +686,7 @@ func cut_short_checks() -> void:
 	var explorer = preload("res://game/player/avatars/avatar_visual.tscn").instantiate()
 	explorer.character = 2
 	root.add_child(explorer)
-	check("La Exploradora no trae su propia cámara", explorer.find_children("*", "Camera3D", true, false).is_empty())
+	check("El tercer personaje no trae su propia cámara", explorer.find_children("*", "Camera3D", true, false).is_empty())
 	explorer.queue_free()
 	# On this seed the deepest room of the first wing is the lift lobby behind
 	# the refuge: the creature started there, shut in for the whole stage.

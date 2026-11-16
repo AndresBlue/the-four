@@ -26,7 +26,7 @@ func run() -> void:
 	level.ui.buttons["pesadilla"].grab_focus()
 	await shot("pesadilla", 10)
 	if level.net.host("Andrés", 0, 24690) == OK:
-		level.net.players[2] = {"name": "Camila", "character": 2, "peer": 0, "connected": true}
+		level.net.players[2] = {"name": "Camila", "character": 1, "peer": 0, "connected": true}
 		level.net.set_option("difficulty", "equilibrada")
 		level.ui.menu("lobby")
 		await shot("sala")

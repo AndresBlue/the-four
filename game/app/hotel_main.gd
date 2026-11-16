@@ -1315,7 +1315,7 @@ func body_of_seat(seat: int) -> Node3D:
 	var body = match_net.bodies.get(seat)
 	return body if is_instance_valid(body) else null
 
-const AVATAR_NAMES := ["Detective", "Detective", "Exploradora"]
+const AVATAR_NAMES := ["Detective", "Detective", "Miku"]
 
 ## The pad in the hands, when something happens to the body it is holding: the
 ## creature's grip, each stab, and the board being thrown. Off by the player's

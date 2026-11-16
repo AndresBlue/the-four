@@ -57,19 +57,22 @@ const CLIPS := {
 }
 ## The clips that leave the floor (above).
 const LEAPS := ["jump"]
-const TARGETS := ["detective", "detective_woman", "realistic_female"]
+const TARGETS := ["detective", "detective_woman", "miku"]
+const AVATAR := preload("res://game/player/avatars/avatar_visual.gd")
 ## The clips' bones by their Mixamo name (without "mixamorig_") and, on the
 ## Exploradora, the Character Creator bone that does the same work. Her twist,
 ## share and breast bones keep their rest and follow.
-const CHARACTER_CREATOR := {
-	"Hips": "CC_Base_Hip", "Spine": "CC_Base_Waist", "Spine1": "CC_Base_Spine01", "Spine2": "CC_Base_Spine02",
-	"Neck": "CC_Base_NeckTwist01", "Head": "CC_Base_Head",
-	"LeftShoulder": "CC_Base_L_Clavicle", "LeftArm": "CC_Base_L_Upperarm", "LeftForeArm": "CC_Base_L_Forearm", "LeftHand": "CC_Base_L_Hand",
-	"RightShoulder": "CC_Base_R_Clavicle", "RightArm": "CC_Base_R_Upperarm", "RightForeArm": "CC_Base_R_Forearm", "RightHand": "CC_Base_R_Hand",
-	"LeftUpLeg": "CC_Base_L_Thigh", "LeftLeg": "CC_Base_L_Calf", "LeftFoot": "CC_Base_L_Foot", "LeftToeBase": "CC_Base_L_ToeBase",
-	"RightUpLeg": "CC_Base_R_Thigh", "RightLeg": "CC_Base_R_Calf", "RightFoot": "CC_Base_R_Foot", "RightToeBase": "CC_Base_R_ToeBase",
+## Miku's MMD bone for each of the clips' (avatar_visual.MMD): the waist for
+## the hips, the D bones for the legs, which are what move her skin.
+const MMD := {
+	"Hips": "腰", "Spine1": "上半身", "Spine2": "上半身2", "Neck": "首", "Head": "頭",
+	"LeftShoulder": "肩.L", "LeftArm": "腕.L", "LeftForeArm": "ひじ.L", "LeftHand": "手首.L",
+	"RightShoulder": "肩.R", "RightArm": "腕.R", "RightForeArm": "ひじ.R", "RightHand": "手首.R",
+	"LeftUpLeg": "足D.L", "LeftLeg": "ひざD.L", "LeftFoot": "足首D.L", "LeftToeBase": "足先EX.L",
+	"RightUpLeg": "足D.R", "RightLeg": "ひざD.R", "RightFoot": "足首D.R", "RightToeBase": "足先EX.R",
 }
-const FINGERS := {"Thumb": "Thumb", "Index": "Index", "Middle": "Mid", "Ring": "Ring", "Pinky": "Pinky"}
+## Her fingers: the thumb counts from 0, the others from 1 (full-width digits).
+const MMD_FINGERS := {"Thumb": "親指", "Index": "人指", "Middle": "中指", "Ring": "薬指", "Pinky": "小指"}
 ## Which bone each one points at, for turning the target's rest onto the
 ## clip's. One that points at nothing in particular (the hips, the head, the
 ## toes, the finger tips) keeps its rest as it is.
@@ -83,6 +86,10 @@ const FPS := 30.0
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
+	# --only=<id>: that survivor's clips alone.
+	var only := ""
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--only="): only = argument.trim_prefix("--only=")
 	var failed := false
 	var sources := {}
 	for name in CLIPS:
@@ -96,10 +103,11 @@ func run() -> void:
 		source.leap = name in LEAPS
 		sources[name] = source
 	for id in TARGETS:
-		var scene: Node3D = load("res://assets/players/%s/model.fbx" % id).instantiate()
+		if not only.is_empty() and id != only: continue
+		var scene: Node3D = load(AVATAR.model_path(id)).instantiate()
 		root.add_child(scene)
 		var skeleton := body_skeleton(scene)
-		var mapping := bone_mapping(skeleton, id == "realistic_female")
+		var mapping := bone_mapping(skeleton, id)
 		var library := AnimationLibrary.new()
 		for name in sources:
 			var animation := retarget(sources[name], scene, skeleton, mapping)
@@ -160,15 +168,15 @@ func model_space(skeleton: Skeleton3D, scene: Node3D) -> Transform3D:
 
 ## Target bone -> clip bone name ("mixamorig_..."), for every bone of the
 ## target that a bone of the clip drives.
-func bone_mapping(skeleton: Skeleton3D, character_creator: bool) -> Dictionary:
+func bone_mapping(skeleton: Skeleton3D, id: String) -> Dictionary:
 	var mapping := {}
 	var wanted := {}
-	if character_creator:
-		wanted = CHARACTER_CREATOR.duplicate()
+	if id == "miku":
+		wanted = MMD.duplicate()
 		for side in ["Left", "Right"]:
-			for finger in FINGERS:
+			for finger in MMD_FINGERS:
 				for joint in [1, 2, 3]:
-					wanted["%sHand%s%d" % [side, finger, joint]] = "CC_Base_%s_%s%d" % [side[0], FINGERS[finger], joint]
+					wanted["%sHand%s%d" % [side, finger, joint]] = "%s%s.%s" % [MMD_FINGERS[finger], ["", "０", "１", "２", "３"][joint + (0 if finger == "Thumb" else 1)], side[0]]
 	else:
 		for bone in skeleton.get_bone_count():
 			var name := skeleton.get_bone_name(bone)

@@ -30,7 +30,7 @@ Assets que el usuario descargó e incorporó al juego. Cada ficha se abrió y se
 |---|---|---|---|---|
 | `detective` | detective | haider706 | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/detective-b1de47c043314837a844698f2380daad) |
 | `detective_woman` | Debra — Detective Woman (Game Model) | Zukomazi | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/debra-detective-woman-game-model-208e5cf748404521894bf30c95f25c12) |
-| `realistic_female` | Realistic Female | Biviyt | **CC Attribution-ShareAlike 4.0** | [Sketchfab](https://sketchfab.com/3d-models/realistic-female-b0cc2a6c26114da184252e433cf75d23) |
+| `miku` | hatsune miku (personaje de Crypton Future Media) | 雨宮レン (oscar3dmodel) | CC Attribution 4.0 (el modelo); el personaje, solo usos no comerciales (Piapro Character License) | [Sketchfab](https://sketchfab.com/3d-models/hatsune-miku-d418e988c3de40f79e0b329886883241) |
 
 **El esqueleto del detective** no venía con el modelo: es el del autorrigger de Mixamo (Adobe), hecho el 18 de octubre de 2026 con la cuenta del autor a partir de `detective/model.obj`, y es `detective/model.fbx` (mallas, UV, esqueleto de 65 huesos y pesos; los materiales y texturas siguen siendo los del OBJ). La licencia del modelo, CC BY 4.0, permite modificarlo.
 
@@ -109,7 +109,8 @@ Los tres de la ejecución: el grito del agarre (`execution_scream.wav`), el golp
 
 - **No comercial:** el modelo de The Locust (CC BY-NC-ND) prohíbe el uso comercial. Mientras siga en el juego, no se puede vender ni monetizar. Desde el 19/10/2026 es lo único no comercial: los dos sonidos que también lo eran salieron.
 - **Sin obra derivada:** la licencia de The Locust es además NoDerivs, y el hotel lo escala y le mueve los huesos. Hay que resolverlo con el autor o sustituirlo antes de publicar.
-- **CompartirIgual:** «Realistic Female» obliga a distribuir bajo la misma licencia cualquier obra derivada del modelo.
+- **Miku** (16 de noviembre de 2026): personaje oculto, elegible solo con el código de los créditos. Su crédito sale en la lista solo una vez desbloqueada. El modelo va en los archivos del juego para todos y el personaje es de Crypton: encaja mientras el juego sea un proyecto fan sin venta; si se vende, se quita. Su FBX (`models/hatsune-miku.zip`, `source/sin_nombre.zip`) se preparó en Blender: sin el contorno de MMD (el material «Material», una copia entera del cuerpo), con sus texturas puestas por nombre de material, los huesos mal colgados devueltos a su sitio (el hombro derecho colgaba de la lengua, la pierna izquierda del tobillo derecho), a 1,6 m, y exportado a `assets/players/miku/model.glb`. Sus piernas se mueven por los huesos D de MMD. Sus pasos, con `tools/avatars/bake_survivor_clips.gd --only=miku`.
+- «Realistic Female» (Biviyt, CC BY-SA 4.0), la Exploradora, se quitó el 16 de noviembre de 2026; con ella se fue la cláusula CompartirIgual.
 - **Atribución:** todos los CC BY exigen crédito, y ya lo tienen en la pantalla de créditos. Los CC0 (ambientCG, Poly Haven, los sonidos CC0 de Freesound) y el dominio público (Art Institute of Chicago) no lo exigen: desde el 19/10/2026 no salen en los créditos, solo en este registro.
 
 <!-- SCANS: generado por tools/textures/ingest_pbr.py, no editar a mano -->

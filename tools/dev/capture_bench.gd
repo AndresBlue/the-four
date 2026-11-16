@@ -476,7 +476,7 @@ func write_board() -> void:
 		"5    dificultad: %s  (chilla %.1f s y corre a %.1f m/s; tú corres a 6,0)" % [DIFFICULTY.NAMES.get(String(level.difficulty), String(level.difficulty)), float(level.locust.alert_time) if is_instance_valid(level.locust) else 0.0, float(level.locust.chase_speed) if is_instance_valid(level.locust) else 0.0],
 		"N    %s" % ("volver a la sala" if by_wardrobe else "ponerme ante un armario (entra con E; mantén E para salir en silencio)"),
 		"B    sangre: %s" % ("sí" if bool(level.settings.values.get("gore", true)) else "no"),
-		"M    cuerpo: %s" % ["Detective Masculino (sin esqueleto: solo se inclina)", "Detective Femenino", "Exploradora"][clampi(int(level.settings.values.character), 0, 2)],
+		"M    cuerpo: %s" % ["Detective Masculino (sin esqueleto: solo se inclina)", "Detective Femenino", "Miku"][clampi(int(level.settings.values.character), 0, 2)],
 		"R    volver a empezar          P    ocultar este panel",
 		"",
 		"Cómo te coge depende de ti: mírala, dale la espalda, agáchate, abre la hoja, escóndete.",
