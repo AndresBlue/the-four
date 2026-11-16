@@ -32,6 +32,20 @@ func run() -> void:
 	check("Una en la sala donde se empieza", machines.any(func(machine): return int(level.FLOOR.room_at(level.manifest.rooms, machine.global_position).get("id", -1)) == start_room))
 	var machine = machines[0]
 	check("Se puede tomar un café", level.coffee.can_drink(machine))
+	# Stood in front of it and looking at it, the look finds the machine (it
+	# found its solid body, and no cup could be had).
+	var map: RID = level.get_world_3d().navigation_map
+	level.player.global_position = NavigationServer3D.map_get_closest_point(map, machine.global_position + machine.global_basis.z * 1.2) + Vector3(0, 0.04, 0)
+	for frame in 5: await physics_frame
+	var eye: Vector3 = level.player.camera.global_position
+	var target: Vector3 = machine.global_position + Vector3(0, 1.2, 0)
+	var flat := Vector3(target.x - eye.x, 0, target.z - eye.z)
+	level.player.rotation.y = atan2(-flat.x, -flat.z)
+	level.player.camera.rotation.x = atan2(target.y - eye.y, flat.length())
+	for frame in 3: await physics_frame
+	check("Mirándola de frente, la mirada da con la máquina", level.interaction.focused_area() == machine, str(level.interaction.focused_area()))
+	var lamps: Array = Array(level.hotel.sconce_spots)
+	check("Ninguna tapa un aplique ni el cuadro entre dos", machines.all(func(one): return lamps.all(func(lamp: Vector3): return Vector2(lamp.x - one.global_position.x, lamp.z - one.global_position.z).length() >= level.coffee.LAMP_CLEAR or absf(lamp.y - one.global_position.y) >= 3.0)))
 	level.player.sanity = 20.0
 	level.coffee.drink(machine)
 	check("Una vez por superviviente y máquina", not level.coffee.can_drink(machine))

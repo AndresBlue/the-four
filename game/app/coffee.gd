@@ -26,6 +26,8 @@ const SOUND := "res://assets/audio/sfx/office/copier.wav"
 const INSET := 0.56
 const SIDE := 0.75
 const DOOR_CLEAR := 2.0
+## And from wall lamps: the hotel hangs its paintings between two of them.
+const LAMP_CLEAR := 1.3
 var level
 var machines: Array = []
 ## This machine's own cup on its way: seconds left (-1 none), and the mind as
@@ -100,6 +102,7 @@ func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	var map: RID = level.get_world_3d().navigation_map
+	var lamps: Array = Array(level.hotel.sconce_spots) if "sconce_spots" in level.hotel else []
 	var grilles: Array = []
 	for exit in level.manifest.get("ducts", {}).get("exits", []):
 		if String(exit.get("kind", "")) == "wall":
@@ -124,6 +127,8 @@ func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 		var point: Vector3 = centre + out * (reach - INSET) + along * (share - 0.5) * 2.0 * maxf(length - 1.0, 0.0)
 		if machines.any(func(machine): return machine.global_position.distance_to(point) < 2.5): continue
 		if level.hotel.doors.any(func(door): return is_instance_valid(door) and Vector2(door.global_position.x - point.x, door.global_position.z - point.z).length() < DOOR_CLEAR): continue
+		# Nor over a wall lamp, nor the painting the hotel hangs between two.
+		if lamps.any(func(lamp: Vector3): return Vector2(lamp.x - point.x, lamp.z - point.z).length() < LAMP_CLEAR and absf(lamp.y - point.y) < 3.0): continue
 		# Nor in front of a low grille of the ducts (her way out on floor 2).
 		if grilles.any(func(grille: Vector3): return Vector2(grille.x - point.x, grille.z - point.z).length() < DOOR_CLEAR and absf(grille.y - point.y) < 2.0): continue
 		var walled := true
