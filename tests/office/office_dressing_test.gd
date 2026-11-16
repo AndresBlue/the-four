@@ -86,6 +86,19 @@ func run() -> void:
 	check("Ningún rótulo lleva «·» ni «—»", bad_text.is_empty(), str(bad_text))
 	clutter_checks(hotel, rooms, notes)
 	secretary_tops(hotel)
+	# Worse down the floor is a share of chances: weighed on the mean of SEEDS,
+	# one floor's grid of furniture can turn it.
+	var shares: Array = [abandon(rooms, notes)]
+	for seed_value: int in SEEDS.slice(1):
+		await level.start_floor(seed_value, false, [1], "apacible", 2)
+		shares.append(abandon(level.hotel.manifest.rooms, level.hotel.dressing_log))
+	var first := 0.0
+	var third := 0.0
+	for share: Array in shares:
+		first += float(share[0]) / shares.size()
+		third += float(share[1]) / shares.size()
+	print("ABANDONO ", SEEDS, " ", shares.map(func(s: Array) -> String: return "%.2f/%.2f" % [s[0], s[1]]))
+	check("La planta 3 está más abandonada que la 1 (media de %d semillas)" % SEEDS.size(), shares.all(func(s: Array) -> bool: return float(s[0]) >= 0.0 and float(s[1]) >= 0.0) and third > first, "%.2f frente a %.2f" % [third, first])
 	print("OFFICE_DRESSING_RESULT ", checks - failed, "/", checks)
 	level.queue_free()
 	await process_frame
@@ -134,21 +147,26 @@ func chairs_face_tables(rooms: Array, notes: Dictionary) -> void:
 ## Each thing with a front (office_models.FRONTED) that has a seat of its own
 ## piece within FRONT_REACH faces one of them within FRONT_MARGIN: a reader
 ## turned to the wall, a keyboard askew. One with no seat by it (a printer on its
-## cart) is not judged.
+## cart) is not judged, nor one whose nearest seat is a fallen chair (its sitter
+## gone, it may lie to a side, office_clutter.chair_pose()).
 const FRONT_REACH := 2.0
 const FRONT_MARGIN := deg_to_rad(60.0)
 func fronts_face_seats(hotel, notes: Dictionary) -> void:
 	var seats := {}
+	var fallen := {}
 	for chair: Dictionary in notes.chairs:
 		var key := "%d:%s" % [int(chair.room), String(chair.holder)]
 		if not seats.has(key): seats[key] = []
 		seats[key].append(chair.at)
+		if absf((chair.front as Vector3).y) > 0.5: fallen[chair.at] = true
 	var judged := 0
 	var wrong: Array = []
 	for thing: Dictionary in notes.fronts:
 		var at: Vector3 = thing.at
 		var near: Array = seats.get("%d:%s" % [int(thing.room), String(thing.holder)], []).filter(func(p: Vector3) -> bool: return Vector2(p.x - at.x, p.z - at.z).length() < FRONT_REACH)
 		if near.is_empty(): continue
+		near.sort_custom(func(p: Vector3, q: Vector3) -> bool: return Vector2(p.x - at.x, p.z - at.z).length() < Vector2(q.x - at.x, q.z - at.z).length())
+		if fallen.has(near[0]): continue
 		judged += 1
 		var front := Vector2((thing.front as Vector3).x, (thing.front as Vector3).z)
 		if not near.any(func(p: Vector3) -> bool: return absf(front.angle_to(Vector2(p.x - at.x, p.z - at.z))) <= FRONT_MARGIN):
@@ -261,15 +279,12 @@ func floors_and_leftovers(hotel, rooms: Array) -> void:
 
 ## Tramo B (office_clutter.gd): things on the desks, no paper on the card's
 ## way (paper_clear(), worked out here), one odd thing at most to a room, the
-## corridors' floor clear, and planta 3 left worse than planta 1: chairs
-## fallen or turned away and drawers out, among chairs and filing cabinets.
+## corridors' floor clear (planta 3 left worse than planta 1 is run()'s, on SEEDS).
 func clutter_checks(hotel, rooms: Array, notes: Dictionary) -> void:
 	var on_tops := 0
 	var near: Array = []
 	var odd := {}
 	var hall_floor := 0
-	var bad: Array = [0, 0, 0]
-	var all: Array = [0, 0, 0]
 	var spots: Array = []
 	LAYOUT.gather(hotel.manifest.get("mail", {}), spots)
 	for exit in hotel.manifest.get("tubes", {}).get("exits", []):
@@ -282,16 +297,25 @@ func clutter_checks(hotel, rooms: Array, notes: Dictionary) -> void:
 		if bool(entry.paper) and not paper_clear(rooms, room, entry.at, spots): near.append("%d %s" % [int(entry.room), kind])
 		if bool(entry.odd): odd[int(entry.room)] = int(odd.get(int(entry.room), 0)) + 1
 		if bool(entry.floor) and (t == OFFICE.CORRIDOR or t == OFFICE.GALLERY): hall_floor += 1
-		var planta := clampi(int(room.get("wing", 0)), 0, 2)
-		if kind in ["chair_fallen", "chair_odd", "drawer"]: bad[planta] = int(bad[planta]) + 1
-		if kind.begins_with("chair_") or kind == "drawer" or kind == "filing_shut": all[planta] = int(all[planta]) + 1
 	check("Hay teléfonos, pantallas, bandejas y tazas encima de las mesas", on_tops > 0, str(on_tops))
 	check("Ningún papel del suelo en la ruta de la ficha ni a menos de 2 m de una puerta, un lado abierto o la recta entre dos accesos", near.is_empty(), str(near.slice(0, 8)))
 	check("Como mucho un detalle raro por sala", odd.values().all(func(n) -> bool: return int(n) <= 1), str(odd))
 	check("Nada en el suelo de los pasillos", hall_floor == 0, str(hall_floor))
-	var first: float = float(bad[0]) / maxf(float(all[0]), 1.0)
-	var third: float = float(bad[2]) / maxf(float(all[2]), 1.0)
-	check("La planta 3 está más abandonada que la 1", int(all[0]) > 0 and int(all[2]) > 0 and third > first, "%.2f frente a %.2f" % [third, first])
+
+## The floors whose abandonment run() weighs, the first the one the other checks read.
+const SEEDS := [7, 8, 12, 33]
+
+## How abandoned planta 1 and planta 3 are left: chairs fallen or turned away and
+## drawers out, among chairs and filing cabinets; -1 for a planta with none.
+func abandon(rooms: Array, notes: Dictionary) -> Array:
+	var bad: Array = [0, 0, 0]
+	var all: Array = [0, 0, 0]
+	for entry: Dictionary in notes.clutter:
+		var kind := String(entry.kind)
+		var planta := clampi(int((rooms[int(entry.room)] as Dictionary).get("wing", 0)), 0, 2)
+		if kind in ["chair_fallen", "chair_odd", "drawer"]: bad[planta] = int(bad[planta]) + 1
+		if kind.begins_with("chair_") or kind == "drawer" or kind == "filing_shut": all[planta] = int(all[planta]) + 1
+	return [float(bad[0]) / float(all[0]) if int(all[0]) > 0 else -1.0, float(bad[2]) / float(all[2]) if int(all[2]) > 0 else -1.0]
 
 ## Whether a paper lies clear of the card's way, worked out here and not by
 ## office_clutter.gd: not in a room it crosses for certain (circulation,

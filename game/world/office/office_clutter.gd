@@ -197,14 +197,22 @@ static func drawer(builder: Node3D, node: Node3D, holder: Node3D, room: Dictiona
 	note(builder, room, "drawer", node.position + holder.transform * at, false, false)
 
 ## Which drawer of a filing cabinet item is left out, 1 or 2 up from the
-## bottom, or -1: by vary() of where it stands and the room's mess, none in the
+## bottom, or -1: by roll() of where it stands and the room's mess, none in the
 ## rooms dress() leaves alone. office_props.filing() asks it as well.
 static func drawer_row(builder: Node3D, room: Dictionary, seed_pos: Vector3) -> int:
 	if room.is_empty(): return -1
 	var t := int(room.type)
 	if t == OFFICE.CORRIDOR or t == OFFICE.GALLERY or t == OFFICE.WINDOW or t == OFFICE.SECURITY: return -1
-	if builder.vary(seed_pos, 460) >= float(OPEN_DRAWER[mess_of(room)]): return -1
+	if roll(builder, seed_pos, 460) >= float(OPEN_DRAWER[mess_of(room)]): return -1
 	return 1 + int(builder.vary(seed_pos, 461) * 2.0)
+
+## vary(), but in the real building an integer hash of the spot to the
+## centimetre (as the generator seeds its streams): its furniture stands on a
+## regular lattice, where vary()'s sine falls in bands (seed 7, planta 1: 18 of
+## 55 drawers out where the table says 15 %).
+static func roll(builder: Node3D, at: Vector3, salt: int) -> float:
+	if not OFFICE.real_plan_on(): return builder.vary(at, salt)
+	return float(posmod(hash([builder.looks, roundi(at.x * 100.0), roundi(at.y * 100.0), roundi(at.z * 100.0), salt]), 10007)) / 10007.0
 
 ## Papers dropped on the floor beside a piece that was sat at (spec_rediseno 7),
 ## now and then, to one side of it: on the room's floor, off every piece and
@@ -295,18 +303,29 @@ static func chair_pose(builder: Node3D, holder: Node3D, at: Vector3, face: float
 	if roll < fallen: pose = "fallen"
 	elif roll < odd and not odd_in(builder, room): pose = "odd"
 	elif roll < aside: pose = "aside"
-	if pose != "upright" and not swept_clear(builder, room, holder, at, turn): pose = "upright"
+	var fall := turn
+	if pose != "upright" and not swept_clear(builder, room, holder, at, turn):
+		# The real building's chairs stand close in rows: one that falls with no
+		# room behind it falls to a side that has some before it stays up.
+		var fell := pose == "fallen" and OFFICE.real_plan_on()
+		pose = "upright"
+		if fell:
+			for quarter: float in [PI / 2, -PI / 2]:
+				if swept_clear(builder, room, holder, at, turn * Basis(Vector3.UP, quarter)):
+					fall = turn * Basis(Vector3.UP, quarter)
+					pose = "fallen"
+					break
 	match pose:
 		"fallen":
 			var size := MODELS.size_of(builder, kind)
 			note(builder, room, "chair_fallen", spot, true, false)
-			var papers := at + turn * Vector3(0.45, 0, -0.55)
+			var papers := at + fall * Vector3(0.45, 0, -0.55)
 			var world: Vector3 = parent.position + holder.transform * papers
 			var local := in_room(holder, room, papers)
 			if clear_of_route(builder, room, world) and LAYOUT.inner(room).has_point(Vector2(local.x, local.z)):
 				builder.place(holder, MODELS.mesh_of(builder, "paper_scatter"), Transform3D(Basis(Vector3.UP, builder.vary(spot, 472) * TAU), papers))
 				note(builder, room, "paper_scatter", world, true, true)
-			return Transform3D(turn * Basis(Vector3.UP, (builder.vary(spot, 471) - 0.5) * 0.8) * Basis(Vector3.RIGHT, -PI / 2), at + turn * Vector3(0, size.z * 0.5, -0.35))
+			return Transform3D(fall * Basis(Vector3.UP, (builder.vary(spot, 471) - 0.5) * 0.8) * Basis(Vector3.RIGHT, -PI / 2), at + fall * Vector3(0, size.z * 0.5, -0.35))
 		"odd":
 			note(builder, room, "chair_odd", spot, false, false, true)
 			# Backed off the desk as it turns, so its back stays clear of it.

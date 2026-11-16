@@ -1141,6 +1141,11 @@ func furnish_mail(job: Dictionary) -> String:
 	var sp: Array = stand.point
 	var camera_target := rounded(Vector3(float(sp[0]), float(sp[1]) + 1.3, float(sp[2])))
 	var side := 1.0 if absf(1.2) <= LAYOUT.wall_length(win_room, wall) / 2 - 0.4 - 0.3 else -1.0
+	# The window of a bay lays its records from the door's end (office_recipes
+	# feature_end()) and its table at the other: the map on the door's side, the
+	# hub on the other, so each door place leaves it the same room (with the map
+	# always at +1.2, a door at -1 or -1.5 put the map's way in on the table's place).
+	if palette.band_bay(win_room) and side > 0.0 and wall_point(win_room, wall, -1.2, py, 0.0).distance_to(Vector3(door.x, py, door.z)) < wall_point(win_room, wall, 1.2, py, 0.0).distance_to(Vector3(door.x, py, door.z)) - 0.01: side = -1.0
 	var map := wall_spot(win_room, wall, 1.2 * side, py + 1.5)
 	register(job, win, wall, 1.2 * side, 0.3)
 	var hub := wall_spot(win_room, wall, -0.9 * side, py + float(palette.STATION_Y))
@@ -1893,7 +1898,7 @@ func furnish_furniture(job: Dictionary) -> String:
 		room.feature = RECIPES.feature_of(view, rooms[head] if head >= 0 else room)
 		RECIPES.clear_glass(room)
 		var t := int(room.type)
-		var recipe: Array = palette.recipe_of(room)
+		var recipe: Array = palette.recipe_of(room, head >= 0 and head != int(room.id))
 		if recipe.is_empty(): continue
 		var gone := RECIPES.drop(room)
 		# The papers' top a type keeps (spec_4e E): back in its corner before the
@@ -2223,7 +2228,8 @@ func island_ends(room: Dictionary, zones: Array, keep: Rect2, island: Dictionary
 			room.furniture.append(piece)
 			break
 
-## The boardroom's table, the longest of TABLE_KINDS that fits, off the middle
+## The boardroom's table, the longest of TABLE_KINDS that fits (up to its type's
+## TABLE_MOST: the director's meeting table of a two-bay office), off the middle
 ## (spec_proporcion D6), along the room's long side where it can, its local +Z
 ## away from the middle, with room to walk round it.
 func lay_table(room: Dictionary, zones: Array) -> void:
@@ -2242,7 +2248,9 @@ func lay_table(room: Dictionary, zones: Array) -> void:
 				for spot in first:
 					var shift := Vector2(slide, 0) if int(spot[1]) % 2 == 0 else Vector2(0, slide)
 					spots.append([(spot[0] as Vector2) * across + shift, spot[1]])
-	for kind in palette.TABLE_KINDS:
+	var kinds: Array = palette.TABLE_KINDS
+	if palette.TABLE_MOST.has(int(room.type)): kinds = kinds.slice(kinds.find(palette.TABLE_MOST[int(room.type)]))
+	for kind in kinds:
 		for spot in spots:
 			var piece := item(String(kind), spot[0], int(spot[1]), 0)
 			if not item_fits(room, zones, piece): continue

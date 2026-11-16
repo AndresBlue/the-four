@@ -814,7 +814,7 @@ func floor_recipes(m: Dictionary, tag: String, tally: Dictionary) -> void:
 		var t := int(room.type)
 		var id := int(room.id)
 		var furniture: Array = room.get("furniture", [])
-		var recipe: Array = OFFICE.recipe_of(room)
+		var recipe: Array = OFFICE.recipe_of(room, int(heads.get(int(room.hall), id)) != id)
 		if not recipe.is_empty():
 			tally.rooms = int(tally.rooms) + 1
 			if String(room.get("feature", "")) == "": tally.featureless = int(tally.featureless) + 1

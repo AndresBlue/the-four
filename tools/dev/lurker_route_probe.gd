@@ -263,11 +263,15 @@ func nave_trip() -> void:
 ## lamps on she takes the plenum and crosses a door on the ceilings only where
 ## lit rooms open into each other; the real building's rooms open only on its
 ## corridors, so the search tries again with the power gone, when the
-## ceilings and their doors are hers.
+## ceilings and their doors are hers; there it tries the power gone first: lit,
+## every pair of rooms is planned in vain (seed 8, ring: 22350 plans of 150
+## rooms, some 90 s, none with a door two legs ahead).
 func door_shut_on_her() -> void:
 	var ids := rooms_of(0)
-	for dark in [false, true]:
-		if dark: level.hotel.blackout(true)
+	var plans: Array = level.manifest.get("plans", [])
+	var real: bool = not plans.is_empty() and String(plans[0].get("plan", "")) != ""
+	for dark in ([true, false] if real else [false, true]):
+		level.hotel.blackout(dark)
 		for a in ids:
 			for b in ids:
 				if a == b: continue

@@ -350,6 +350,10 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			# their lid down beside them, and read as knocked over.
 			if int(room.get("type", -1)) == OFFICE.RECEPTION: steel_bin(builder, holder, Vector3.ZERO)
 			else: fitted(builder, holder, String(BIN_MODELS[int(builder.vary(seed_pos, 45) * 2.0)]), 0.42, 0.62, builder.vary(seed_pos, 46) * TAU)
+		"coat_stand":
+			# The bentwood coat stand of the "coat_rack" corner, as a recipe's piece.
+			builder.box(holder, Vector3(0, 0.9, 0), Vector3(0.42, 1.8, 0.4), "", true)
+			MODELS.put(builder, holder, "coat_stand", Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 2) * TAU), Vector3.ZERO))
 		"plant_floor":
 			builder.box(holder, Vector3(0, 0.27, 0), Vector3(0.45, 0.54, 0.45), "", true)
 			# The reception's big plants in its first view: the hotel's monstera, the tall pachira.

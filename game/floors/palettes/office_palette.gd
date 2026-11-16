@@ -656,6 +656,7 @@ const FURNITURE := {
 	"tv_cart": {"size": Vector2(0.8, 0.55), "height": 1.5},
 	"whiteboard": {"size": Vector2(1.5, 0.6), "height": 1.9},
 	"bin_floor": {"size": Vector2(0.45, 0.45), "height": 0.66},
+	"coat_stand": {"size": Vector2(0.5, 0.5), "height": 1.8},
 	"plant_floor": {"size": Vector2(0.5, 0.5), "height": 1.3},
 	"bench_slat": {"size": Vector2(1.5, 0.4), "height": 0.5},
 	"air_desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
@@ -780,11 +781,30 @@ static func band_bay(room: Dictionary) -> bool:
 ## a cell; a work desk between two cabinets and the bookcases in one, the lounge
 ## in the other (ONE_PER_HALL keeps the desk to one).
 const NARROW_EXEC := [["work_desk", "center", 1, 1, 1], ["bookcase", "run", 1, 2, 1], ["lounge", "spare", 1, 1, 1], ["sideboard", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]]
+## A director's office of two bays (two cells of 7.2 x 7.2 one room, 14.4 x 7.2):
+## one big office and not two alike. Its head cell (office_recipes.hall_heads())
+## the desk end: the director's desk with its chair and two visitors' chairs
+## between its bookcases, the credenza on in their run, the coat stand; the other
+## the meeting end: the small meeting table with its chairs, bookcases three in a
+## row against a long wall, the sofa or the lounge chair with its low table.
+const HALL_EXEC := [
+	[["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["sideboard", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["coat_stand", "spare", 1, 1, 1], ["bookcase", "side", 1, 1, 2], ["filing", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	[["meeting_table_s", "table", 1, 1, 1], ["bookcase", "side", 1, 1, 3], ["lounge", "side", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["sideboard", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+]
+## The longest meeting table a type's "table" entry lays (office_generator.lay_table()),
+## where not the longest that fits: the director's is a small one.
+const TABLE_MOST := {EXEC_OFFICE: "meeting_table_s"}
+## Whether a room is a cell of a director's office of two bays: a salon's cell of
+## one bay square, a size none of today's MODULE_SIZES has.
+static func two_bay_exec(room: Dictionary) -> bool:
+	return int(room.type) == EXEC_OFFICE and int(room.get("hall", -1)) >= 0 and is_equal_approx(float(room.span_x), BAY) and is_equal_approx(float(room.span_z), BAY)
 ## A room's recipe: SMALL_FURNITURE's where its cell is narrow enough for it,
-## else ROOM_FURNITURE's. By the cell's size, not the switch: the standby floor
-## (today's plan) keeps its recipes with the real plan on.
-static func recipe_of(room: Dictionary) -> Array:
+## else ROOM_FURNITURE's; HALL_EXEC's in a director's office of two bays, its
+## second where `aside` (not the salon's head cell). By the cell's size, not the
+## switch: the standby floor (today's plan) keeps its recipes with the real plan on.
+static func recipe_of(room: Dictionary, aside := false) -> Array:
 	if band_bay(room): return SMALL_FURNITURE[int(room.type)][1]
+	if two_bay_exec(room): return HALL_EXEC[1 if aside else 0]
 	if int(room.type) == EXEC_OFFICE and minf(float(room.span_x), float(room.span_z)) < SMALL_SIDE: return NARROW_EXEC
 	var small: Array = SMALL_FURNITURE.get(int(room.type), [])
 	if not small.is_empty() and minf(float(room.span_x), float(room.span_z)) < float(small[0]): return small[1]
