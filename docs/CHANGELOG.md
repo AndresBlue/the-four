@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.7.0](#170--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El hotel tiene su propia música, que da la vuelta sobre sí misma y suena inquietante; la entrada del juego no se corta y su música llega después del PLAY. |
 | [1.6.1](#161--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Un extra oculto mira hacia donde va. |
 | [1.6.0](#160--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Dos llaves de los cuadros por etapa, y las oficinas dicen menos dónde están sus salas clave y más dónde está lo demás. |
 | [1.5.1](#151--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Las máquinas de café se pueden usar, y ya no tapan los apliques ni los cuadros. |
@@ -74,6 +75,25 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.7.0 — 16 de noviembre de 2026
+
+*El hotel tiene su propia música, que da la vuelta sobre sí misma y suena inquietante; la entrada del juego no se corta y su música llega después del PLAY.*
+
+Commits `f32608e7`…`v1.7.0`.
+
+### Novedades
+
+- El piso 1 suena con su propio tema, aportado por el autor y procesado (`tools/audio/prepare_hotel_theme.py`):
+  - Hacia delante hasta poco antes del final; luego la última pieza al revés hasta el minuto 10, de un oído a otro, oscureciéndose y bajando.
+  - El final se solapa con el comienzo, así que el bucle no tiene silencio entre medias.
+  - Por encima, bajo: el temblor de una cinta, desafinaciones microtonales, intervalos disonantes que entran y salen, un desplazamiento de frecuencia y momentos congelados.
+- La entrada del juego (los auriculares y el PLAY) ya no se corta con una tecla ni con un clic. La música del menú empieza después del PLAY.
+- Los auriculares de la entrada tienen las copas redondas, y su aparición y desaparición ya no deja ver las piezas superpuestas.
+
+### Sin comprobar al cerrar la versión
+
+- La verificación completa no se corrió tras estos cambios: pasaron la prueba del hotel (110/110) y la de su sonido.
 
 ## 1.6.1 — 16 de noviembre de 2026
 
