@@ -294,6 +294,8 @@ func update_steps(previous: Vector3, _delta: float) -> void:
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 0.2, get_rid())
 	if not route.audible: return
 	step_voice.stream = load(clip[0])
+	# The hunter tracks them by ear (versus): their steps carry further to it.
+	step_voice.max_distance = 40.0 if level.world_audio.hunter_ears() else 26.0
 	# Kept under the creature's own noises: a teammate running is not a threat.
 	level.world_audio.apply_route(step_voice, route, (-29.0 if crouched else -13.0 if running else -19.0) + (2.0 if hard else 0.0), "Effects")
 	step_voice.play(maxf(0.0, clip[1] - 0.02))

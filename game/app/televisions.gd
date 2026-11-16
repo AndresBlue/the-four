@@ -61,7 +61,13 @@ func switch_television(set: Node3D, seat := -1) -> void:
 ## door shutting, so every set switched on sounded like somebody slamming one.
 const TV_BURST := "res://assets/audio/events/execution_static.ogg"
 
-const TV_BURST_GAIN := -6.0
+## At a fade of TV_FADE metres (world_audio.route_faded): -6 dB two metres
+## off, -16 at ten, -21 at twenty, and never under -30 anywhere on the planta.
+## With the player's own fall-off it was nearly as loud across the wing as in
+## front of the set, and gone past forty metres (when the blackout it tripped
+## played the same static from overhead, at full level).
+const TV_BURST_GAIN := 0.0
+const TV_FADE := 2.0
 
 ## Applied everywhere, whoever decided it. quiet: a returning player is told
 ## the set is on, not made to hear it come on.
@@ -80,8 +86,11 @@ func apply_television(index: int, value: bool, quiet := false) -> void:
 	# Not twice: the blackout it trips plays the same static, and on a guest the
 	# two can arrive in either order.
 	var stream: AudioStream = load(TV_BURST)
+	# The blackout it trips came first (on a guest): that static from overhead
+	# gives way to the set's own.
+	level.world_audio.stop_tagged("blackout", 1.5)
 	if level.world_audio.enabled and not level.world_audio.long_playing(TV_BURST, 1.5, "warp"):
-		set.burst = level.world_audio.play_long(TV_BURST, set.screen_point(), TV_BURST_GAIN)
+		set.burst = level.world_audio.play_long(TV_BURST, set.screen_point(), TV_BURST_GAIN, RID(), false, 0.0, "", TV_FADE)
 	set.hiss_after = now + stream.get_length()
 	if not level.net.is_client(): level.on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
 
@@ -147,8 +156,8 @@ func warp_creature(index: int) -> void:
 	# fourteen seconds of static off after one or two. What the survivors hear
 	# is this static, from both sets; the creature hears nothing of itself.
 	if level.world_audio.enabled:
-		level.world_audio.play_long(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0, RID(), false, 0.0, "warp")
-		level.world_audio.play_long(WARP_SOUND, creature.global_position + Vector3(0, 1.4, 0), -4.0, RID(), false, 0.0, "warp")
+		level.world_audio.play_long(WARP_SOUND, from + Vector3(0, 1.4, 0), TV_BURST_GAIN - 2.0, RID(), false, 0.0, "warp", TV_FADE)
+		level.world_audio.play_long(WARP_SOUND, creature.global_position + Vector3(0, 1.4, 0), TV_BURST_GAIN, RID(), false, 0.0, "warp", TV_FADE)
 
 ## How many of the stage's own sets are on. What burns in another wing is not
 ## counted: every stage from the second starts its tally at nothing.

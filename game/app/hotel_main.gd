@@ -1384,7 +1384,7 @@ var last_stage := 1
 func apply_blackout() -> void:
 	rumble(0.35, 0.0, 0.25)
 	hotel.blackout(true)
-	if world_audio.enabled and not world_audio.long_playing(BLACKOUT_SOUND, 1.5, "warp"): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), 0.0, RID(), true)
+	if world_audio.enabled and not world_audio.long_playing(BLACKOUT_SOUND, 1.5, "warp"): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), 0.0, RID(), true, 0.0, "blackout")
 	if is_instance_valid(locust): locust.blackout()
 
 ## And the power comes back, in the wing ahead. What went out belonged to the

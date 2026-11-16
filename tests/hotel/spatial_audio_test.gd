@@ -1,4 +1,5 @@
 extends SceneTree
+const TELEVISIONS := preload("res://game/app/televisions.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 var checks: Array = []
@@ -286,6 +287,23 @@ func run() -> void:
 	check("A set coming on plays its static from the screen, and no latch", audio.long_cues.size() == 1 and audio.long_cues[0].path == level.TV_BURST and audio.long_cues[0].point.distance_to(set.screen_point()) < 0.01 and audio.voices.is_empty())
 	level.apply_blackout()
 	check("The blackout it trips does not play that static twice", audio.long_cues.size() == 1)
+	# Across the planta the same static is much quieter, and still there.
+	var near_db: float = float(audio.long_cues[0].base_db)
+	var planta := FLOOR.planta_of(set.screen_point().y)
+	var far_point := Vector3.INF
+	for other in level.manifest.rooms:
+		var spot: Vector3 = NavigationServer3D.map_get_closest_point(map, FLOOR.position_of(other))
+		if FLOOR.planta_of(spot.y + 1.6) != planta: continue
+		if far_point == Vector3.INF or spot.distance_to(set.global_position) > far_point.distance_to(set.global_position): far_point = spot
+	level.player.position = far_point + Vector3(0, 0.04, 0)
+	await physics_frame
+	audio.route_long(audio.long_cues[0])
+	var far_db: float = float(audio.long_cues[0].base_db)
+	var metres: float = audio.listener_position().distance_to(set.screen_point())
+	print("  tele: %.1f dB al lado, %.1f dB a %.0f m" % [near_db, far_db, metres])
+	check("Across the planta a set coming on is much quieter, never silent", far_db <= near_db - 12.0 and far_db >= TELEVISIONS.TV_BURST_GAIN + audio.LONG_FLOOR - 0.01)
+	level.player.position = NavigationServer3D.map_get_closest_point(map, set.global_position + front * 1.8) + Vector3(0, 0.04, 0)
+	await physics_frame
 	level.hotel.blackout(false)
 	set.hiss_after = Time.get_ticks_msec() / 1000.0 - 5.0
 	audio.update_tv_hiss()

@@ -45,6 +45,14 @@ const REAR_GAIN := -4.0
 const AIR_REACH := 45.0
 const AIR_GAIN := -6.0
 const AIR_CUTOFF := 2000.0
+## Versus, on the hunter's machine: it hunts by ear, so what the survivors make
+## is this much louder and keeps only this share of the air's loss (it carries),
+## while its own cry, feet and breath step back by HUNTER_OWN_DB.
+const HUNTER_PREY_DB := 8.0
+const HUNTER_AIR := 0.4
+const HUNTER_OWN_DB := -12.0
+func hunter_ears() -> bool:
+	return level != null and "match_net" in level and level.match_net != null and level.match_net.local_is_locust()
 const GAIN := {"open": 1.0, "open_slow": -12.0, "slam": 0.0, "close": -11.0, "close_slow": -12.0, "hide": -8.0}
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 const POOLS := {
@@ -298,8 +306,10 @@ func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0, p
 ## offset from the listener instead of a place, for what is heard from above
 ## wherever you are (the power going). length: seconds before it fades out, 0
 ## for the whole recording. tag: what it is, for long_playing() to tell apart
-## two uses of one recording. Returns the player, or null when nothing plays.
-func play_long(path: String, point: Vector3, gain: float, emitter := RID(), follow := false, length := 0.0, tag := "") -> AudioStreamPlayer3D:
+## two uses of one recording. fade: metres of its own fall-off (route_faded),
+## for one heard all over the planta but much quieter far off; 0 uses the
+## player's, which ends at its reach. Returns the player, or null when nothing plays.
+func play_long(path: String, point: Vector3, gain: float, emitter := RID(), follow := false, length := 0.0, tag := "", fade := 0.0) -> AudioStreamPlayer3D:
 	last_event = {"path": path, "position": point, "long": true}
 	if not enabled or hush: return null
 	if not streams.has(path): streams[path] = load(path)
@@ -309,9 +319,12 @@ func play_long(path: String, point: Vector3, gain: float, emitter := RID(), foll
 	voice.unit_size = 6.0
 	voice.max_distance = 40.0
 	voice.max_db = 6.0
+	if fade > 0.0:
+		voice.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+		voice.max_distance = 0.0
 	voice.area_mask = ACOUSTIC_MASK
 	add_child(voice)
-	var cue := {"player": voice, "point": point, "gain": gain, "emitter": emitter, "path": path, "started": Time.get_ticks_msec() / 1000.0, "follow": follow, "base_db": -80.0, "audible": false, "length": length, "tag": tag}
+	var cue := {"player": voice, "point": point, "gain": gain, "emitter": emitter, "path": path, "started": Time.get_ticks_msec() / 1000.0, "follow": follow, "base_db": -80.0, "audible": false, "length": length, "tag": tag, "fade": fade}
 	long_cues.append(cue)
 	route_long(cue)
 	voice.volume_db = float(cue.base_db)
@@ -330,6 +343,12 @@ func stop_long(voice) -> void:
 		if is_instance_valid(voice):
 			voice.stop()
 			voice.queue_free()
+
+## Stops the long cues tagged `tag` that started within `within` seconds.
+func stop_tagged(tag: String, within: float) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	for cue in long_cues.duplicate():
+		if String(cue.get("tag", "")) == tag and now - float(cue.started) <= within: stop_long(cue.player)
 
 ## Whether a long cue of this recording started within `within` seconds and
 ## reaches this listener: the same dead channel is not played twice over.
@@ -354,6 +373,9 @@ func route_long(cue: Dictionary) -> void:
 		cue.audible = true
 		return
 	var point: Vector3 = cue.point
+	if float(cue.get("fade", 0.0)) > 0.0:
+		route_faded(cue)
+		return
 	var route: Dictionary = route_source(point, cue.emitter) if listener_position().distance_to(point) <= ROUTE_LIMIT else {"audible": false}
 	cue.audible = route.audible
 	if not route.audible:
@@ -361,6 +383,31 @@ func route_long(cue: Dictionary) -> void:
 		return
 	apply_route(voice, route, float(cue.gain), "Effects")
 	cue.base_db = voice.volume_db
+
+## A long cue with a fade of its own (a set coming on, a warp): placed like
+## any other sound near, quieter with every metre of route, and past where a
+## sound carries, or with no way here, still there from its direction through
+## the echo of the building, LONG_FLOOR under its level. Never from another
+## planta: the slab lets nothing through.
+const LONG_FLOOR := -30.0
+func route_faded(cue: Dictionary) -> void:
+	var voice: AudioStreamPlayer3D = cue.player
+	var point: Vector3 = cue.point
+	var listener := listener_position()
+	cue.audible = FLOOR.planta_of(listener.y) == FLOOR.planta_of(point.y)
+	if not cue.audible:
+		cue.base_db = -80.0
+		return
+	var straight := listener.distance_to(point)
+	var route: Dictionary = route_source(point, cue.emitter) if straight <= ROUTE_LIMIT + ROUTE_SLACK else {"audible": false}
+	var far: bool = not route.audible
+	var distance: float = straight * 1.4 if far else float(route.get("distance", straight))
+	voice.global_position = point if far else route.position
+	voice.bus = ECHO_BUS["Effects"] if far or route.echo else &"Effects"
+	voice.panning_strength = PANNING["Effects"]
+	voice.attenuation_filter_cutoff_hz = AIR_CUTOFF if far else minf(float(route.cutoff), lerpf(20000.0, AIR_CUTOFF, sqrt(clampf(distance / AIR_REACH, 0.0, 1.0))))
+	var fall := -20.0 * log(1.0 + distance / float(cue.fade)) / log(10.0)
+	cue.base_db = float(cue.gain) + maxf(fall + (-6.0 if far else float(route.gain)), LONG_FLOOR)
 
 ## Every frame: the level (with the fade of a cue given a length); every
 ## LONG_REROUTE seconds: where it is heard from.
@@ -514,8 +561,9 @@ func apply_route(player: AudioStreamPlayer3D, route: Dictionary, gain: float, dr
 	# A route may name its own bus (hers out of a duct, DUCT_BUS).
 	if route.has("bus"): player.bus = route.bus
 	var rear := behind(route.position)
-	var far := clampf(float(route.get("distance", 0.0)) / AIR_REACH, 0.0, 1.0)
-	player.volume_db = gain + route.gain + REAR_GAIN * rear + AIR_GAIN * far
+	var prey: bool = not creature and hunter_ears()
+	var far := clampf(float(route.get("distance", 0.0)) / AIR_REACH, 0.0, 1.0) * (HUNTER_AIR if prey else 1.0)
+	player.volume_db = gain + route.gain + REAR_GAIN * rear + AIR_GAIN * far + (HUNTER_PREY_DB if prey else 0.0)
 	# The square root front-loads it: the first metres already dull a sound,
 	# which is what tells a room away from a floor away.
 	player.attenuation_filter_cutoff_hz = minf(minf(route.cutoff, lerpf(20000.0, REAR_CUTOFF, rear)), lerpf(20000.0, AIR_CUTOFF, sqrt(far)))
@@ -717,7 +765,7 @@ func step_physics(delta: float) -> void:
 	if clock < 0.1: return
 	clock = 0
 	var rear := behind(presence.global_position)
-	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001))
+	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001)) + (HUNTER_OWN_DB if hunter_ears() else 0.0)
 	presence.attenuation_filter_cutoff_hz = minf(presence_route.get("cutoff", 20000.0), lerpf(20000.0, REAR_CUTOFF, rear))
 	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
 

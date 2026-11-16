@@ -496,7 +496,7 @@ func on_footfall(point: Vector3, strength: float) -> void:
 	var route: Dictionary = level.world_audio.route_source(point + Vector3.UP * 0.2, get_rid())
 	if not route.audible: return
 	# Its own feet, right under the hunter's ear, would wear it out: quieter still.
-	var level_db := lerpf(-9.0, -1.0, strength) - (6.0 if control == "player" else 0.0)
+	var level_db: float = lerpf(-9.0, -1.0, strength) + (level.world_audio.HUNTER_OWN_DB if control == "player" else 0.0)
 	level.world_audio.apply_route(footstep, route, level_db + level.world_audio.duck_db(), "Threat", true)
 	footstep.pitch_scale = rng.randf_range(0.82, 1.08)
 	footstep.play()
@@ -546,7 +546,9 @@ func cry() -> float:
 func play_cry(segment: int, pitch: float) -> void:
 	if segment < 0 or segment >= GRUNTS.SEGMENTS.size(): return
 	var take: Array = GRUNTS.SEGMENTS[segment]
-	level.world_audio.play_everywhere(CRY_SOUND, global_position + Vector3.UP * 2.2, CRY_GAIN, take[0], pitch, take[1])
+	# On its hunter's machine its own cry steps back for the survivors (versus).
+	var own: float = level.world_audio.HUNTER_OWN_DB if control == "player" else 0.0
+	level.world_audio.play_everywhere(CRY_SOUND, global_position + Vector3.UP * 2.2, CRY_GAIN + own, take[0], pitch, take[1])
 
 ## Its grace, counted where it is driven (here for the machine, in the
 ## driver for a player hunting): when it runs out, the hunt starts with a cry.

@@ -299,7 +299,7 @@ func kind_checks() -> void:
 	var made = (load(KIND.CREATURE) as PackedScene).instantiate()
 	check("Su criatura se carga y es una criatura del contrato", made != null and made is CREATURE)
 	if made != null: made.free()
-	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 2", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 2)
+	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 3", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 3)
 	check("Sus etapas se llaman niveles; las del hotel, sectores", KIND.title_of(2) == "NIVEL 2" and HOTEL_KIND.title_of(2) == "SECTOR 2")
 
 # --- Generador ---------------------------------------------------------------
