@@ -95,6 +95,19 @@ func plan_run() -> void:
 	var gallery: Array = rooms.filter(func(r): return int(r.type) == OFFICE.GALLERY and float(r.span_z) < 3.0)
 	gallery.sort_custom(func(a, b): return float(a.px) < float(b.px) or (float(a.px) == float(b.px) and int(a.id) < int(b.id)))
 	await down(gallery, out_dir + "/%d_galeria.png" % seed_value)
+	# Its steel door, shut, from the cross corridor that comes to it.
+	var door_done := false
+	for g in gallery:
+		for n in manifest.adjacency[int(g.id)]:
+			var c: Dictionary = manifest.rooms[int(n)]
+			if door_done or int(c.type) != OFFICE.CORRIDOR or is_equal_approx(float(c.pz), float(g.pz)): continue
+			var portal := FLOOR.portal_between(c, g)
+			var away := FLOOR.position_of(c) - FLOOR.position_of(g)
+			away.y = 0.0
+			look(portal + away.normalized() * 2.8 + Vector3(0, FRAMING.EYE, 0), portal + Vector3(0, 1.1, 0))
+			(await grab(false)).save_png(out_dir + "/%d_puerta_galeria.png" % seed_value)
+			print("PLAN_CAPTURE puerta de la galeria %d desde %d" % [int(g.id), int(c.id)])
+			door_done = true
 	# And from their doorways: the reception, a nave, a core's toilets, an
 	# archive of the second planta and a director's office of the third.
 	var all: Array = manifest.rooms.filter(func(r): return not FLOOR.is_void(r))

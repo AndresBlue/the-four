@@ -545,7 +545,11 @@ func add_channel(unit: Dictionary, aisle: Array) -> void:
 	for r in unit.rooms:
 		if tray_of.has(int(r)) and absf(float(patches[int(tray_of[int(r)])].y) - float(patches[int(tray_of[room])].y)) <= 0.001: ceilings.append(patches[int(tray_of[int(r)])].rect)
 	var dir := Vector2(axis.x, axis.z)
-	while length > 0.0 and not ceilings.any(func(rect: Rect2) -> bool: return rect.grow(1e-6).has_point(mouth + dir * length)): length -= 0.01
+	# An aisle down the seam of two cells of a salon: between their ceilings a
+	# float's width is in neither, so a millimetre either side across counts too.
+	var side := Vector2(-dir.y, dir.x) * 0.001
+	var under := func(p: Vector2) -> bool: return ceilings.any(func(rect: Rect2) -> bool: return rect.grow(1e-6).has_point(p) or rect.grow(1e-6).has_point(p + side) or rect.grow(1e-6).has_point(p - side))
+	while length > 0.0 and not under.call(mouth + dir * length): length -= 0.01
 	if length <= 0.0: return
 	var index := patches.size()
 	patches.append({"kind": Kind.CHANNEL, "room": room, "wing": int(rooms[room].get("wing", 0)), "unit": unit.rooms.duplicate(),

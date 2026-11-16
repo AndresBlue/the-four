@@ -372,7 +372,9 @@ static func adopt(level, node: Node3D) -> void:
 	if hotel != null and hotel.has_method("adopt"): hotel.adopt(node)
 
 static func free_after(node: Node, seconds: float) -> void:
-	node.get_tree().create_timer(seconds).timeout.connect(func(): if is_instance_valid(node): node.queue_free())
+	# The node's own method, not a lambda holding it: freed first (the level put
+	# away), the timer lets it go instead of calling a freed capture.
+	node.get_tree().create_timer(seconds).timeout.connect(node.queue_free)
 
 ## The shapes, made once in code: a soft speck and a ragged flake.
 static func textures() -> void:

@@ -75,12 +75,19 @@ func dark_rooms(least := 5.0) -> Array:
 			out.append(id)
 	return out
 
+## The way to a room's open side: south, or along a spine's nave.
+func back_of(room: int) -> Vector3:
+	var open: Array = level.manifest.rooms[room].get("open_sides", [])
+	return Vector3(0, 0, 1) if open.has("south") or not (open.has("east") or open.has("west")) else Vector3(1, 0, 0) if open.has("east") else Vector3(-1, 0, 0)
+
 func floor_point(room: int, offset := Vector3.ZERO) -> Vector3:
 	return FLOOR.closest(level.get_world_3d().navigation_map, FLOOR.position_of(level.manifest.rooms[room]) + offset)
 
 func park_her() -> void:
 	lurker.thinking = false
 	lurker.brain.prey = -1
+	# Nor where she last knew them: the bots are placed anew, tens of metres off.
+	lurker.brain.track = {}
 	lurker.brain.enter(BRAIN.State.ROAM)
 	lurker.motion.hold()
 
@@ -96,10 +103,14 @@ func cover_case(room: int) -> void:
 	var b = bots.brains[1]
 	var at := floor_point(room)
 	a.body.place(at, 0.0)
-	a.body.look_yaw = 0.0
+	# Its back to the room's open side, where its guard has floor to stand on.
+	var back := back_of(room)
+	a.body.look_yaw = atan2(back.x, back.z)
 	a.task = {"kind": "use", "stand": at, "label": "prueba"}
 	a.state = BOT_BRAIN.State.ACT
-	b.body.place(floor_point(room, Vector3(3.0, 0, 3.0)), 0.0)
+	# The other behind it, and to one side where the room is two rows deep: a
+	# spine's nave is one, its desks along both walls and a slot behind them.
+	b.body.place(floor_point(room, back * 3.0 + Vector3(back.z, 0, 0) * 3.0), 0.0)
 	b.task = {}
 	b.state = BOT_BRAIN.State.IDLE
 	var noted := false
@@ -136,9 +147,7 @@ func turn_case(room: int, late: bool) -> void:
 		if FLOOR.position_of(level.manifest.rooms[int(r)]).distance_to(FLOOR.position_of(level.manifest.rooms[room])) > FLOOR.position_of(level.manifest.rooms[far]).distance_to(FLOOR.position_of(level.manifest.rooms[room])): far = int(r)
 	other.body.place(floor_point(far), 0.0)
 	other.body.torch_wanted = false
-	# Its back to the room's open side: south, or along a spine's nave.
-	var open: Array = level.manifest.rooms[room].get("open_sides", [])
-	var back := Vector3(0, 0, 1) if open.has("south") or not (open.has("east") or open.has("west")) else Vector3(1, 0, 0) if open.has("east") else Vector3(-1, 0, 0)
+	var back := back_of(room)
 	var yaw := atan2(back.x, back.z)
 	var at := floor_point(room, back * -2.0)
 	a.body.place(at, 0.0)
@@ -155,8 +164,8 @@ func turn_case(room: int, late: bool) -> void:
 	lurker.teleport(lurker.clue_point(at + back * 5.0), yaw + PI, &"prueba")
 	await physics_frame
 	lurker.thinking = true
-	lurker.brain.prey = int(a.seat)
-	lurker.brain.enter(BRAIN.State.STALK)
+	# Put on the bot by a tool: hers from where it is (lurker_brain.force()).
+	lurker.brain.force(&"stalk", {"seat": int(a.seat)})
 	var takes_before: int = lurker.takes.size()
 	var played := -1.0
 	var faced := -1.0

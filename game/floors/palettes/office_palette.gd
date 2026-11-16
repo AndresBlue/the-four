@@ -43,11 +43,14 @@ static func real_plan_on() -> bool:
 ## "depots", the band of Registro's depots in a row ("depot_run", the most of
 ## them in one, so a lone store is left between runs); "power_cut", where the
 ## second planta's gallery is walled off from B: at B's cross or past B's core;
+## "gallery_split", the plantas whose gallery is walled between each two crosses
+## that come into it, so it closes no ring with the corridor;
 ## "a_core", A's two bays from the building's end (the ring's core bay first);
 ## "rooms" and "rings", the window of rooms and the rings to walk round at
 ## areas 1 and below 1, where they are not the palette's (REAL_ROOMS, rings()).
-## The spine (13.7): one corridor end to end with rooms either side, its ends
-## and the gallery the only way round; its middle cross is solid.
+## The spine (13.7): one corridor end to end with rooms either side, its middle
+## cross solid; its gallery in stretches each come to by one cross, so the
+## only ways round are its salons (naves, archives, a boardroom's two doors).
 const TYPOLOGIES := {
 	"ring": {
 		"rows": [["front", [4.8, 6.0]], ["main", [2.4, 3.0]], ["central", [7.2]], ["central", [7.2]], ["main", [2.4, 3.0]], ["back", [4.8, 5.4, 6.0]], ["gallery", [2.4]], ["service", [4.8, 5.4, 6.0]]],
@@ -84,20 +87,24 @@ const TYPOLOGIES := {
 		"depots": "service",
 		"depot_run": 3,
 		"power_cut": "core",
+		"gallery_split": [0, 2],
 		"a_core": ["lift_a", "core_a"],
 		"rooms": Vector2i(32, 60),
-		"rings": [3, 2],
+		"rings": [2, 2],
 	},
 }
 ## The typology of the building being drawn or judged ("" today's plan and the
 ## standby floor): office_generator.candidate() and office_validator set it, so
 ## rooms_window() and rings() read the building's own.
 static var typology := ""
+## Every building one typology ("spine", "ring"), so verify.ps1 and the bench
+## can run on it; "" draws by weight. Changed only for a while, as REAL_PLAN.
+const FORCE_TYPOLOGY := ""
 ## A tool or a test forces a typology with --plan=<name> on the command line.
 static func forced_typology() -> String:
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--plan=") and TYPOLOGIES.has(argument.get_slice("=", 1)): return argument.get_slice("=", 1)
-	return ""
+	return FORCE_TYPOLOGY if TYPOLOGIES.has(FORCE_TYPOLOGY) else ""
 const BAY := 7.2
 ## Rooms a planta of the real building has (up to today's 99: the standby
 ## floor, today's plan, is drawn under the same window), and the least walk to

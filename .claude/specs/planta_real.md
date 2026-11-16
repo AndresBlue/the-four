@@ -361,3 +361,36 @@ Sigue **apagada**, y la espina con **peso de sorteo 0**: el anillo es aún el ú
 - No se corrieron en la espina las pruebas del hotel, la red ni el banco.
 
 **No hecho:** el despacho de dirección de dos vanos amueblado como despacho grande (no hubo margen); el pasillo expuesto no se mide (la espina lo tiene por construcción, pero ningún contador lo dice).
+
+### Ronda 8 (15 de noviembre de 2026): la espina, sin vuelta de pasillo
+
+Sigue **apagada** y la espina con **peso 0** (ver «Qué sigue en rojo»). Todo en `evidence/planta/ronda8/` (depuración en `dbg/`; `t.sh` corre controles sueltos en un estado; `pruebas.sh`, las pruebas de oficinas en la espina; `lote.sh`, apagado, anillo, espina, hashes, cifras, física, planos y capturas). Con el interruptor apagado, los hashes de `ronda6/hashes_off.txt` no cambian (`hashes_off_fin.txt`); con `--real-plan`, los 20 manifiestos del anillo son byte a byte los de `c7d59cf` (`hashes_on_before.txt` frente a `hashes_on_fin.txt`).
+
+**1. Las pruebas en rojo de la ronda 7.**
+- `lurker_shell_test`, semilla 8. No era la disposición de las filas: un pasillo de archivo sobre la junta de dos celdas de un salón es correcto (no hay muro). `lurker_shell.add_channel()` acorta el canal hasta que su fondo cae bajo un techo del salón, y en la junta (x = 45,6) ninguno de los dos techos lo contiene: los `Rect2` son de 32 bits y `grow(1e-6)` no llega a la anchura de un flotante a 45 m (el de la celda 173 acaba en 45,599998). Sin canal, ella no podía meterse en ese pasillo. Arreglo en el caparazón: el fondo cuenta también un milímetro a cada lado a lo ancho del pasillo. No cambia ningún otro canal (los pasillos distan 0,5 m o más de los lados de su techo).
+- `lurker_bots_test`. No se ha perdido el aviso en juego: era la escena. (a) El guardia: el trabajador miraba al norte en el centro de una nave de una sola fila, con su guardia puesto a 3 m en diagonal, en la franja entre las mesas y el muro; el camino al sitio de guardia medía 31 m y no llegaba en 10 s. Ahora el trabajador da la espalda al lado abierto de la sala (como ya hacía el caso del aviso, `back_of()`) y el guardia empieza detrás de él (en una sala de dos filas, igual que antes: `(3, 0, 3)`). (b) El caso tardío: la prueba ponía `prey` a mano y ella seguía con el rastro del bot donde lo dejó el caso del guardia, 50 m más allá; cazaba al otro. Ahora `park_her()` borra el rastro y el caso la pone sobre el bot con `brain.force(&"stalk", …)`, como las demás pruebas. 7 de 7 en los tres estados.
+- `office_test_generator` (a): la media planta 3 de un piso para uno tiene una sola banda y su zona central es la sala de paso entre núcleos; el puesto de seguridad parte la banda y el tramo que queda da un director. `band_suites()` recibe cuántos directores le faltan a la planta (`MUSTS`) y, solo con una banda, toma la paridad que pone más. Semillas 41 y 44: dos despachos de dirección. (b) Los atajos sueltos de conducto exigen paseo de puerta a puerta de 1/0,55 del vuelo, que dos despachos de 3,6 juntos nunca dan (9 m frente a 6,5); salen de vanos de 7,2 vecinos. Con el cambio de 3, 146 de 192 (cumple: 144). Sin trampas, pero justo.
+- `office_dressing_test`: mide en la semilla 7 (un superviviente) la parte de sillas caídas o vueltas y cajones fuera entre sillas y archivadores. La espina no invierte el abandono: en 8 semillas, planta 1 de 0,05 a 0,18 y planta 3 de 0,14 a 0,19; solo la 7 se invierte (anillo: 0,08 a 0,12 frente a 0,12 a 0,22). En la 7, 18 de 55 cajones de la planta 1 con desorden 0 salen fuera (la tabla dice 0,15): el `vary()` de seno sobre posiciones en retícula; y en la planta 3 los 5 sillones que sacan «caída» no caben (`swept_clear()`). Sigue en rojo: arreglarlo es tocar el vestido de todos los pisos de oficinas (ver «Qué sigue»).
+- `office_lies_test` en la espina dejó un `ERROR` al salir: un temporizador de `ceiling_dust.free_after()` con una lambda que guardaba el polvo, llamada después de liberar el nivel. Ahora conecta `node.queue_free` (se suelta solo).
+
+**2. `FORCE_TYPOLOGY`** en la paleta, junto a `REAL_PLAN`: `""` sortea por peso; `"spine"` o `"ring"`, esa siempre. `forced_typology()` la lee tras `--plan=`.
+
+**3. Sin vuelta de pasillo.** Nueva clave `gallery_split` (espina: plantas 1 y 3): en esas plantas la galería se tabica entre cada dos transversales que llegan a ella, en el transversal del medio (macizo); cada tramo tiene una sola entrada, por su extremo. La planta 2 ya no tenía vuelta (el tabique del cuadro). Con eso `loops()` completaba la cifra dando dos puertas a un almacén del núcleo (una vuelta de pasillo de hecho, junto al transversal): `rings` de la espina baja de [3, 2] a [2, 2] y las vueltas son las salas pasantes. Cifras (300 semillas, 2 supervivientes), antes y después:
+- Vueltas: planta 1, 4 → 3 (las dos naves y la sala de juntas con dos puertas); planta 2, 6 a 7 igual (archivos y filas de depósitos); planta 3, 3 a 5 → 2 a 6 (p50 3; el archivo de Dirección y alguna sala de juntas).
+- Llegada a salida p50: 86,4 → 93,0, 96,0 → 96,0, 118,2 → 118,8 m (p90 de la planta 1: 93,0 → 115,8; mín 85,8 igual). Cuota de la planta 1 p50 0,85 → 0,76.
+- Intentos fallidos: 854 → 523 (`security` 293 → 161, `real_refuge_2_depth` 186 → 104, `refuge_spine` 235 → 153); intento que sale p90 0, máx 1. 300 de 300 con planta, 0 rechazadas, 0 manos en la pared que encuentran un refugio, cuadro a B de 3 a 7 zonas, capas de luz 14 como mucho.
+- 60 con 1 superviviente: 60 con planta, intento p90 2, máx 5; vueltas 3, 5 y 3. 40 con 5: 40, máx 1. Física al montar, semillas 1 a 60: 0 a la reserva, 0 errores.
+Planos antes en `ronda7/espina/`, después en `ronda8/espina/` (8 semillas, y `s1/`). El cambio se ve como un tabique en la galería bajo el transversal macizo; no hay cuarto técnico entre tramos (eso sería absorber una celda de pasillo, que no toca).
+
+**4.** No hecho. El despacho de dirección de dos vanos usa la receta de la paleta de los dos edificios: amueblarlo distinto cambia los muebles del anillo, que están en el manifiesto, y esta ronda debía dejarlo byte a byte.
+
+**Pruebas** (`pruebas_apagado/`, `pruebas_anillo/`, `pruebas_espina_fin/`; las 28 de oficinas de `pruebas.sh` y `office_proportion_test`):
+
+| | apagado | anillo | espina |
+|---|---|---|---|
+| 28 controles de oficinas | 28 | 28 | 27 (`office_dressing_test`) |
+| `office_proportion_test` | 54 de 55 (ventanilla 18,6, como antes) | 55 | 54 de 55 (ventanilla 19,5) |
+
+La ventanilla de la espina: el suelo ocupado es 19,5 cuando la puerta cae a −1,0 o −1,5 de su muro (`DOOR_PLACES`) y 20,9 a 24,7 en las demás; los cambios de la ronda movieron los sorteos de puertas y 5 de las 8 semillas la sacan a la izquierda. Arreglarlo es la receta de la ventanilla, compartida con el anillo.
+
+**Peso.** Con `spine` a 1 (anillo 2), 2 de las 20 semillas de los hashes salen espina (32 y 56) y las 18 que siguen siendo anillo dan el mismo manifiesto (`hashes_on_peso1.txt`). Se dejó en 0: quedan en rojo `office_dressing_test` y la ventanilla de `office_proportion_test`.

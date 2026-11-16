@@ -3357,6 +3357,16 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 		for c in range(1, width - 2):
 			if closing and (c - middle_cross) * (a_col - middle_cross) < 0: continue
 			if not columns[c].lane and not columns[c + 1].lane and not String(columns[c].role).begins_with("lift") and not String(columns[c + 1].role).begins_with("lift"): cuts[2].append([int(r) * width + c, int(r) * width + c + 1])
+	# The spine's gallery is no ring with its corridor (the director, ronda 8): on
+	# the plantas listed it is walled between each two crosses that come into it,
+	# at the solid middle cross where one lies between, so each stretch has one
+	# way in and the way round her is through a salon (the second planta's power
+	# cut and the third's do it already).
+	for planta: int in table.get("gallery_split", []):
+		var ways_in: Array = crossings.filter(func(c): return central.any(func(r): return not voids[planta].has(int(r) * width + int(c))))
+		for k in range(ways_in.size() - 1):
+			var at: int = middle_cross if middle_cross > int(ways_in[k]) and middle_cross < int(ways_in[k + 1]) else (int(ways_in[k]) + int(ways_in[k + 1])) / 2
+			cuts[planta].append([gallery * width + at, gallery * width + at + 1])
 	# Between the two cores of a floor for one, the bays a smaller planta's
 	# through room takes (real_halls()).
 	var between: Array = range(mini(a_col, b_col) + 1, maxi(a_col, b_col)).filter(func(c): return String(columns[c].role) in ["hall", "offices"]) if closing else []
@@ -3603,7 +3613,9 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 			# The cabinet's open office (a salon of a whole bay, as Personal's typing pools) between them.
 			# With one central row (the spine) the archive is a salon open at both ends (open_doors()).
 			for k in wide.size(): group.call("archive" if k == 0 and central.size() == 1 else "bay", wide[k], palette.ARCHIVE if k == 0 else palette.EXEC_OFFICE if k % 2 == 1 else palette.OPEN_OFFICE)
-			band_suites(rows, columns, room, group, types, taken, pairs, rng)
+			# With one band (the spine) its suites make up the directors the central zone left short.
+			var one_band: bool = rows.filter(func(row): return String(row.role) in ["front", "back"]).size() == 1
+			band_suites(rows, columns, room, group, types, taken, pairs, rng, int(palette.MUSTS[2].get(palette.EXEC_OFFICE, 0)) - groups.filter(func(g): return String(g.kind) == "exec").size() if one_band else 0)
 	# The toilets two by two in a row of each core, the rest of the core from its zone.
 	for core in ["core_a", "core_b"]:
 		var cols: Array = range(width).filter(func(k): return columns[k].role == core)
@@ -3697,7 +3709,7 @@ func drawn(f: Dictionary, local: int, weights: Dictionary, types: Dictionary, rn
 ## secretary to one director at least (a run of suites crossed through its
 ## anterooms, 6). A bay alone between crosses, or with a cell already taken
 ## (the security post's), is left to its zone.
-func band_suites(rows: Array, columns: Array, room: Callable, group: Callable, types: Dictionary, taken: Dictionary, pairs: Array, rng: RandomNumberGenerator) -> void:
+func band_suites(rows: Array, columns: Array, room: Callable, group: Callable, types: Dictionary, taken: Dictionary, pairs: Array, rng: RandomNumberGenerator, need := 0) -> void:
 	var width := columns.size()
 	for r in rows.size():
 		if not String(rows[r].role) in ["front", "back"]: continue
@@ -3719,6 +3731,11 @@ func band_suites(rows: Array, columns: Array, room: Callable, group: Callable, t
 			for i in run.size():
 				if run[i].size() == 2: wide[i % 2] += 1
 			var first: int = 0 if wide[0] > wide[1] else 1 if wide[1] > wide[0] else rng.randi_range(0, 1)
+			# A planta short of its directors (the spine's smaller planta of a floor
+			# for one: one band and no central suite) takes the parity with more of them.
+			var heads := func(p: int) -> int: return (run.size() - p + 1) / 2
+			if heads.call(first) < need and heads.call(1 - first) > heads.call(first): first = 1 - first
+			need -= heads.call(first)
 			var paired := {}
 			for i in run.size():
 				if (i + first) % 2 != 0:
