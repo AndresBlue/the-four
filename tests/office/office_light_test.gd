@@ -650,7 +650,7 @@ func block_holes(hotel) -> void:
 	check("Una placa que ella abre muestra lo oscuro desde que se abre, mientras está abierta y hasta que vuelve a su sitio", at_once and open and closing and not dark.visible, "%s %s %s %s" % [at_once, open, closing, dark.visible])
 
 ## The landmark rooms (office_landmarks.gd, 14 November 2026): each has its
-## banner and its door lamp, and its object its own light; the door lamps
+## door lamp and, since 16 November, no banner and one way sign, and its object its own light; the door lamps
 ## stay on through a cut and a blackout and never cast; the window's light
 ## goes and comes back with its room; the plant's casts only with the eye in
 ## the plant; the post reader's pilot turns green when the post opens; the
@@ -661,12 +661,22 @@ func block_landmarks(level, hotel) -> void:
 	var compat: bool = RenderingServer.get_current_rendering_method() == "gl_compatibility"
 	var marks := {int(m.mail.window): "window", int(m.power.room): "electrical", int(m.air.security.room): "security", int(m.air.room): "machines"}
 	var labels: Array = []
-	for node in hotel.room_nodes: labels.append_array(node.find_children("*", "Label3D", false, false).map(func(l): return (l as Label3D).text))
+	var banner_height: Array = []
+	for node in hotel.room_nodes:
+		for l: Label3D in node.find_children("*", "Label3D", false, false):
+			labels.append(l.text)
+			# The banner's words were on both its faces, at its height (a way sign
+			# naming the same place has them once, about as high).
+			if absf(l.position.y - LANDMARKS.BANNER_Y) < 0.05: banner_height.append(l.text)
 	for id: int in marks:
 		var kind: String = marks[id]
 		var halos: Array = hotel.landmark_lamps.filter(func(e): return int(e.room) == id and String(e.light.name) == "LandmarkDoorHalo")
 		var washes: Array = hotel.landmark_lamps.filter(func(e): return int(e.room) == id and String(e.light.name) == "LandmarkDoorWash")
-		check("%s: su banderola y su aplique (luz y aire, luz en la puerta)" % kind, labels.count(String(LANDMARKS.KINDS[kind].banner)) >= 2 and not halos.is_empty() and halos.size() == washes.size(), "%d etiquetas, %d apliques" % [labels.count(String(LANDMARKS.KINDS[kind].banner)), halos.size()])
+		# The author's nerf (16 November 2026): no banner, its lamp, one way sign.
+		var ways_to: int = LANDMARKS.ways(hotel).values().filter(func(rows): return rows.any(func(row): return String(row[1]) == kind)).size()
+		check("%s: sin banderola, con su aplique y un solo cartel de dirección" % kind, banner_height.count(String(LANDMARKS.KINDS[kind].banner)) <= ways_to and not halos.is_empty() and halos.size() == washes.size() and ways_to == 1, "%d banderolas, %d apliques, %d carteles" % [banner_height.count(String(LANDMARKS.KINDS[kind].banner)), halos.size(), ways_to])
+	var decoys: int = LANDMARKS.ways(hotel).values().map(func(rows): return rows.filter(func(row): return String(row[1]).is_empty()).size()).reduce(func(a, c): return a + c, 0)
+	check("Y muchos carteles a otros sitios de la empresa", decoys >= 6, str(decoys))
 	check("Las salidas de las plantas 1 y 2: su cartel y ni banderola ni aplique", labels.has("MONTACARGAS") and hotel.landmark_lamps.all(func(e): return LANDMARKS.kind_of(m, int(e.room)) != "lift"))
 	var window := int(m.mail.window)
 	var accent: Array = hotel.accents.of_room(window).filter(func(e): return int(e.sconce) < 0)

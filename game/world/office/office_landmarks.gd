@@ -9,10 +9,12 @@ extends RefCounted
 ## of its threshold; inside, the thing used under its own light (office_
 ## geometry.gd: the window's arm lamp over the typewriter, the electrical
 ## room's battery unit on the board, a bulkhead over the security console and
-## over the plant's isolator). And the way there: a directory in each arrival
-## with its planta's departments and landmarks and an arrow to each, and a
-## few signs hung from the ceiling where the way from the arrival to the
-## landmark turns. All of it from the room types and the manifest's keys
+## over the plant's isolator). And the way there, kept scarce (the author, 16
+## November 2026: with so much it was easy): ONE sign hung from the ceiling on
+## the way from the arrival to the planta's landmarks, the sign at their door
+## and nothing more (no banner, and the arrival's directory names only the
+## departments); among many other way signs, as logical, to the company's other
+## places (meeting room, archive, toilets, mail, break room...). All of it from the room types and the manifest's keys
 ## (mail, power, air, refuges, entries, departments, adjacency), whatever the
 ## shape of the plan; nothing of it in the manifest or on the wire. The
 ## freight lift's vestibule keeps its way out hidden: its sign on its door and
@@ -95,10 +97,16 @@ const ACCENT_ENERGY := 6.0
 ## The console's start key from the post desk's wall spot (the desk's top,
 ## the console DESK_MIDDLE out, its key 0.45 right and 0.13 before that).
 const CONSOLE_KEY := Vector3(0.45, 0.79, 0.355)
-## The way signs: their panel, its bottom's height, how many to a planta.
+## The way signs: their panel, its bottom's height; one to a planta for its
+## landmarks, and up to DECOYS_MOST to its other places, named as WAY_PLACES
+## (room type -> words).
 const WAY := Vector3(1.0, 0.2, 0.02)
 const WAY_Y := 2.25
-const WAYS_MOST := 4
+const DECOYS_MOST := 6
+const WAY_PLACES := {4: "ASEOS", 5: "SALA DE JUNTAS", 6: "ARCHIVO", 7: "REPROGRAFÍA", 8: "ALMACÉN", 13: "ARCHIVO MÓVIL", 14: "CORREO", 15: "SALA DE DESCANSO", 16: "DIRECCIÓN", 24: "SECRETARÍA", 25: "DEPÓSITO"}
+## The banner across the corridor over a landmark's door: off since the
+## author's nerf (its bulkhead lamp stays).
+const BANNERS := false
 ## The directory's board (office_walls.gd PIECES "directory") and its lines.
 const LINE_MOST := 0.056
 
@@ -196,13 +204,14 @@ static func door_head(b: Node3D, holder: Node3D, face: Transform3D, kind: String
 	var world := Transform3D(Basis.IDENTITY, holder.position) * face
 	var ceiling := height if under_tube(b.manifest, world * Vector3(0, LAMP_Y, BULKHEAD.z * 0.5)) else 0.0
 	b.place(holder, head_mesh(b, kind, side, ceiling), face, false)
-	var look: Array = LOOKS[String(spec.look)]
-	var words := String(spec.banner)
-	var font := fit(words, Vector2(BANNER.z - 0.06, BANNER.y - 0.05), 72)
-	var x := side * (FRAME_EDGE + BANNER_GAP)
-	for s: float in [-1.0, 1.0]:
-		var at := Transform3D(Basis(Vector3.UP, s * PI / 2), Vector3(x + s * (BANNER.x * 0.5 + 0.001), BANNER_Y, BANNER_OUT + BANNER.z * 0.5))
-		label(holder, words, face * at, look[1], font, BANNER_REACH)
+	if BANNERS:
+		var look: Array = LOOKS[String(spec.look)]
+		var words := String(spec.banner)
+		var font := fit(words, Vector2(BANNER.z - 0.06, BANNER.y - 0.05), 72)
+		var x := side * (FRAME_EDGE + BANNER_GAP)
+		for s: float in [-1.0, 1.0]:
+			var at := Transform3D(Basis(Vector3.UP, s * PI / 2), Vector3(x + s * (BANNER.x * 0.5 + 0.001), BANNER_Y, BANNER_OUT + BANNER.z * 0.5))
+			label(holder, words, face * at, look[1], font, BANNER_REACH)
 	var from := Vector3(0, ceiling - BULKHEAD.z - 0.01, CEILING_OUT) if ceiling > 0.0 else Vector3(0, LAMP_Y - 0.03, BULKHEAD.z + 0.01)
 	var down := deg_to_rad(LAMP_DOWN)
 	door_light(b, holder, face * Transform3D(Basis.looking_at(Vector3(0, -sin(down), cos(down)), Vector3.UP), from), spec.lamp, LAMP_ENERGY, LAMP_REACH, LAMP_ANGLE, room_id, "LandmarkDoorHalo")
@@ -367,13 +376,14 @@ static func head_mesh(b: Node3D, kind: String, side: float, ceiling: float) -> A
 		if ceiling > 0.0: bulkhead(p, String(spec.glass), Vector3(0, ceiling, CEILING_OUT), Basis(Vector3.RIGHT, PI / 2))
 		else: bulkhead(p, String(spec.glass), Vector3(0, LAMP_Y, 0))
 		var x := side * (FRAME_EDGE + BANNER_GAP)
-		var enamel: String = LOOKS[String(spec.look)][0]
-		KIT.block(p, enamel, Vector3(x, BANNER_Y, BANNER_OUT + BANNER.z * 0.5), BANNER, 0.003)
-		# Its bracket: a plate on the wall and a bar out along the panel's top.
-		var top := BANNER_Y + BANNER.y * 0.5
-		KIT.block(p, "steel_grey", Vector3(x, top + 0.02, 0.005), Vector3(0.05, 0.12, 0.01))
-		KIT.block(p, "steel_grey", Vector3(x, top + 0.02, (BANNER_OUT + BANNER.z) * 0.5), Vector3(0.016, 0.016, BANNER_OUT + BANNER.z))
-		for z: float in [BANNER_OUT + 0.06, BANNER_OUT + BANNER.z - 0.06]: KIT.block(p, "steel_grey", Vector3(x, top + 0.006, z), Vector3(0.01, 0.02, 0.01))
+		if BANNERS:
+			var enamel: String = LOOKS[String(spec.look)][0]
+			KIT.block(p, enamel, Vector3(x, BANNER_Y, BANNER_OUT + BANNER.z * 0.5), BANNER, 0.003)
+			# Its bracket: a plate on the wall and a bar out along the panel's top.
+			var top := BANNER_Y + BANNER.y * 0.5
+			KIT.block(p, "steel_grey", Vector3(x, top + 0.02, 0.005), Vector3(0.05, 0.12, 0.01))
+			KIT.block(p, "steel_grey", Vector3(x, top + 0.02, (BANNER_OUT + BANNER.z) * 0.5), Vector3(0.016, 0.016, BANNER_OUT + BANNER.z))
+			for z: float in [BANNER_OUT + 0.06, BANNER_OUT + BANNER.z - 0.06]: KIT.block(p, "steel_grey", Vector3(x, top + 0.006, z), Vector3(0.01, 0.02, 0.01))
 		var reach := absf(x) + 0.05
 		return KIT.finish(b, p, "landmark_head_" + kind, Vector3(reach * 2.0, LAMP_Y + BULKHEAD.y, BANNER_OUT + BANNER.z), {"solid": false}))
 
@@ -459,11 +469,13 @@ static func path_to(parent: Dictionary, target: int) -> Array:
 static func signable(room: Dictionary) -> bool:
 	return bool(room.get("corridor", false)) or int(room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY, OFFICE.LOBBY]
 
-## The way signs of the floor, made once: cell id -> rows [words, kind, way
-## in, way out]. On each planta, where the way from its arrival to its
-## landmarks turns in a cell that can take one, WAYS_MOST at most spread
-## along the way; where it does not turn twice, at its first such cells too.
-## Two landmarks through one cell share its sign.
+## The way signs of the floor, made once: cell id -> rows [words, kind ("" for
+## a place that is no landmark), way in, way out], two rows to a sign at most.
+## On each planta: one sign on the way from its arrival to its landmarks, at
+## the turn nearest the way's middle in a cell that can take one, with a row
+## for each landmark whose way goes through it; and up to DECOYS_MOST more, to
+## the nearest room of each of the company's other places (WAY_PLACES), each
+## where its own way turns. Every arrow is true.
 static func ways(b: Node3D) -> Dictionary:
 	if b.has_meta("landmark_ways"): return b.get_meta("landmark_ways")
 	var manifest: Dictionary = b.manifest
@@ -473,36 +485,77 @@ static func ways(b: Node3D) -> Dictionary:
 		var start := int(entries[planta])
 		if start < 0 or not manifest.has("adjacency"): continue
 		var parent := tree_from(manifest, start)
-		var picks: Array = []
-		for target: Array in targets(manifest, planta):
-			var path := path_to(parent, int(target[0]))
-			if path.size() < 3: continue
-			var turns: Array = []
-			var straight: Array = []
-			for k in range(1, path.size() - 1):
-				var cell: Dictionary = manifest.rooms[int(path[k])]
-				if not signable(cell): continue
-				var into := step(manifest, path[k - 1], path[k])
-				var on := step(manifest, path[k], path[k + 1])
-				if into.dot(on) < 0.5: turns.append([int(path[k]), into, on])
-				else: straight.append([int(path[k]), into, on])
-			while turns.size() < 2 and not straight.is_empty(): turns.push_front(straight.pop_front())
-			for row in turns: picks.append([row, String(KINDS[String(target[1])].way), String(target[1])])
-		# Spread over the planta's share: evenly along the list when there are more.
-		var cells := {}
-		for pick: Array in picks: cells[int(pick[0][0])] = true
-		var keep := {}
-		var order: Array = cells.keys()
-		for k in mini(order.size(), WAYS_MOST):
-			var at := k if order.size() <= WAYS_MOST else roundi(float(k) * float(order.size() - 1) / float(WAYS_MOST - 1))
-			keep[int(order[at])] = true
-		for pick: Array in picks:
-			var cell := int(pick[0][0])
-			if not keep.has(cell): continue
-			if not made.has(cell): made[cell] = []
-			if made[cell].size() < 2: made[cell].append([pick[1], pick[2], pick[0][1], pick[0][2]])
+		var landmarks: Array = targets(manifest, planta).filter(func(target: Array): return int(target[0]) >= 0)
+		if not landmarks.is_empty():
+			var cell := pick_cell(manifest, path_to(parent, int(landmarks[0][0])), made)
+			if cell >= 0:
+				for target: Array in landmarks:
+					var row := row_at(manifest, path_to(parent, int(target[0])), cell)
+					if not row.is_empty(): add_row(made, cell, [String(KINDS[String(target[1])].way), String(target[1]), row[0], row[1]])
+		# The company's other places on the planta, nearest of each first.
+		var taken := {}
+		for target: Array in landmarks: taken[int(target[0])] = true
+		var places: Array = []
+		for type in WAY_PLACES:
+			var best := -1
+			var best_size := 1 << 30
+			for id in parent:
+				var room: Dictionary = manifest.rooms[int(id)]
+				if int(room.type) != int(type) or taken.has(int(id)) or not kind_of(manifest, int(id)).is_empty(): continue
+				var length := path_to(parent, int(id)).size()
+				if length < best_size:
+					best_size = length
+					best = int(id)
+			if best >= 0: places.append([best, String(WAY_PLACES[type]), best_size])
+		places.sort_custom(func(a: Array, c: Array): return int(a[2]) < int(c[2]) or (int(a[2]) == int(c[2]) and int(a[0]) < int(c[0])))
+		var decoys := 0
+		for place: Array in places:
+			if decoys >= DECOYS_MOST: break
+			var path := path_to(parent, int(place[0]))
+			var cell := pick_cell(manifest, path, made, true)
+			if cell < 0: continue
+			var row := row_at(manifest, path, cell)
+			if row.is_empty(): continue
+			add_row(made, cell, [String(place[1]), "", row[0], row[1]])
+			decoys += 1
 	b.set_meta("landmark_ways", made)
 	return made
+
+## The cell on a way to hang its sign in: a turn in a cell that can take one,
+## the one nearest the way's middle (or the middle cell when it never turns);
+## never one whose sign is full. `share`: one with a sign of a single row is
+## fine too.
+static func pick_cell(manifest: Dictionary, path: Array, made: Dictionary, share := false) -> int:
+	if path.size() < 3: return -1
+	var best := -1
+	var best_score := INF
+	for k in range(1, path.size() - 1):
+		var id := int(path[k])
+		if not signable(manifest.rooms[id]): continue
+		var rows: int = made.get(id, []).size()
+		if rows >= 2 or (rows > 0 and not share): continue
+		var into := step(manifest, path[k - 1], path[k])
+		var on := step(manifest, path[k], path[k + 1])
+		# A turn first; then nearest the middle.
+		var score := absf(float(k) - float(path.size() - 1) * 0.5) + (0.0 if into.dot(on) < 0.5 else 100.0)
+		if score < best_score:
+			best_score = score
+			best = id
+	return best
+
+## The way in and out of `cell` on `path`, or nothing when it is not on it.
+static func row_at(manifest: Dictionary, path: Array, cell: int) -> Array:
+	var k := path.find(cell)
+	if k <= 0 or k >= path.size() - 1: return []
+	return [step(manifest, path[k - 1], path[k]), step(manifest, path[k], path[k + 1])]
+
+## A row onto a cell's sign: its rows share their way in (the sign faces it).
+static func add_row(made: Dictionary, cell: int, row: Array) -> void:
+	if not made.has(cell): made[cell] = []
+	var rows: Array = made[cell]
+	if rows.size() >= 2: return
+	if not rows.is_empty() and (rows[0][2] as Vector3).dot(row[2]) < 0.5: return
+	rows.append(row)
 
 ## The way from one room to the next, flat and of unit length.
 static func step(manifest: Dictionary, from: int, to: int) -> Vector3:
@@ -526,7 +579,8 @@ static func way_sign(b: Node3D, node: Node3D, here: Dictionary, rows: Array) -> 
 		var angle := 0.0 if across > 0.5 else PI if across < -0.5 else PI / 2
 		var arrow_x: float = -WAY.x * 0.5 + 0.08 if across < -0.5 else WAY.x * 0.5 - 0.08
 		var y := tall - WAY.y * (k + 0.5)
-		var band: String = LOOKS.get(String(KINDS[String(row[1])].look), ["sign_white"])[0]
+		# A landmark's row in its colour; any other place's in white.
+		var band: String = LOOKS.get(String(KINDS[String(row[1])].look) if KINDS.has(String(row[1])) else "white", ["sign_white"])[0]
 		b.place(node, band_mesh(b, band), frame * Transform3D(Basis.IDENTITY, Vector3(signf(arrow_x) * (WAY.x * 0.5 - 0.02), y, WAY.z * 0.5)), false)
 		b.place(node, arrow_mesh(b, "black", Vector2(0.1, 0.08)), frame * Transform3D(Basis(Vector3.BACK, angle), Vector3(arrow_x - signf(arrow_x) * 0.03, y, WAY.z * 0.5 + 0.001)), false)
 		var words := String(row[0])
@@ -576,9 +630,8 @@ static func directory(b: Node3D, boundary: Node3D, here: Dictionary, at: Transfo
 	var planta := int(here.get("wing", 0))
 	var world: Transform3D = (boundary.get_parent() as Node3D).transform * boundary.transform * at
 	var parent := tree_from(manifest, int(here.id))
+	# The departments alone: the landmarks have their one way sign (ways()).
 	var lines: Array = []
-	for target: Array in targets(manifest, planta):
-		if int(target[0]) >= 0: lines.append([String(KINDS[String(target[1])].way), int(target[0]), String(target[1])])
 	var named := lines.map(func(line: Array) -> String: return String(line[0]))
 	var departments: Array = manifest.get("departments", [])
 	for entry in (departments[planta] if planta < departments.size() else []):
