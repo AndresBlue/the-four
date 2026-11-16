@@ -1344,6 +1344,7 @@ func step_back() -> void:
 	elif ui.screen == "tape": ui.menu("records")
 	elif ui.screen == "rules" and net.active(): ui.menu("lobby")
 	elif ui.screen == "records" and ui.records_back != "main": ui.menu(ui.records_back)
+	elif ui.screen == "code" and session.state == session.State.MENU: ui.menu("credits")
 	elif ui.screen in ["credits", "multiplayer", "records", "archive", "difficulty"] and session.state == session.State.MENU: on_action("main")
 	elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
 	elif session.state == session.State.PLAYING: session.pause()

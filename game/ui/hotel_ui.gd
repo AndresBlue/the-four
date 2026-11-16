@@ -494,8 +494,11 @@ func clear() -> void:
 	chained_back = null
 	pad_scroll = null
 	column.custom_minimum_size.x = 520
+	column.size_flags_horizontal = Control.SIZE_FILL
 	side.visible = true
 	noise_floor = 0.0
+	if is_instance_valid(corner_button): corner_button.queue_free()
+	corner_button = null
 
 ## Menu entry: bare text with a play cursor on focus. Returns the Button.
 func entry(parent: Node, words: String, callback: Callable, disabled := false, size := 28) -> Button:
@@ -872,7 +875,16 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			credits_roll()
 			spacer(column, 14)
 			action("Volver", "main")
-			code_panel(side)
+			side.visible = false
+			code_corner()
+		# The code, alone in the middle (code_panel()), and under it what it did.
+		"code":
+			set_osd("CRÉDITOS ▸ CÓDIGO", "", "")
+			side.visible = false
+			column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			code_panel(column)
+			spacer(column, 14)
+			action("Volver", "credits")
 	if osd_left.text != "SEÑAL PERDIDA": osd_left.remove_theme_color_override("font_color")
 	# First start on an integrated GPU: it starts on Muy bajo; the lighter
 	# renderer is the player's call (it restarts the game).
@@ -890,9 +902,29 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 const CODES := {"5a9e67380adf22a6d0766b17fd607c4be780a50333aebeb2471538b464148e90": "miku"}
 ## What a code unlocked, as the panel says it.
 const CODE_NAMES := {"miku": "MIKU"}
+## The way in from the credits: a small word in the top right corner, gone
+## with the screen (clear()).
+var corner_button: Button
+func code_corner() -> void:
+	corner_button = Button.new()
+	corner_button.text = "CÓDIGO"
+	corner_button.flat = true
+	corner_button.add_theme_font_size_override("font_size", 16)
+	corner_button.add_theme_color_override("font_color", STYLE.SOFT)
+	corner_button.add_theme_color_override("font_hover_color", STYLE.INK)
+	corner_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	corner_button.offset_left = -148
+	corner_button.offset_right = -48
+	corner_button.offset_top = 34
+	corner_button.offset_bottom = 66
+	corner_button.pressed.connect(func():
+		confirm()
+		menu("code"))
+	overlay.add_child(corner_button)
+
 func code_panel(parent: Node) -> void:
 	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	panel.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.86), STYLE.FAINT, 1, 20))
 	parent.add_child(panel)
@@ -905,7 +937,10 @@ func code_panel(parent: Node) -> void:
 	edit.add_theme_font_size_override("font_size", 20)
 	edit.max_length = 24
 	list.add_child(edit)
-	var said := label(list, "", 16)
+	entry(list, "Canjear", func(): edit.text_submitted.emit(edit.text), false, 20)
+	# Under the box: what it unlocked, or that it was no code.
+	var said := label(parent, "", 18)
+	said.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var redeem := func() -> void:
 		var id: String = CODES.get(edit.text.strip_edges().to_lower().sha256_text(), "")
 		edit.clear()
@@ -918,7 +953,7 @@ func code_panel(parent: Node) -> void:
 		said.text = "DESBLOQUEADO: %s" % CODE_NAMES.get(id, id.to_upper())
 		said.add_theme_color_override("font_color", STYLE.AMBER)
 	edit.text_submitted.connect(func(_words): redeem.call())
-	entry(list, "Canjear", redeem, false, 20)
+	edit.grab_focus.call_deferred()
 
 ## Whether a code's unlock is had (settings "codes"), and having it.
 func unlocked(id: String) -> bool:
