@@ -29,10 +29,13 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 - **Por decidir al hacerlo:** cuántos cafés da cada máquina. Si da cafés sin límite, la cordura deja de pesar. Lo propuesto es un café por jugador y máquina.
 - **Prueba:** una prueba corta del tipo de `hints_test`: cuántas máquinas hay por piso y que un café devuelve la cordura entera en un segundo.
 
-**Decisión que espera al autor: la Miku.** Pidió cambiar «Realistic Female» (CC BY-SA, `docs/ASSETS.md`) por una Hatsune Miku.
-- La de `models/YYB Miku Default.zip` (YYB y MarieMMD) prohíbe por escrito el uso comercial y la violencia.
-- La de Sketchfab (`d418e988c3de40f79e0b329886883241`, de oscar3dmodel) dice CC BY. Pero el personaje es de Crypton Future Media, y su licencia de personaje (PCL) solo permite usos no comerciales: quien sube el modelo no puede ceder los derechos del personaje.
-- No se ha integrado ninguna. Hay que esperar a que el autor decida.
+**La Miku, como skin oculta** (decidido por el autor el 16 de noviembre de 2026): solo para él y sus amigos.
+- **Hecho:** en los créditos, a la derecha, un recuadro «CÓDIGO». Escribir «miku» la desbloquea y queda guardada en el ajuste `codes`. Se pregunta con `ui.unlocked("miku")`. En el juego no está la palabra, solo su SHA-256 (`CODES` en `hotel_ui.gd`).
+- **Falta: la skin.** El modelo es `models/hatsune-miku.zip`, de Sketchfab (`d418e988c3de40f79e0b329886883241`, 雨宮レン / oscar3dmodel, CC BY 4.0).
+  - Sale como personaje elegible en `show_characters` solo con el código.
+  - Tiene que ir con el esqueleto y las animaciones de los supervivientes: ver cómo se hizo «Realistic Female» en `avatar_visual.gd`, `survivor_clips.gd` y `tools/avatars/bake_survivor_clips.gd`.
+- **Lo que el autor sabe:** el modelo va dentro de los archivos del juego para todos; el código solo lo oculta. El personaje es de Crypton y su licencia (PCL) solo permite usos no comerciales. Encaja mientras el juego sea un proyecto fan sin venta. Si alguna vez se vende, hay que quitarlo.
+- **No se usa** la YYB Miku (`models/YYB Miku Default.zip`): prohíbe por escrito el uso comercial y la violencia.
 
 ### En curso: plan del port a Unreal (el autor, 14 de noviembre, noche)
 

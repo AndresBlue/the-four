@@ -872,7 +872,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			credits_roll()
 			spacer(column, 14)
 			action("Volver", "main")
-			side.visible = false
+			code_panel(side)
 	if osd_left.text != "SEÑAL PERDIDA": osd_left.remove_theme_color_override("font_color")
 	# First start on an integrated GPU: it starts on Muy bajo; the lighter
 	# renderer is the player's call (it restarts the game).
@@ -883,6 +883,52 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		paragraph(column, message, 16, 560, STYLE.AMBER)
 	transition(0.35 if kind != "failed" else 0.9)
 	focus_first()
+
+## A code typed beside the credits (the author, 16 November 2026), for the
+## author and friends: it unlocks what it names, kept in the setting "codes".
+## Known by its SHA-256, so its words are not in the game's files.
+const CODES := {"5a9e67380adf22a6d0766b17fd607c4be780a50333aebeb2471538b464148e90": "miku"}
+## What a code unlocked, as the panel says it.
+const CODE_NAMES := {"miku": "MIKU"}
+func code_panel(parent: Node) -> void:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.86), STYLE.FAINT, 1, 20))
+	parent.add_child(panel)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 10)
+	panel.add_child(list)
+	label(list, "CÓDIGO", 18).add_theme_color_override("font_color", STYLE.AMBER)
+	var edit := LineEdit.new()
+	edit.custom_minimum_size = Vector2(280, 40)
+	edit.add_theme_font_size_override("font_size", 20)
+	edit.max_length = 24
+	list.add_child(edit)
+	var said := label(list, "", 16)
+	var redeem := func() -> void:
+		var id: String = CODES.get(edit.text.strip_edges().to_lower().sha256_text(), "")
+		edit.clear()
+		if id.is_empty():
+			said.text = "CÓDIGO NO VÁLIDO"
+			said.add_theme_color_override("font_color", STYLE.ALERT)
+			return
+		confirm()
+		unlock(id)
+		said.text = "DESBLOQUEADO: %s" % CODE_NAMES.get(id, id.to_upper())
+		said.add_theme_color_override("font_color", STYLE.AMBER)
+	edit.text_submitted.connect(func(_words): redeem.call())
+	entry(list, "Canjear", redeem, false, 20)
+
+## Whether a code's unlock is had (settings "codes"), and having it.
+func unlocked(id: String) -> bool:
+	return String(settings.values.get("codes", "")).split(",", false).has(id)
+
+func unlock(id: String) -> void:
+	if unlocked(id): return
+	var ids := String(settings.values.get("codes", "")).split(",", false)
+	ids.append(id)
+	settings.set_value("codes", ",".join(ids))
 
 ## Which creature a new game is played against: the four, the one chosen last
 ## marked, and beside them what the one under the cursor is like -- its name
