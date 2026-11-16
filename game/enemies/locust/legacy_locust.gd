@@ -55,12 +55,9 @@ static func build(skeleton: Skeleton3D) -> void:
 	var face := material(FACE)
 	var dark := material(DARK)
 	var eye := material(EYE, 0.5)
-	# The front of the body at rest: from the heel towards the toes.
-	var front := Vector3(0, 0, 1)
-	if skeleton.find_bone(BONE + "L_Toe0") >= 0:
-		var toe := at(skeleton, "L_Toe0") - at(skeleton, "L_Foot")
-		toe.y = 0.0
-		if toe.length() > 0.001: front = toe.normalized()
+	# The way the creature goes and looks: its -Z (hotel_locust's facing).
+	# Taken from the toes it came out +Z, and the face was on the nape.
+	var front := Vector3(0, 0, -1)
 	var right := Vector3.UP.cross(front).normalized()
 	var spine := at(skeleton, "Spine")
 	var neck := at(skeleton, "Neck1")
