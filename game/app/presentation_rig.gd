@@ -479,6 +479,19 @@ func build_audio() -> void:
 	level.menu_music.stream.loop = true
 	level.add_child(level.menu_music)
 
+## Each floor's own music while it is played (the hotel's, the author's of 16
+## November 2026); any other floor, the game's theme.
+const FLOOR_THEMES := {1: "res://assets/audio/hotel_theme.mp3"}
+const GAME_THEME := "res://assets/audio/the_four_theme.mp3"
+var floor_themes := {}
+func floor_theme(number: int) -> AudioStream:
+	var path: String = FLOOR_THEMES.get(number, GAME_THEME)
+	if not floor_themes.has(path):
+		var stream: AudioStream = load(path).duplicate()
+		stream.set("loop", true)
+		floor_themes[path] = stream
+	return floor_themes[path]
+
 ## How much of the music is left with the power (1 on, 0 cut), and how fast it
 ## goes and comes back.
 var music_power := 1.0
@@ -489,6 +502,7 @@ const MUSIC_RETURN := 2.0
 
 func update_menu_scene(_delta: float) -> void:
 	var in_menu: bool = level.session.state == level.session.State.MENU
-	var audible: bool = in_menu and level.world_audio.enabled
+	# Not over the boot: the music starts after its PLAY (the author).
+	var audible: bool = in_menu and level.world_audio.enabled and not is_instance_valid(level.ui.intro)
 	if audible and not level.menu_music.playing: level.menu_music.play()
 	elif not audible and level.menu_music.playing: level.menu_music.stop()

@@ -656,8 +656,14 @@ func run() -> void:
 	var notice: Control = scene.ui.intro.get_node_or_null("Headphones")
 	var tape: ColorRect = scene.ui.intro.get_node_or_null("Tape")
 	check("La cinta pide auriculares antes de arrancar", notice != null and notice.modulate.a > 0.5 and tape != null and tape.modulate.a == 0.0)
+	# Nothing skips it now (the author, 16 November 2026): a key reaches nothing.
+	var space := InputEventKey.new()
+	space.pressed = true
+	space.keycode = KEY_SPACE
+	scene.ui._input(space)
+	check("La barra espaciadora no corta la entrada", is_instance_valid(scene.ui.intro))
 	scene.ui.finish_intro()
-	check("Y saltar la entrada se lo lleva con ella", not is_instance_valid(scene.ui.intro))
+	check("Y al acabar la entrada se va con ella", not is_instance_valid(scene.ui.intro))
 	settings.set_value("quality", 1)
 	var session = scene.session
 	check("Cuotas correctas", quota(session, 1) == 1 and quota(session, 2) == 1 and quota(session, 3) == 2 and quota(session, 4) == 2)

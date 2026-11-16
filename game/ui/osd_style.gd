@@ -141,8 +141,8 @@ static func headphones(size: float, color := MUTED) -> Control:
 			var hinge := middle + Vector2(side * reach, 0.0)
 			var bottom := hinge + Vector2(0.0, size * 0.2)
 			mark.draw_line(hinge, bottom, color, stroke * 2.2, true)
-			# Rounded off: draw_line has square ends and a cup does not.
-			mark.draw_circle(bottom, stroke * 1.1, color))
+			# Rounded off at both ends: draw_line has square ends and a cup does not.
+			for end in [hinge, bottom]: mark.draw_circle(end, stroke * 1.1, color))
 	return mark
 
 ## A rubber stamp: words in a box, a little crooked, as a clerk would leave

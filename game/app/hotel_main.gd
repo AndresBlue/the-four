@@ -1008,6 +1008,7 @@ func populate_floor(with_director: bool) -> void:
 	for hide in hotel.hides: hide.peek_started.connect(on_peek)
 	if not automation and not OS.get_cmdline_user_args().has("--silent"):
 		ambience.play()
+		theme.stream = rig.floor_theme(session.floor_number)
 		theme.play()
 		ventilation.play()
 	# A floor opens on the same card as every sector after it, and the notice

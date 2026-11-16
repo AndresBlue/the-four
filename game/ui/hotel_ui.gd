@@ -2405,9 +2405,9 @@ func _display_changed(seconds: int) -> void:
 	if refresh: show_settings.call_deferred(return_action)
 
 func _input(event: InputEvent) -> void:
-	if is_instance_valid(intro) and event is InputEventKey and event.pressed:
+	# The boot plays to its end: what is pressed meanwhile reaches nothing.
+	if is_instance_valid(intro) and (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton):
 		get_viewport().set_input_as_handled()
-		finish_intro()
 		return
 	if is_instance_valid(dossier) and (event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE)):
 		get_viewport().set_input_as_handled()
@@ -2443,7 +2443,8 @@ func _input(event: InputEvent) -> void:
 	else: rebind_button.text = "TECLA RESERVADA O EN USO"
 
 ## Boot sequence: VCR blue screen with PLAY, then a long stretch of tape static
-## into the menu. A key skips it; mouse clicks do not.
+## into the menu. Nothing skips it (the author, 16 November 2026): keys and
+## clicks are swallowed while it plays.
 func play_intro() -> void:
 	if is_instance_valid(intro): finish_intro()
 	intro = Control.new()
@@ -2481,7 +2482,6 @@ func play_intro() -> void:
 	notice.name = "Headphones"
 	notice.set_anchors_preset(Control.PRESET_FULL_RECT)
 	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	notice.modulate.a = 0.0
 	intro.add_child(notice)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 30)
@@ -2492,6 +2492,14 @@ func play_intro() -> void:
 	var words := STYLE.text("AURICULARES SUGERIDOS", 30, STYLE.MUTED)
 	words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(words)
+	# It fades in and out under a black that clears and comes back: faded
+	# itself, every piece of the drawing went see-through on its own and the
+	# pieces showed where they overlap.
+	var cover := ColorRect.new()
+	cover.color = Color.BLACK
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	intro.add_child(cover)
 	var static_layer := ColorRect.new()
 	static_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	static_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2509,9 +2517,10 @@ func play_intro() -> void:
 	# The notice comes up out of the black, is held long enough to read, and
 	# goes before anything else happens.
 	intro_tween.tween_interval(0.3)
-	intro_tween.tween_property(notice, "modulate:a", 1.0, 0.45)
+	intro_tween.tween_property(cover, "modulate:a", 0.0, 0.45)
 	intro_tween.tween_interval(1.6)
-	intro_tween.tween_property(notice, "modulate:a", 0.0, 0.45)
+	intro_tween.tween_property(cover, "modulate:a", 1.0, 0.45)
+	intro_tween.tween_callback(func(): notice.hide(); cover.hide())
 	intro_tween.tween_interval(0.3)
 	intro_tween.tween_callback(func(): if sounds_enabled: confirm_player.play())
 	intro_tween.tween_property(blue, "modulate:a", 1.0, 0.05)
