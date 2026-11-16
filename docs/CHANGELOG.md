@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.5.0](#150--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Máquinas de café que devuelven la cordura, sugerencias de controles en las primeras partidas, una tele nueva en el hotel, un oído más fino para The Locust en Versus y códigos en los créditos. |
 | [1.4.0](#140--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El piso 2 se traza como un edificio de oficinas real, The Lurker se rehace, y las oficinas ganan luz desde sus luminarias, polvo en suspensión y salas de hito señaladas. |
 | [1.3.0](#130--10-de-noviembre-de-2026)    | 10 de noviembre de 2026  | El piso 2, las oficinas con The Lurker, se juega de punta a punta aunque aún no está publicado; el piso 1 gana cuadros eléctricos con llave y papeles escritos a máquina.         |
 | [1.2.0](#120--20-de-octubre-de-2026)      | 20 de octubre de 2026    | El piso va con los supervivientes, la tercera planta tiene pasillos largos sin puertas y ocho pistas sobre las páginas del código, y la salida de la primera etapa se encuentra buscando.|
@@ -70,6 +71,28 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.5.0 — 16 de noviembre de 2026
+
+*Máquinas de café que devuelven la cordura, sugerencias de controles en las primeras partidas, una tele nueva en el hotel, un oído más fino para The Locust en Versus y códigos en los créditos.*
+
+Commits `0f5a81f`…`v1.5.0` (13).
+
+### Novedades
+
+- Máquinas de café, de 3 a 5 por piso, en las salas amplias del hotel y en las salas de descanso de las oficinas. Un café por superviviente y máquina: a los segundos, «Te sientes mejor...» y la cordura vuelve entera en un segundo.
+- Sugerencias de controles en las primeras cinco partidas de cada piso: abajo y al centro, cada tecla en su keycap, la primera vez que cada cosa aparece en la partida. Cada una se va al hacer lo que dice. Se encienden y apagan en Controles, y llegar al piso 2 las enciende otra vez. La tarjeta de controles de la pausa también va en keycaps.
+- La tele del hotel es un televisor antiguo con caja de madera y antena. La escena de entrada conserva la suya.
+- En Versus, quien lleva a The Locust oye más lo que hacen los supervivientes y menos su propio grito, sus pisadas y su respiración.
+- La estática de una tele que se enciende, y la de los viajes de The Locust por las teles, se apaga con la distancia, sin desaparecer del todo. El apagón ya no la repite desde arriba a todo volumen.
+- Asomarse por una esquina llega más lejos (0,5 m) e inclina la imagen unos 8°.
+- «CÓDIGO», en la esquina de los créditos, para canjear códigos. Desbloquean extras ocultos solo para quien los conoce.
+- La Exploradora (Realistic Female, CompartirIgual) se va. El personaje por defecto pasa a ser la Detective Femenino.
+
+### Sin comprobar al cerrar la versión
+
+- La verificación completa se corrió antes de los últimos arreglos de las máquinas de café: tras ellos pasaron la física de las oficinas, el contrato de la criatura y la prueba del café, no el resto.
+- El oído del cazador en Versus y los extras de los códigos no se probaron en una partida real.
 
 ## 1.4.0 — 16 de noviembre de 2026
 
