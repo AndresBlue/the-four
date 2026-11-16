@@ -94,9 +94,11 @@ var gap_at := Vector3.ZERO
 ## at whatever it meets. Not running, hidden, reading or held. Only the
 ## camera moves -- and the creature looks for the camera: lean out and it
 ## can see you (hotel_locust.clear_sight).
-const LEAN_REACH := 0.32
+## (0.32 until 16 November 2026: the author asked for more of the side step.)
+const LEAN_REACH := 0.5
 const LEAN_DROP := 0.05
-const LEAN_ROLL := 0.11
+## About 8 degrees (the author, 16 November 2026; it was 0.11, 6.3).
+const LEAN_ROLL := 0.14
 const LEAN_SPEED := 3.5
 const LEAN_HEAD := 0.13
 ## -1 (left) to 1 (right), eased; and how far the head went (metres, signed:

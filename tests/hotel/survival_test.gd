@@ -35,6 +35,9 @@ func obstacle(at: Vector3) -> StaticBody3D:
 ## long as the lens travels -- the whole range or a notch -- and the other
 ## recording the other way.
 func kit_checks(player) -> void:
+	# The motor is counted in frames, measured at sixty a second: uncapped
+	# (run()), alone on an idle machine, the lens took 145 of them to close in.
+	Engine.max_fps = 60
 	player.active = true
 	var said: Array = []
 	for i in 6:
@@ -82,6 +85,7 @@ func kit_checks(player) -> void:
 	player.zoom = 1.0
 	player.zoom_wanted = 1.0
 	player.active = false
+	Engine.max_fps = 0
 
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
