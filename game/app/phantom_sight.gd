@@ -37,7 +37,8 @@ const PLACE_OFF := Vector2(0.45, 0.85)
 const SEEN := 0.8
 ## How it goes: seen for a moment (drawn), or never seen within UNSEEN_FOR;
 ## gone at once out of view (LOST), with the head turned faster than FAST
-## (radians a second), with the camera nearer than NEAR, or in the torch.
+## (radians a second), with the camera nearer than NEAR (or the lies' own
+## sight_near(): The Lurker's comes closer as the mind goes), or in the torch.
 const SHOWN := Vector2(0.6, 1.6)
 const UNSEEN_FOR := 6.0
 const LOST := 0.5
@@ -147,7 +148,7 @@ func haunt(delta: float, camera: Camera3D) -> void:
 		var end := ""
 		if (-camera.global_basis.z).dot(towards.normalized()) < LOST or not clear(eye, face_point): end = "fuera de vista"
 		elif turn_rate > FAST: end = "giro"
-		elif towards.length() < NEAR: end = "cerca"
+		elif towards.length() < (float(lies.sight_near()) if lies.has_method("sight_near") else NEAR): end = "cerca"
 		elif torch_on(camera): end = "linterna"
 		elif seen_for > show_for: end = "tiempo"
 		if not end.is_empty():
@@ -258,7 +259,8 @@ func place_spot(spot: Dictionary, camera: Camera3D) -> bool:
 	elif spot.has("head"): model.global_position.y += float(spot.head) - poser.point(lies.HEAD).y
 	pose(1.0)
 	face_point = poser.point(lies.HEAD)
-	var hidden: bool = String(spot.kind) == "corner" or hidden_body(eye)
+	# Hanging from a ceiling there is no wall to hide behind.
+	var hidden: bool = String(spot.kind) in ["corner", "lintel"] or hidden_body(eye)
 	if clear(eye, face_point) and lit(face_point, camera) and hidden: return true
 	kind = ""
 	return false

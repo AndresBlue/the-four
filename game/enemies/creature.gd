@@ -122,6 +122,9 @@ func eye_point() -> Vector3: return global_position + Vector3.UP * 1.7
 ## Where its face is, for whoever looks at it.
 func face_point() -> Vector3: return eye_point()
 
+## What a mind looks at to see it (sanity.sight_of_creature): its chest.
+func sight_point() -> Vector3: return global_position + Vector3.UP * 1.2
+
 ## The way it is looking (not normalised).
 func gaze() -> Vector3: return -global_basis.z
 

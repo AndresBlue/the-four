@@ -54,10 +54,12 @@ const CAR_DB := -8.0
 const CLEAN := 0.5
 ## A gap tile this near is one she is crossing (travel()).
 const GAP_NEAR := 0.6
-## While she hushes or warns, the ambience, the aura and the theme step back
+## While she warns, the ambience and the theme step back
 ## (world_audio.duck_under) for whoever is within HOLD_REACH on her planta:
 ## renewed every tick for HOLD_TICK, so it lets go as soon as the beat ends.
-const HOLD_BEATS: Array[StringName] = [&"hush", &"cue"]
+## Not while she hushes before it (the author, 16 November 2026: no aura): the
+## room going quiet through the walls told who was near that she was.
+const HOLD_BEATS: Array[StringName] = [&"cue"]
 const HOLD_REACH := 14.0
 const HOLD_TICK := 0.2
 var creature

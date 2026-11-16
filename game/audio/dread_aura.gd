@@ -5,6 +5,8 @@ extends Node
 ## the creature would take to reach them. Doors and walls do not hide which
 ## way it is coming from, but the cues never reveal its exact position.
 ## Presentation only: it reads the creature, never changes its behaviour.
+## A creature whose profile has no aura (The Lurker) gets none of it, at any
+## distance: only the listener's own heartbeat is left here (quiet_step()).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PROFILE := preload("res://game/audio/creature_audio_profile.gd")
 const CHITTERS := ["res://assets/audio/dread/chitter_0.wav", "res://assets/audio/dread/chitter_1.wav", "res://assets/audio/dread/chitter_2.wav", "res://assets/audio/dread/chitter_3.wav"]
@@ -55,6 +57,15 @@ var muffle: AudioEffectLowPassFilter
 ## (use_profile()).
 var breath_enabled := true
 var rise := 1.5
+## Whether this creature has an aura at all (the profile's `aura`). Without
+## one nothing here sounds by its nearness: the heartbeat goes by pulse().
+var aura_on := true
+## Without an aura, the heartbeat from what the listener feels: the theme's
+## tension (what it has seen and heard), and a mind going on its own, from
+## PULSE_MIND's share of the meter gone upwards (heartbeat_from to PULSE_MIND_TOP).
+const PULSE_MIND := 0.35
+const PULSE_MIND_TOP := 0.85
+var pulse := 0.0
 var rng := RandomNumberGenerator.new()
 ## What the creature said of itself this frame (creature.mood()); {}: nothing.
 var said: Dictionary = {}
@@ -109,6 +120,7 @@ func reset() -> void:
 	said = {}
 	release = false
 	drunk_here = false
+	pulse = 0.0
 	for player in [drone, breath, chitter, heart]: player.stop()
 	if muffle != null: muffle.cutoff_hz = 20000.0
 
@@ -171,6 +183,9 @@ func _physics_process(delta: float) -> void:
 	target = 0.0
 	menace = 0.0
 	said = {}
+	if not aura_on:
+		quiet_step(delta, playing, real, creature)
+		return
 	if active:
 		route_clock -= delta
 		if route_clock <= 0.0:
@@ -215,12 +230,36 @@ func _physics_process(delta: float) -> void:
 		var ear := cue_point + Vector3.UP * rise
 		breath.global_position = ear if breath.global_position.distance_to(ear) > 6.0 else breath.global_position.lerp(ear, minf(1.0, delta * 2.5))
 	update_chitters(delta)
-	update_heart(delta)
+	update_heart(delta, intensity)
+
+## A creature with no aura: nothing of it sounds here, wherever it is. Its
+## mood still says when it has fled (the theme's release), and the heartbeat
+## is the listener's own (pulse).
+func quiet_step(delta: float, playing: bool, real: bool, creature) -> void:
+	said = creature.mood() if real else {}
+	release = bool(said.get("fast", false)) and float(said.get("menace", -1.0)) == 0.0
+	intensity = 0.0
+	route_distance = INF
+	cue_point = Vector3.INF
+	for player in [drone, breath, chitter]:
+		if player.playing: player.stop()
+	if muffle != null: muffle.cutoff_hz = 20000.0
+	var level = world_audio.level
+	var feared := 0.0
+	if playing and level.local_alive():
+		var uneasy: float = level.sanity.SANITY_UNEASY
+		var gone := clampf((uneasy - float(level.player.sanity)) / uneasy, 0.0, 1.0)
+		var mind := clampf((gone - PULSE_MIND) / (1.0 - PULSE_MIND), 0.0, 1.0)
+		feared = maxf(float(world_audio.mood.tension), lerpf(heartbeat_from + 0.02, PULSE_MIND_TOP, mind) if mind > 0.0 else 0.0)
+	pulse = move_toward(pulse, feared, delta * (0.6 if feared > pulse else 0.18))
+	update_heart(delta, pulse)
 
 ## The floor's creature's aura (creature_audio_profile's aura_*); null: the
 ## defaults, as the aura always was.
 func use_profile(profile: Resource) -> void:
 	var p: Resource = profile if profile != null and "aura_start" in profile else PROFILE.new()
+	aura_on = bool(p.get("aura")) if "aura" in p else true
+	pulse = 0.0
 	start_distance = float(p.aura_start)
 	full_distance = float(p.aura_full)
 	breath_enabled = bool(p.aura_breath)
@@ -258,11 +297,12 @@ func update_chitters(delta: float) -> void:
 	chitter.play()
 	chitter_clock = lerpf(5.5, 0.6, intensity) * rng.randf_range(0.6, 1.5)
 
-func update_heart(delta: float) -> void:
-	if intensity < heartbeat_from:
+## `drive`: the aura's intensity, or without one the listener's pulse.
+func update_heart(delta: float, drive: float) -> void:
+	if drive < heartbeat_from:
 		heart_clock = 0.0
 		return
-	var strength := (intensity - heartbeat_from) / (1.0 - heartbeat_from)
+	var strength := (drive - heartbeat_from) / (1.0 - heartbeat_from)
 	var period := 60.0 / lerpf(heartbeat_bpm.x, heartbeat_bpm.y, strength)
 	heart_clock -= delta
 	if heart_clock <= 0.0:

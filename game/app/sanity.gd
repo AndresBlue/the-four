@@ -204,7 +204,7 @@ func sight_of_creature(body: Node3D, lit: bool) -> int:
 	var creature = level.creature
 	if not is_instance_valid(creature) or creature.grace > 0.0 or not is_instance_valid(body.camera): return 0
 	var eye: Vector3 = body.camera.global_position
-	var towards: Vector3 = creature.global_position + Vector3(0, 1.2, 0) - eye
+	var towards: Vector3 = creature.sight_point() - eye
 	var gap := towards.length()
 	if gap > SANITY_SEEN or gap < 0.01: return 0
 	if not lit and not body.torch.visible and gap > 6.0: return 0

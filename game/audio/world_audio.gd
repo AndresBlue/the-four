@@ -756,6 +756,8 @@ func step_physics(delta: float) -> void:
 	if not presence_phantom and creature.hushed(): audible = false
 	# A creature whose presence plays only at times (the Lurker's, over a locker).
 	if not presence_phantom and not creature.presence_on(): audible = false
+	# A creature with no aura (its profile's `aura`) has no presence loop either.
+	if not bool(profile.get("aura")): audible = false
 	presence.global_position = target if not presence_route.get("echo", false) or presence.global_position.distance_to(target) > 8.0 else presence.global_position.lerp(target, minf(1.0, delta * 4.0))
 	presence.bus = presence_route.get("bus", CREATURE_BUS[presence_route.get("echo", false)])
 	if audible and not presence.playing: presence.play()

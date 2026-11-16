@@ -7,7 +7,9 @@ extends RefCounted
 ##  - the creature by walking, real or imagined: dread_aura.menace, its
 ##    nearness and its hunt. Not fooled, as the aura is on purpose, by a
 ##    creature holding itself still beside a wardrobe: whoever waits in there
-##    knows it is outside, and the theme coming back is what gave it away;
+##    knows it is outside, and the theme coming back is what gave it away.
+##    A creature with no aura (The Lurker) is not in it by its nearness at
+##    all: what the listener knows and feels is (known());
 ##  - somebody caught within EXECUTION_REACH, or the listener: all of it;
 ##  - a grunt aimed at the listener (world_audio.duck_under): GRUNT;
 ##  - a mind going (sanity under its UNEASY), up to MIND of it at nothing left.
@@ -71,10 +73,23 @@ func reset() -> void:
 	calm = 0.0
 	apply()
 
+## Without an aura (the creature's profile, The Lurker's), its hidden nearness
+## is no part of it: only what the listener knows or feels is (known()).
+## Seeing it (seen()), or a face that is not there, seen (phantom_sight):
+## SEEN; its warning in the
+## listener's own ears: all of it; the dark round the listener: DARK; a lie
+## told within LIE_HOLD seconds: LIE.
+const SHARED_SIGHT := preload("res://game/enemies/creature_sight.gd")
+const SEEN := 0.7
+const DARK := 0.2
+const LIE := 0.45
+const LIE_HOLD := 3.0
+
 ## How tense it is for the listener right now (0..1).
 func felt(level, world_audio) -> float:
 	if level.match_net.local_is_locust(): return 0.0
 	var now: float = world_audio.aura.menace if world_audio.aura != null else 0.0
+	if world_audio.aura != null and not bool(world_audio.aura.aura_on): now = known(level, world_audio)
 	if not level.execution.is_empty():
 		var listener: Vector3 = world_audio.listener_position()
 		if int(level.execution.seat) == int(level.player.slot) or listener.distance_to(level.execution.point) <= EXECUTION_REACH: now = 1.0
@@ -83,6 +98,30 @@ func felt(level, world_audio) -> float:
 		var uneasy: float = level.sanity.SANITY_UNEASY
 		now = maxf(now, MIND * clampf((uneasy - float(level.player.sanity)) / uneasy, 0.0, 1.0))
 	return clampf(now, 0.0, 1.0)
+
+## What the listener has reason to fear, with no aura to go by (see SEEN).
+func known(level, world_audio) -> float:
+	if not level.local_alive(): return 0.0
+	if not world_audio.ears_hold.is_empty(): return 1.0
+	var mind = level.sanity
+	var lit: bool = mind.lit_at(level.player.global_position)
+	var now := 0.0 if lit else DARK
+	if seen(level): now = maxf(now, SEEN)
+	var phantom = mind.get("sight")
+	if phantom != null and is_instance_valid(phantom) and phantom.showing() and float(phantom.seen_for) >= 0.0: now = maxf(now, SEEN)
+	var lie: Dictionary = mind.last_lie
+	if lie.has("point") and Time.get_ticks_msec() / 1000.0 - float(lie.get("time", -INF)) <= LIE_HOLD: now = maxf(now, LIE)
+	return now
+
+## The listener has her face in view and can make it out (the shared sight's
+## look_of(), the rule her flight goes by): on a ceiling or a wall too, where
+## sanity's own look, aimed over her feet, would go into the plenum.
+func seen(level) -> bool:
+	var creature = level.creature
+	if not is_instance_valid(creature) or float(creature.grace) > 0.0: return false
+	if creature.has_method("view") and bool(creature.view().get("hidden", false)): return false
+	var face: Vector3 = creature.face_point()
+	return bool(SHARED_SIGHT.look_of(level, level.player, face, [creature.get_rid()], SHARED_SIGHT.lit_point(level, face)).regards)
 
 ## One frame of it, `now` being felt(). `release`: what frightened has fled
 ## (dread_aura.release): no calm to wait out, down at RELEASE.

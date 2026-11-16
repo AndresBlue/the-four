@@ -10,10 +10,60 @@ extends Node
 ## face where she is not (phantom_sight, sight_spots()): round the jamb of a
 ## door to a dark room, over a cubicle's partition, hanging in a ceiling
 ## corner. sanity.gd makes this under itself and keeps it.
+##
+## She has no aura (the author, 16 November 2026), so what makes her felt near
+## when she is not is this: as the mind goes (`gone`, 0 at the top of UNEASY
+## and 1 at nothing left) her own signals (HERS) crowd out the office's, come
+## nearer and then right over the listener -- a thread of dust, a tile lifted a
+## hand's breadth, fresh ink on the ceiling, a shadow across the torch's beam,
+## claws crossing the ceiling over them, knocks coming down a duct towards
+## them, her hanging over the lintel of the door just come through -- and
+## from TWICE_FROM two at a time. Her warning and a room's lights shaking
+## together are never among them (NEVER, and no lie touches a room's light but
+## the one lamp).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const VOICE := preload("res://game/enemies/lurker/lurker_voice.gd")
 const VISUAL := preload("res://game/enemies/lurker/lurker.tscn")
+const VISUAL_SCRIPT := preload("res://game/enemies/lurker/lurker_visual.gd")
+const CEILING_DUST := preload("res://game/enemies/lurker/ceiling_dust.gd")
+const SANITY_UNEASY := 60.0
+## Hers, and how much more they weigh from the top of UNEASY to nothing left;
+## the office's lies (every other kind) go the other way.
+const HERS := ["garras", "ducto", "polvo", "placa", "tinta", "haz"]
+const HERS_SCALE := Vector2(0.4, 2.5)
+const OFFICE_SCALE := Vector2(1.3, 0.5)
+## From this much gone, a second lie a moment after the first, at most this
+## often (at nothing left).
+const TWICE_FROM := 0.5
+const TWICE_MOST := 0.6
+const TWICE_AFTER := Vector2(0.6, 2.5)
+## Her claws: their middle this far off the listener (high to low), crossing
+## the ceiling over them from CLAWS_CROSS gone.
+const CLAW_OFF := Vector2(4.0, 0.0)
+const CLAWS_CROSS := 0.5
+## Knocks down a duct come towards the listener from this much gone.
+const DUCT_TOWARDS := 0.4
+## The tile lifted: this far off (high to low), open, held, shut (s).
+const TILE_OFF := Vector2(3.0, 1.0)
+const TILE_SHAPE := Vector3(0.25, 0.6, 0.3)
+## The ink: this far off (high to low), and its life coming, held, going (s).
+const INK_OFF := Vector2(5.0, 2.0)
+const INK_SIZE := Vector2(1.1, 1.6)
+const INK_SHAPE := Vector3(1.5, 6.0, 2.0)
+## The shadow through the beam: where the beam lands this far off, how long it takes across.
+const BEAM_RANGE := Vector2(2.5, 12.0)
+const BEAM_TIME := 0.5
+## With reduced effects, what is seen of these is this much fainter.
+const REDUCED_ALPHA := 0.5
+## The lintel of a door just come through: her hanging over it, seen within
+## LINTEL_FRESH s of passing it, LINTEL_RANGE off, from LINTEL_FROM gone.
+const LINTEL_FRESH := 12.0
+const LINTEL_RANGE := Vector2(2.5, 12.0)
+const LINTEL_FROM := 0.3
+const DOOR_HEAD := 2.65
+## The most her head hangs under the ceiling she holds.
+const LINTEL_HANG := 0.8
 const POSER := preload("res://game/app/hallucinations/lurker_poser.gd")
 const OWN_LIES := true
 ## The bone her face is looked at by, and those that must stay hidden behind
@@ -43,7 +93,7 @@ const SFX := "res://assets/audio/sfx/office/"
 const NEVER := [BASE + "cue_0.wav", BASE + "cue_1.wav", BASE + "cue_2.wav", BASE + "cue_short_0.wav", BASE + "cue_short_1.wav", BASE + "cue_short_2.wav", BASE + "scare_0.wav", BASE + "scare_1.wav", BASE + "presence.wav", BASE + "bite_1.wav", BASE + "bite_2.wav", SFX + "tube_bell.wav"]
 ## How much each kind is told where it may be (4.3); `ducto` weighs more on
 ## planta 3 and the phone on planta 1.
-const WEIGHTS := {"garras": 3.0, "ducto": 2.0, "telefono": 1.5, "maquina": 1.0, "tubo": 2.0, "fotocopiadora": 0.7, "silla": 0.7, "persiana": 1.0, "lampara": 1.5, "palanca": 1.5, "tictac": 1.5, "ventiladores": 1.5}
+const WEIGHTS := {"garras": 3.0, "ducto": 2.0, "polvo": 2.0, "placa": 1.5, "tinta": 1.0, "haz": 1.5, "telefono": 1.5, "maquina": 1.0, "tubo": 2.0, "fotocopiadora": 0.7, "silla": 0.7, "persiana": 1.0, "lampara": 1.5, "palanca": 1.5, "tictac": 1.5, "ventiladores": 1.5}
 const DUCT_WEIGHT_HIGH := 4.0
 const PHONE_WEIGHT_LOW := 2.5
 const CLAW_DB := -10.0
@@ -89,9 +139,26 @@ func setup(owner_level) -> void:
 
 func wait_scale() -> float: return WAIT_SCALE
 
-func sight_rest() -> Vector2: return SIGHT_REST
+## Her faces come oftener as the mind goes: down to SIGHT_SOONER of the rest
+## at nothing left.
+const SIGHT_SOONER := 0.35
+func sight_rest() -> Vector2: return SIGHT_REST * lerpf(1.0, SIGHT_SOONER, mind_gone())
+
+## How near a face of hers may be before going (phantom_sight's NEAR): 8 m
+## at the top of UNEASY, down to 3 at nothing left.
+const SIGHT_NEAR := Vector2(8.0, 3.0)
+func sight_near() -> float: return lerpf(SIGHT_NEAR.x, SIGHT_NEAR.y, mind_gone())
+
+## How much of the listener's mind has gone under UNEASY (0..1).
+func mind_gone() -> float:
+	if level == null or level.get("player") == null: return 0.0
+	return clampf(1.0 - float(level.player.sanity) / SANITY_UNEASY, 0.0, 1.0)
 
 func now() -> float: return Time.get_ticks_msec() / 1000.0
+
+## The faint of what is seen of these lies (reduced effects).
+func faint() -> float:
+	return REDUCED_ALPHA if level.get("settings") != null and bool(level.settings.values.get("reduced", false)) else 1.0
 
 # --- Choosing -------------------------------------------------------------------
 
@@ -100,6 +167,21 @@ func now() -> float: return Time.get_ticks_msec() / 1000.0
 func lie(_point: Vector3, gone: float) -> Dictionary:
 	var options := choices(gone)
 	if options.is_empty(): return {}
+	var chosen := pick_kind(options)
+	var point: Vector3 = tell(chosen, options[chosen])
+	note(chosen, point, false)
+	# Further gone, another on its heels: two things at once, never the same.
+	if gone >= TWICE_FROM and rng.randf() < TWICE_MOST * (gone - TWICE_FROM) / (1.0 - TWICE_FROM):
+		later(rng.randf_range(TWICE_AFTER.x, TWICE_AFTER.y), func():
+			var more := choices(gone)
+			more.erase(chosen)
+			if more.is_empty(): return
+			var second := pick_kind(more)
+			note(second, tell(second, more[second]), true))
+	return {"kind": chosen, "point": point}
+
+## One kind by weight.
+func pick_kind(options: Dictionary) -> String:
 	var total := 0.0
 	for kind in options: total += float(options[kind].weight)
 	var roll := rng.randf() * total
@@ -108,11 +190,12 @@ func lie(_point: Vector3, gone: float) -> Dictionary:
 		roll -= float(options[kind].weight)
 		chosen = kind
 		if roll <= 0.0: break
-	var point: Vector3 = tell(chosen, options[chosen])
-	var entry := {"kind": chosen, "point": point, "time": now()}
-	told.append(entry)
+	return chosen
+
+## A lie told, in `told` (`second`: the one on another's heels).
+func note(kind: String, point: Vector3, second: bool) -> void:
+	told.append({"kind": kind, "point": point, "time": now(), "second": second})
 	if told.size() > 32: told.pop_front()
-	return {"kind": chosen, "point": point}
 
 ## Every kind that may be told here now, by weight.
 func kinds_here(gone: float) -> Dictionary:
@@ -121,8 +204,17 @@ func kinds_here(gone: float) -> Dictionary:
 	for kind in options: out[kind] = float(options[kind].weight)
 	return out
 
-## Every kind that fits here now: kind -> {weight, and what it is told with}.
-func choices(_gone: float) -> Dictionary:
+## Every kind that fits here now: kind -> {weight, and what it is told with},
+## hers weighing more and the office's less as the mind goes.
+func choices(gone: float) -> Dictionary:
+	var out := fitting(gone)
+	for kind in out:
+		var scale: Vector2 = HERS_SCALE if HERS.has(kind) else OFFICE_SCALE
+		out[kind]["weight"] = float(out[kind].weight) * lerpf(scale.x, scale.y, gone)
+	return out
+
+## Every kind that fits here now, at its own weight.
+func fitting(gone: float) -> Dictionary:
 	var out := {}
 	var body: Node3D = level.player
 	var ear: Vector3 = body.camera.global_position
@@ -133,9 +225,15 @@ func choices(_gone: float) -> Dictionary:
 	var power = level.objective(&"power")
 	var fans_still: bool = air == null or float(air.get("spin")) == 0.0
 	if not protected and not here.is_empty() and OFFICE.false_ceiling(here):
-		out["garras"] = {"weight": WEIGHTS.garras, "room": here}
+		out["garras"] = {"weight": WEIGHTS.garras, "room": here, "gone": gone}
+		out["polvo"] = {"weight": WEIGHTS.polvo, "room": here}
+		out["placa"] = {"weight": WEIGHTS.placa, "room": here, "gone": gone}
+		out["tinta"] = {"weight": WEIGHTS.tinta, "room": here, "gone": gone}
+	if not protected and level.player.torch.visible:
+		var beam := beam_spot(body.camera)
+		if not beam.is_empty(): out["haz"] = {"weight": WEIGHTS.haz, "beam": beam}
 	if not protected and (wing != 2 or fans_still):
-		var path := duct_path(ear, wing)
+		var path := duct_path(ear, wing, gone)
 		if not path.is_empty(): out["ducto"] = {"weight": DUCT_WEIGHT_HIGH if wing == 2 else WEIGHTS.ducto, "path": path}
 	var phone := room_near(ear, wing, 6.0, 20.0, func(r): return OFFICE.has_phone(r) and int(r.id) != int(here.get("id", -1)), "telefono")
 	if not phone.is_empty(): out["telefono"] = {"weight": PHONE_WEIGHT_LOW if wing == 0 else WEIGHTS.telefono, "point": FLOOR.position_of(phone) + Vector3(0, 0.75, 0)}
@@ -218,8 +316,9 @@ func desk_near(ear: Vector3, wing: int, low: float, high: float) -> Vector3:
 	return found[rng.randi_range(0, found.size() - 1)] if not found.is_empty() else Vector3.INF
 
 ## A duct path of 3 to 6 edges on the listener's planta, starting within 12 m
-## of them, nowhere near where she really is in the ducts.
-func duct_path(ear: Vector3, wing: int) -> PackedInt32Array:
+## of them, nowhere near where she really is in the ducts; from DUCT_TOWARDS
+## gone, run the way that ends nearer the listener (coming for them).
+func duct_path(ear: Vector3, wing: int, gone := 0.0) -> PackedInt32Array:
 	var creature = level.creature
 	var ducts = creature.get("ducts") if is_instance_valid(creature) else null
 	if ducts == null: return PackedInt32Array()
@@ -241,7 +340,9 @@ func duct_path(ear: Vector3, wing: int) -> PackedInt32Array:
 		var near_her := false
 		for n in path:
 			if her != Vector3.INF and ducts.nodes[n].distance_to(her) < 3.0: near_her = true
-		if not near_her: return path
+		if near_her: continue
+		if gone >= DUCT_TOWARDS and ducts.nodes[path[0]].distance_to(ear) < ducts.nodes[path[path.size() - 1]].distance_to(ear): path.reverse()
+		return path
 	return PackedInt32Array()
 
 ## A tube from the hub to a station whose nearest point is 6 to 20 m off.
@@ -316,7 +417,15 @@ func tell(kind: String, with: Dictionary) -> Vector3:
 	var on: bool = level.world_audio.enabled
 	match kind:
 		"garras":
-			return claws(level.player.global_position)
+			return claws(level.player.global_position, float(with.get("gone", 0.0)))
+		"polvo":
+			return dust_over(level.player.global_position)
+		"placa":
+			return lift_tile(level.player.global_position, float(with.gone))
+		"tinta":
+			return ink(level.player.global_position, float(with.gone))
+		"haz":
+			return beam_shadow(with.beam)
 		"ducto":
 			var ducts = level.creature.ducts
 			var points := PackedVector3Array()
@@ -361,16 +470,43 @@ func tell(kind: String, with: Dictionary) -> Vector3:
 			return with.point
 	return Vector3.INF
 
-## 3 to 6 claws on the ceiling within 1.5 m over `point` in 1.2 s, and four
-## times in ten a tile shifted near by, with its dust.
-func claws(point: Vector3) -> Vector3:
+## The ceiling of a room, just under it.
+static func ceiling_of(room: Dictionary) -> float:
+	return float(room.get("py", 0.0)) + float(room.get("height", 2.95)) - 0.02
+
+## A point `metres` off `point` in a random direction, kept inside its room.
+func off_in_room(point: Vector3, metres: float) -> Vector3:
 	var room := FLOOR.room_at(level.manifest.rooms, point)
-	var top: float = float(room.get("py", 0.0)) + float(room.get("height", 2.95)) - 0.02
-	var over := Vector3(point.x, top, point.z)
-	for i in rng.randi_range(3, 6):
-		var at := over + Vector3(rng.randf_range(-1.5, 1.5), 0, rng.randf_range(-1.5, 1.5))
-		var file := BASE + "tile_%d.wav" % rng.randi_range(1, 6)
-		later(rng.randf_range(0.0, 1.2), func(): say(file, at, CLAW_DB))
+	var angle := rng.randf() * TAU
+	var at := point + Vector3(sin(angle), 0, cos(angle)) * metres
+	if room.is_empty(): return at
+	var centre := FLOOR.position_of(room)
+	var half := Vector2(maxf(float(room.span_x) * 0.5 - 0.3, 0.0), maxf(float(room.span_z) * 0.5 - 0.3, 0.0))
+	return Vector3(clampf(at.x, centre.x - half.x, centre.x + half.x), at.y, clampf(at.z, centre.z - half.y, centre.z + half.y))
+
+## Claws on the ceiling: CLAW_OFF from the listener (far off with a mind just
+## going, right over them with none left). Under CLAWS_CROSS, 3 to 6 within
+## 1.5 m of there in 1.2 s; from it, 5 to 8 hands crossing the ceiling over
+## them in 1.4 s, one after another. Four times in ten a tile shifted near by,
+## with its dust.
+func claws(point: Vector3, gone := 0.0) -> Vector3:
+	var room := FLOOR.room_at(level.manifest.rooms, point)
+	var top := ceiling_of(room)
+	var middle := off_in_room(point, lerpf(CLAW_OFF.x, CLAW_OFF.y, gone))
+	var over := Vector3(middle.x, top, middle.z)
+	if gone >= CLAWS_CROSS:
+		var angle := rng.randf() * TAU
+		var across := Vector3(sin(angle), 0, cos(angle))
+		var count := rng.randi_range(5, 8)
+		for i in count:
+			var at := over + across * lerpf(-2.5, 2.5, float(i) / float(count - 1)) + Vector3(rng.randf_range(-0.3, 0.3), 0, rng.randf_range(-0.3, 0.3))
+			var file := BASE + "tile_%d.wav" % rng.randi_range(1, 6)
+			later(1.4 * float(i) / float(count - 1) + rng.randf_range(0.0, 0.06), func(): say(file, at, CLAW_DB))
+	else:
+		for i in rng.randi_range(3, 6):
+			var at := over + Vector3(rng.randf_range(-1.5, 1.5), 0, rng.randf_range(-1.5, 1.5))
+			var file := BASE + "tile_%d.wav" % rng.randi_range(1, 6)
+			later(rng.randf_range(0.0, 1.2), func(): say(file, at, CLAW_DB))
 	if rng.randf() < 0.4:
 		var tile := over + Vector3(rng.randf_range(-2.0, 2.0), 0, rng.randf_range(-2.0, 2.0))
 		var creak := BASE + "tile_creak_%d.wav" % rng.randi_range(1, 3)
@@ -386,9 +522,104 @@ func later(seconds: float, what: Callable) -> void:
 
 ## A shadow sliding behind the blind of a pane, across it, in SHADOW_TIME.
 func shadow(pane: Dictionary) -> Vector3:
+	if not is_instance_valid(pane.sheet): return Vector3.INF
 	var sheet: Node3D = pane.sheet
 	var start: Vector3 = sheet.global_position + (pane.far as Vector3) * 0.15
 	if not level.world_audio.enabled: return start
+	var quad := shadow_quad()
+	quad.global_basis = sheet.global_basis
+	var across: Vector3 = sheet.global_basis.x.normalized()
+	var half := float(pane.width) * 0.5
+	jobs.append({"kind": "persiana", "quad": quad, "from": start - across * half, "to": start + across * half, "t": 0.0})
+	quad.global_position = start - across * half
+	return start
+
+## Where the torch's beam lands BEAM_RANGE off, straight ahead: {point,
+## normal}; {} when it lands nearer or nowhere.
+func beam_spot(camera: Camera3D) -> Dictionary:
+	var eye := camera.global_position
+	var query := PhysicsRayQueryParameters3D.create(eye, eye - camera.global_basis.z * BEAM_RANGE.y, 1 | 8 | 64)
+	query.exclude = [level.player.get_rid()]
+	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty() or (hit.position as Vector3).distance_to(eye) < BEAM_RANGE.x: return {}
+	return {"point": hit.position, "normal": hit.normal}
+
+## A shadow across the torch's beam where it lands, in BEAM_TIME: something
+## passing between the light and the wall.
+func beam_shadow(beam: Dictionary) -> Vector3:
+	var normal: Vector3 = beam.normal
+	var at: Vector3 = (beam.point as Vector3) + normal * 0.04
+	if not level.world_audio.enabled: return at
+	var side := normal.cross(Vector3.UP)
+	if side.length() < 0.1: side = level.player.camera.global_basis.x
+	side = side.normalized()
+	var quad := shadow_quad()
+	quad.global_basis = Basis(side, normal.cross(side).normalized(), normal)
+	jobs.append({"kind": "persiana", "quad": quad, "from": at - side * 0.9, "to": at + side * 0.9, "t": 0.0, "time": BEAM_TIME})
+	quad.global_position = at - side * 0.9
+	return at
+
+## A thread of dust from the joint right over the listener, with the tile's
+## creak first: her weight on it.
+func dust_over(point: Vector3) -> Vector3:
+	var top := ceiling_of(FLOOR.room_at(level.manifest.rooms, point))
+	var over := Vector3(point.x + rng.randf_range(-0.4, 0.4), top, point.z + rng.randf_range(-0.4, 0.4))
+	say(BASE + "tile_%d.wav" % rng.randi_range(1, 6), over, CLAW_DB - 2.0)
+	var dust := BASE + "dust_%d.wav" % rng.randi_range(1, 2)
+	later(0.25, func(): say(dust, over, CLAW_DB - 8.0))
+	if level.world_audio.enabled: CEILING_DUST.seep(level, over, top + 0.02)
+	return over
+
+## A tile TILE_OFF from the listener lifted a hand's breadth and let down again:
+## the dark of the plenum through its gap (TILE_SHAPE), a creak each way and
+## dust as it lands.
+func lift_tile(point: Vector3, gone: float) -> Vector3:
+	var top := ceiling_of(FLOOR.room_at(level.manifest.rooms, point))
+	var near := off_in_room(point, lerpf(TILE_OFF.x, TILE_OFF.y, gone))
+	var tile: float = OFFICE.TILE
+	var at := Vector3((floorf(near.x / tile) + 0.5) * tile, top, (floorf(near.z / tile) + 0.5) * tile)
+	say(BASE + "tile_creak_%d.wav" % rng.randi_range(1, 3), at, CLAW_DB)
+	if not level.world_audio.enabled: return at
+	var gap := MeshInstance3D.new()
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(tile - 0.03, tile - 0.03)
+	var dark := StandardMaterial3D.new()
+	dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dark.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dark.cull_mode = BaseMaterial3D.CULL_DISABLED
+	dark.albedo_color = Color(0.0, 0.0, 0.0, 0.0)
+	mesh.material = dark
+	gap.mesh = mesh
+	add_child(gap)
+	# Facing down, a hair under the tiles.
+	gap.global_transform = Transform3D(Basis(Vector3.RIGHT, PI * 0.5), at - Vector3(0, 0.005, 0))
+	jobs.append({"kind": "placa", "quad": gap, "material": dark, "at": at, "t": 0.0, "landed": false})
+	return at
+
+## Fresh ink on the ceiling INK_OFF from the listener that was not there: it
+## comes, stays a while and goes (INK_SHAPE). Her own stain's blot.
+func ink(point: Vector3, gone: float) -> Vector3:
+	var top := ceiling_of(FLOOR.room_at(level.manifest.rooms, point)) + 0.02
+	var near := off_in_room(point, lerpf(INK_OFF.x, INK_OFF.y, gone))
+	var at := Vector3(near.x, top, near.z)
+	if not level.world_audio.enabled: return at
+	var stain := Decal.new()
+	stain.name = "LieInk"
+	stain.texture_albedo = VISUAL_SCRIPT.blot_texture()
+	var wide := rng.randf_range(INK_SIZE.x, INK_SIZE.y)
+	stain.size = Vector3(wide, 0.4, wide * rng.randf_range(0.7, 1.0))
+	stain.normal_fade = 0.5
+	stain.modulate = Color(1, 1, 1, 0)
+	add_child(stain)
+	var spin := rng.randf() * TAU
+	var turn := Vector3(cos(spin), 0, sin(spin))
+	stain.global_transform = Transform3D(Basis(turn, Vector3.DOWN, turn.cross(Vector3.DOWN)), at)
+	jobs.append({"kind": "tinta", "decal": stain, "t": 0.0})
+	return at
+
+## A soft dark quad for the shadows (the blind's, the beam's), fainter with
+## reduced effects.
+func shadow_quad() -> MeshInstance3D:
 	if shadow_material == null:
 		shadow_material = StandardMaterial3D.new()
 		shadow_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -404,18 +635,14 @@ func shadow(pane: Dictionary) -> Vector3:
 		ramp.add_point(0.6, Color(0, 0, 0, SHADOW_ALPHA))
 		soft.gradient = ramp
 		shadow_material.albedo_texture = soft
+	shadow_material.albedo_color = Color(1, 1, 1, faint())
 	var quad := MeshInstance3D.new()
 	var mesh := QuadMesh.new()
 	mesh.size = SHADOW
 	mesh.material = shadow_material
 	quad.mesh = mesh
 	add_child(quad)
-	quad.global_basis = sheet.global_basis
-	var across: Vector3 = sheet.global_basis.x.normalized()
-	var half := float(pane.width) * 0.5
-	jobs.append({"kind": "persiana", "quad": quad, "from": start - across * half, "to": start + across * half, "t": 0.0})
-	quad.global_position = start - across * half
-	return start
+	return quad
 
 ## A routed sound of the lie, never one of NEVER.
 func say(path: String, point: Vector3, gain: float) -> void:
@@ -443,6 +670,37 @@ func loop_long(path: String, point: Vector3, gain: float, seconds: float):
 func quiet(delta: float) -> void:
 	for job in jobs.duplicate():
 		if step(job, delta): jobs.erase(job)
+	door_clock -= delta
+	if door_clock <= 0.0:
+		door_clock = DOOR_EVERY
+		track_door()
+
+## The door the listener last came through (her over its lintel, sight_spots):
+## {door, from (across it, towards the side they came from), time}; {} none.
+var passed := {}
+## The doorway they stand in now and the side they stepped into it from.
+var in_door = null
+var in_side := 0.0
+var door_clock := 0.0
+const DOOR_EVERY := 0.1
+const IN_DOOR := 0.9
+
+func track_door() -> void:
+	if level.get("player") == null or not is_instance_valid(level.hotel): return
+	var p: Vector3 = level.player.global_position
+	var wing := FLOOR.planta_of(p.y)
+	var near = null
+	for door in level.hotel.doors:
+		if is_instance_valid(door) and FLOOR.planta_of(door.doorway.y) == wing and Vector2(door.doorway.x - p.x, door.doorway.z - p.z).length() < IN_DOOR:
+			near = door
+			break
+	if near == in_door: return
+	# Out of a doorway on the other side from where they stepped in: through it.
+	if in_door != null and is_instance_valid(in_door):
+		var side := signf(in_door.across().dot(p - in_door.doorway))
+		if side != 0.0 and in_side != 0.0 and side != in_side: passed = {"door": in_door, "from": in_door.across() * in_side, "time": now()}
+	in_door = near
+	in_side = signf(near.across().dot(p - near.doorway)) if near != null else 0.0
 
 ## One lie going on, one frame of it; true when it is over.
 func step(job: Dictionary, delta: float) -> bool:
@@ -485,11 +743,37 @@ func step(job: Dictionary, delta: float) -> bool:
 			return false
 		"persiana":
 			job.t = float(job.t) + delta
-			var quad: MeshInstance3D = job.quad
-			if float(job.t) >= SHADOW_TIME or not is_instance_valid(quad):
-				if is_instance_valid(quad): quad.queue_free()
+			var span := float(job.get("time", SHADOW_TIME))
+			if float(job.t) >= span or not is_instance_valid(job.quad):
+				if is_instance_valid(job.quad): job.quad.queue_free()
 				return true
-			quad.global_position = (job.from as Vector3).lerp(job.to, float(job.t) / SHADOW_TIME)
+			var quad: MeshInstance3D = job.quad
+			quad.global_position = (job.from as Vector3).lerp(job.to, float(job.t) / span)
+			return false
+		"placa":
+			job.t = float(job.t) + delta
+			var t := float(job.t)
+			var shape := TILE_SHAPE
+			if t >= shape.x + shape.y + shape.z or not is_instance_valid(job.quad):
+				if is_instance_valid(job.quad): job.quad.queue_free()
+				return true
+			var open := clampf(t / shape.x, 0.0, 1.0) if t < shape.x + shape.y else clampf(1.0 - (t - shape.x - shape.y) / shape.z, 0.0, 1.0)
+			(job.material as StandardMaterial3D).albedo_color = Color(0, 0, 0, 0.92 * open * faint())
+			if not bool(job.landed) and t >= shape.x + shape.y + shape.z * 0.8:
+				job.landed = true
+				say(BASE + "tile_creak_%d.wav" % rng.randi_range(1, 3), job.at, CLAW_DB - 3.0)
+				say(BASE + "dust_%d.wav" % rng.randi_range(1, 2), job.at, CLAW_DB - 6.0)
+				VOICE.dust_puff(level, job.at)
+			return false
+		"tinta":
+			job.t = float(job.t) + delta
+			var t := float(job.t)
+			var shape := INK_SHAPE
+			if t >= shape.x + shape.y + shape.z or not is_instance_valid(job.decal):
+				if is_instance_valid(job.decal): job.decal.queue_free()
+				return true
+			var seen := clampf(t / shape.x, 0.0, 1.0) if t < shape.x + shape.y else clampf(1.0 - (t - shape.x - shape.y) / shape.z, 0.0, 1.0)
+			(job.decal as Decal).modulate = Color(1, 1, 1, seen * faint())
 			return false
 	return true
 
@@ -528,7 +812,8 @@ func knock(points: PackedVector3Array, nodes: PackedInt32Array, metres: float) -
 func _exit_tree() -> void:
 	for job in jobs:
 		if job.has("voice") and job.voice != null: level.world_audio.stop_long(job.voice)
-		if job.has("quad") and is_instance_valid(job.quad): job.quad.queue_free()
+		for key in ["quad", "decal"]:
+			if job.has(key) and is_instance_valid(job[key]): job[key].queue_free()
 	jobs = []
 
 # --- Her face where she is not --------------------------------------------------------
@@ -547,7 +832,7 @@ func sight_poser(model: Node3D):
 	return POSER.new(model)
 
 ## Up to SPOTS_MOST places her face may be seen from `camera`, shuffled:
-## {kind ("peek", "partition" or "corner"), point (her origin), up (the
+## {kind ("peek", "partition", "corner" or "lintel"), point (her origin), up (the
 ## surface she holds), facing (where her body points; none: the camera),
 ## side (the lean), head (her head's height, or where it is)}. She holds on as she does: to
 ## the far face of the wall beside a jamb, her head out into the doorway; to
@@ -558,10 +843,16 @@ func sight_spots(sight, camera: Camera3D) -> Array:
 	var wing := FLOOR.planta_of(eye.y)
 	var base := FLOOR.planta_y(wing)
 	var spots: Array = []
+	# Nearer as the mind goes: the far bounds stay, the near ones halve.
+	var gone := mind_gone()
+	var peek_near := lerpf(PEEK_RANGE.x, PEEK_RANGE.x * 0.5, gone)
+	var partition_near := lerpf(PARTITION_RANGE.x, PARTITION_RANGE.x * 0.5, gone)
+	var corner_near := lerpf(CORNER_RANGE.x, CORNER_RANGE.x * 0.5, gone)
+	var lintel := lintel_spot(sight, camera, gone)
 	for door in level.hotel.doors:
 		if not is_instance_valid(door) or not door.opened or door.moving or door.locked: continue
 		var gap: float = door.doorway.distance_to(eye)
-		if gap < PEEK_RANGE.x or gap > PEEK_RANGE.y or FLOOR.planta_of(door.doorway.y) != wing: continue
+		if gap < peek_near or gap > PEEK_RANGE.y or FLOOR.planta_of(door.doorway.y) != wing: continue
 		var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
 		if across.dot(door.doorway - eye) < 0.0: across = -across
 		var far := FLOOR.room_at(level.manifest.rooms, door.doorway + across * 0.8)
@@ -587,7 +878,7 @@ func sight_spots(sight, camera: Camera3D) -> Array:
 			var at := centre + Vector3(float(item.at[0]), 0, float(item.at[1]))
 			var gap := at.distance_to(eye)
 			var over := at + Vector3(0, float(item.extra.height) + OVER_PARTITION, 0)
-			if gap < PARTITION_RANGE.x or gap > PARTITION_RANGE.y or not sight.beside_view(over, camera) or not sight.clear(eye, over): continue
+			if gap < partition_near or gap > PARTITION_RANGE.y or not sight.beside_view(over, camera) or not sight.clear(eye, over): continue
 			var away := Vector3(at.x - eye.x, 0, at.z - eye.z).normalized()
 			spots.append({"kind": "partition", "point": at + away * 0.12, "up": away, "facing": Vector3.UP, "side": 1.0, "head": base + float(item.extra.height) + OVER_PARTITION})
 		var top: float = float(room.get("py", 0.0)) + float(room.height)
@@ -596,10 +887,33 @@ func sight_spots(sight, camera: Camera3D) -> Array:
 			var at := Vector3(centre.x + corner.x * half.x, top, centre.z + corner.y * half.y)
 			var gap := at.distance_to(eye)
 			var under := at - Vector3(0, UNDER_CEILING, 0)
-			if gap < CORNER_RANGE.x or gap > CORNER_RANGE.y or not sight.beside_view(under, camera) or not sight.clear(eye, under): continue
+			if gap < corner_near or gap > CORNER_RANGE.y or not sight.beside_view(under, camera) or not sight.clear(eye, under): continue
 			spots.append({"kind": "corner", "point": at, "up": Vector3.DOWN, "side": 1.0, "head": top - UNDER_CEILING})
 	shuffle(spots)
+	# The door just come through first: that is where she would be.
+	if not lintel.is_empty(): spots.push_front(lintel)
 	return spots.slice(0, SPOTS_MOST)
+
+## Her hanging from the ceiling just past the lintel of the door the listener
+## last came through (passed), on the side they came from, her head under the
+## door head: from LINTEL_FROM gone, within LINTEL_FRESH s of it, LINTEL_RANGE
+## off, beside the view and in a clear line. {} when not.
+func lintel_spot(sight, camera: Camera3D, gone: float) -> Dictionary:
+	if gone < LINTEL_FROM or passed.is_empty() or now() - float(passed.time) > LINTEL_FRESH: return {}
+	var door = passed.door
+	if not is_instance_valid(door) or not door.opened or door.moving: return {}
+	var from: Vector3 = passed.from
+	var room := FLOOR.room_at(level.manifest.rooms, door.doorway + from * 0.8)
+	if room.is_empty(): return {}
+	var point: Vector3 = door.doorway + from * 0.35
+	point.y = ceiling_of(room)
+	var head := Vector3(point.x, FLOOR.planta_y(FLOOR.planta_of(door.doorway.y)) + DOOR_HEAD - 0.3, point.z)
+	# Under a tall ceiling she could not hang that low from it: not there.
+	if point.y - head.y > LINTEL_HANG: return {}
+	var eye := camera.global_position
+	var gap := head.distance_to(eye)
+	if gap < LINTEL_RANGE.x or gap > LINTEL_RANGE.y or not sight.beside_view(head, camera) or not sight.clear(eye, head): return {}
+	return {"kind": "lintel", "point": point, "up": Vector3.DOWN, "side": 1.0, "head": head.y}
 
 ## Shuffled with her own rng (tests seed it).
 func shuffle(list: Array) -> void:

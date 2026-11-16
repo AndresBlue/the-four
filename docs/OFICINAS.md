@@ -52,7 +52,12 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
   - **Puede beberse la sala entera** (de Equilibrada para arriba): si acecha a alguien en una sala con luz el tiempo de su dificultad, la deja a oscuras, y **a oscuras para todas las reglas**, mientras le dure el encuentro allí. Nunca un vestíbulo protegido ni una sala que no puede estar a oscuras.
 - **La linterna ya no salva siempre** (de Equilibrada para arriba). La que la espanta queda **bebida** unos segundos: el haz baja al 15 % y titila, y vuelve en el último segundo. A veces se **apaga del todo** y no vuelve hasta apagarla y encenderla (encendida antes de que acabe la bebida, solo chispea). Mientras tanto no la espanta, no sirve para distinguirle la cara y no salva del aviso. Siguen salvando la luz de la sala, la linterna de un compañero y alejarse corriendo.
 - **Por los ductos se la oye y no se la ve.** El sonido sale por las rejillas, nunca a través de los muros.
-- **Las alucinaciones no imitan nunca el aviso de la espalda** ni las luces que tiemblan juntas. Lo demás puede mentir.
+- **Su cercanía no suena** (decisión del autor, 16 de noviembre de 2026: «menos es más; si el jugador no sabe, siempre se va a sentir perseguido»). En solitario, en cooperativo y en Versus:
+  - no tiene aura: ni zumbido, ni ambiente apagado, ni chasquidos por la ruta, ni latido por su distancia, ni bucle de presencia ni su subtítulo, a ninguna distancia;
+  - se oye solo lo que hace su cuerpo donde está: garras, golpes de ducto, placas, polvo, el chillido;
+  - la música no sigue su distancia oculta: sube con lo que el jugador sabe o siente (sección 9).
+  - Lo que la hace sentir cerca sin estarlo son las alucinaciones de la cordura (sección 5).
+- **Las alucinaciones no imitan nunca el aviso de la espalda** ni las luces que tiemblan juntas. Lo demás puede mentir, y cuanto menos cordura, más se parecen a ella.
 - En cooperativo, **la linterna de un compañero también la espanta** (si no es una que ella ha bebido). Cubrirse la espalda es la jugada del equipo.
 
 ### Lenta a la vista, rápida donde no se la mira
@@ -140,7 +145,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 - **Taquillas metálicas** (vestuarios, seguridad, despachos de servicio). Con la lógica de `hiding_place.gd` y otra piel. Ranura de lamas para mirar.
 - **Con ella:**
   - no abre taquillas;
-  - **espera encima**, en el techo, pegada, respirando por las lamas;
+  - **espera encima**, en el techo, pegada y en silencio (sin aura, su respiración ya no se oye por las lamas);
   - quien mira por la ranura puede verle la cara invertida a un palmo, sin peligro mientras no salga;
   - se cansa y se va; el aviso de que se ha ido es el ruido del ducto.
 - **La cordura baja dentro**, como en el armario.
@@ -341,7 +346,7 @@ Cada estado tiene un tiempo máximo y una salida, y nunca se queda quieta por mi
 | **Huir** | Al techo por la entrada más cercana lejos de la luz (la placa de encima, una rejilla, un hueco), de modo que esté dentro en 0,3 s; si no hay ninguna a mano o a los 0,4 s sigue fuera, entra donde esté. Mirada con luz, alumbrada o con la luz de la sala encendida, huye igual, sin chillar | Golpes rápidos que se alejan |
 | **Volver** | Tras un intento fallido, espera en el techo el tiempo de su dificultad (cada fallo lo acorta: ×0,7, ×0,5, ×0,4), sale cerca de donde sabe que está la presa (o de quien esté más solo cerca de ella) y vuelve a acechar, más corto | Callada en el techo; solo cruje la placa o la rejilla por la que sale |
 | **Emboscada** | A veces, con la presa andando (1 m/s o más), en vez de seguirla va por el plénum a un techo oscuro de 8 a 14 m por delante de ella, fuera de su vista, sale y espera quieta hasta 12 s. Avisa desde ahí cuando pasa por debajo o la deja atrás. Si la presa se aleja 16 m del punto, se esconde o no llega en 10 s, vuelve a acechar; una emboscada fallida no cuenta como intento | Nada hasta el aviso |
-| **Encima** | Sobre la taquilla de alguien escondido, de 20 a 40 s; si sale, se acerca | Una placa arrastrada al llegar; respiración por las lamas |
+| **Encima** | Sobre la taquilla de alguien escondido, de 20 a 40 s; si sale, se acerca | Una placa arrastrada al llegar; después, nada |
 
 El estado **Quieta** ya no se usa: solo lo ponen a mano las herramientas.
 
@@ -439,12 +444,22 @@ En Apacible, más asomos y menos capturas: miedo sin castigo.
 
 ## 5. Alucinaciones: el piso que miente
 
-Con la cordura de siempre (oculta, local, solo en la máquina de cada uno), pero con contenido de ella y **más frecuentes**: cada 40–90 s por debajo de 60, frente a 1,5–3 min en el hotel. LORE.md dice «mucha alucinación».
+Con la cordura de siempre (oculta, local, solo en la máquina de cada uno), pero con contenido de ella. Por debajo de 60 empiezan: una mentira cada 29 a 55 s con la cordura en 60, cada 9 a 17 s con la cordura en 0 (`sanity.gd`, `HALLUCINATION_WAIT`); su cara, con un descanso de 40 a 90 s que baja hasta 14 a 31 s. LORE.md dice «mucha alucinación». Ninguna cambia el juego de ella: no tocan la luz de las salas, ni su cerebro, ni la red.
+
+Como ya no tiene aura (sección 1), son ellas las que la hacen sentir encima cuando no está, y **escalan con la cordura** (`lurker_hallucinations.gd`):
+- **Cordura alta (cerca de 60):** raras, y sobre todo del piso (lo de la oficina pesa 1,3 veces su peso de base; lo suyo, 0,4 veces). Sus garras, a unos 4 m; sus caras, de 8 a 35 m.
+- **Cordura baja:** lo suyo pesa hasta 2,5 veces y lo de la oficina baja a la mitad. Todo se acerca: las garras cruzan el techo **por encima** de ti, los golpes del ducto **vienen hacia ti** (desde el 40 % perdido), la placa se levanta a 1 m, la tinta aparece a 2 m y sus caras se dejan ver desde 4 m.
+- **Más de una a la vez:** desde la mitad perdida, a veces una segunda mentira distinta entre 0,6 y 2,5 s después de la primera; con la cordura en 0, seis veces de cada diez.
+- **En lo más bajo** cuesta distinguir la mentira: son sus mismos sonidos (garras, golpes, placas, polvo), por las mismas rutas y sin subtítulo, como los suyos de verdad.
 
 **Mienten (todas grabadas, nada sintetizado):**
-- Garras en el techo encima de ti, y una placa que suelta polvo sin que haya nada.
-- Golpes que viajan por un ducto vacío.
-- **Una cara al borde de la vista**: en el marco de una puerta a oscuras, sobre una mampara o en una esquina del techo. Se va al mirarla (`phantom_sight`, con el modelo del Lurker y la pose `peek`).
+- Garras en el techo: lejos al principio, cruzando por encima de ti al final; y una placa que suelta polvo sin que haya nada.
+- **Un hilo de polvo justo encima de ti**, tras el crujido de una placa.
+- **Una placa que se levanta un palmo y vuelve**: se ve el negro del plénum por el hueco, cruje al abrirse y al cerrarse, y suelta polvo al caer.
+- **Una mancha de tinta fresca en el techo** que no estaba: aparece, se queda unos segundos y se va.
+- **La sombra que cruza el haz de la linterna** donde da en la pared, con la linterna encendida.
+- Golpes que viajan por un ducto vacío; con poca cordura, hacia ti.
+- **Una cara al borde de la vista**: en el marco de una puerta a oscuras, sobre una mampara, colgada en una esquina del techo o, desde el 30 % perdido, **colgada sobre el dintel de la puerta por la que acabas de pasar**, del lado del que venías. Se va al mirarla, al alumbrarla o al acercarse (`phantom_sight`, con el modelo del Lurker).
 - **El piso hace oficina**:
   - un teléfono que suena en una mesa y calla al acercarse;
   - unas teclas de máquina de escribir;
@@ -453,8 +468,9 @@ Con la cordura de siempre (oculta, local, solo en la máquina de cada uno), pero
   - una silla de ruedas que rueda sola.
 - La sombra de algo que pasa por detrás de una persiana.
 - Una sola lámpara que tiembla. Nunca la sala entera.
-
 - Las propias de cada planta (cápsulas que no llegan, palancas y tictacs que no son, ventiladores que no arrancan): en la sección 3.
+- **El propio cuerpo:** el latido del jugador ya no depende de la distancia de ella, sino de lo que ha visto y oído (la tensión de la música) y de su cordura: con la cordura entera no late; desde un 35 % perdido late solo, y más deprisa cuanto más se pierde. La respiración propia que se agita no suena todavía: falta la grabación (`docs/PLAN.md`, sección 4).
+- Con «Efectos reducidos», la placa, la tinta y las sombras se ven a la mitad.
 
 **Nunca mienten:**
 - el aviso de la espalda (decisión del autor: nada de avisos falsos, por ahora);
@@ -572,19 +588,21 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - el **aviso de la espalda**;
   - el **chillido al espantarse**: animal, nunca humano.
   - Todo **grabado**: foley y animales con licencia, procesados. Nada de voces ni gritos humanos sintéticos.
-- **Ella suena por compases** (`creature.mood()`, que `lurker.gd` saca de su estado con `MOODS`): cada compás dice cuánto aura deja (`dread_aura`), si la música sigue la distancia o la amenaza que ella da, si el aura cae de golpe y si su voz calla.
-  - **Lejos** (rondando a más de 12 m de camino de quien sea): golpes de ducto en tandas de 6 a 8 con silencios de 6 a 12 s; aura baja.
-  - **Cerca** (a 12 m o menos): tandas de 6 a 8 con silencios de 1,2 a 2,6 s; más aura.
-  - **Acecho**: sus garras de verdad en el techo y la pared, y a veces un arañazo o un arrastre pared abajo; por el plénum o un ducto, tandas cortas de 2 a 4 golpes y silencios de 2,5 a 5 s, y solo entonces los chasquidos falsos del aura. Casi todo el aura.
-  - **Silencio**: nada suyo; el aura cae de golpe, la música pasa a amenaza plena, y el ambiente, el aura y el tema se apartan para quien esté a menos de 14 m en su planta.
-  - **Acercarse**: solo sus garras, cada mano tan fuerte como si fuera deprisa; el aura entera y la música en amenaza plena.
-  - **Aviso**: solo el aviso; ella calla desde que empieza y lo demás se aparta como en el silencio.
-  - **Huida**: el chillido y una tanda seguida de 12 a 16 golpes que se aleja; el aura cae de golpe y la música vuelve en menos de 6 s.
-  - **Descanso** (nadie elegible cerca): golpes lejanos, con silencios de 9 a 16 s; poca aura y **vuelve la música**.
-  - **Emboscada**: nada suyo y nada de aura hasta el aviso.
-  - Además: **escuchando** (quieta, sin un ruido) y **asomada**, el aura cae de golpe; **volviendo** por el techo calla, y solo cruje la placa o la rejilla por la que sale; **encima** de una taquilla, una placa arrastrada al llegar y su respiración por las lamas.
+- **Sin aura** (decisión del autor, 16 de noviembre de 2026; sección 1). Su perfil de sonido (`game/audio/profiles/lurker.tres`) lleva `aura = false`: el aura (`dread_aura.gd`) no suena para ella a ninguna distancia ni en ningún compás, y su bucle de presencia («[Algo respira encima]») tampoco. The Locust, en el hotel, conserva su aura tal cual. Lo que sonaba antes y lo que suena ahora, a 20, 10, 5 y 2 m de camino, está medido en `evidence/sin_aura/aura_por_distancia.txt` (`tests/office/lurker_no_aura_test.gd`).
+- **Ella suena por compases** (`creature.mood()`, que `lurker.gd` saca de su estado con `MOODS`): cada compás dice cómo es su voz y si calla; y cuando huye, que la música vuelva enseguida.
+  - **Lejos** (rondando a más de 12 m de camino de quien sea): golpes de ducto en tandas de 6 a 8 con silencios de 6 a 12 s.
+  - **Cerca** (a 12 m o menos): tandas de 6 a 8 con silencios de 1,2 a 2,6 s.
+  - **Acecho**: sus garras de verdad en el techo y la pared, y a veces un arañazo o un arrastre pared abajo; por el plénum o un ducto, tandas cortas de 2 a 4 golpes y silencios de 2,5 a 5 s.
+  - **Silencio**: nada suyo. El ambiente y la música no se apartan: se oiría a través de los muros que está cerca.
+  - **Acercarse**: solo sus garras, cada mano tan fuerte como si fuera deprisa.
+  - **Aviso**: solo el aviso; ella calla desde que empieza, y el ambiente y el tema se apartan para quien esté a menos de 14 m en su planta.
+  - **Huida**: el chillido y una tanda seguida de 12 a 16 golpes que se aleja; la música vuelve en menos de 6 s.
+  - **Descanso** (nadie elegible cerca): golpes lejanos, con silencios de 9 a 16 s.
+  - **Emboscada**: nada suyo hasta el aviso.
+  - Además: **escuchando** (quieta, sin un ruido); **volviendo** por el techo calla, y solo cruje la placa o la rejilla por la que sale; **encima** de una taquilla, una placa arrastrada al llegar.
 - **Por dónde suena:** por las rutas y por los ductos, saliendo por las rejillas. Nada atraviesa muros (AUDIO.md).
-- **La música sigue al miedo**, como ahora, con su propio color si el autor lo quiere.
+- **La música sigue al miedo, no a ella** (`theme_mood.gd`, `known()`): sube al ver su cara (o una cara suya que no está), con su aviso en los oídos, con una captura cerca, en la oscuridad, con una mentira recién dicha y con la cordura que se va. Nunca antes de que el jugador tenga un motivo.
+- **El latido** es del jugador: sigue a esa misma tensión y a su cordura, no a la distancia de ella (sección 5).
 - **Carteles de normas** (diegéticos, se leen; no son interfaz). Enseñan las reglas sin decirlas:
   - «MANTENGA ENCENDIDAS LAS LUCES DE LOS PASILLOS»
   - «NO TRABAJE DE ESPALDAS A LA PUERTA»

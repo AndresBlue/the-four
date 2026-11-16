@@ -4,9 +4,9 @@ extends SceneTree
 ## by the next room's; nothing to another planta or to a room where nothing of
 ## her is heard; never through a wall; real samples on the duct bus; her claws
 ## by what is under each hand; the warning heard clean of her other sounds;
-## her aura out of the grille and without its breath; the hum of a room she
-## drinks lower; her shriek captioned and frightening; her claws outside a
-## riding car; her presence only over a locker.
+## no aura of hers out of the grille (the author, 16 November 2026); the hum of
+## a room she drinks lower; her shriek captioned and frightening; her claws
+## outside a riding car; no presence of hers, not even over a locker.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const VOICE := preload("res://game/enemies/lurker/lurker_voice.gd")
@@ -314,15 +314,15 @@ func knocks_since(from: int) -> int:
 		if String(entry.get("path", "")).contains("knock_"): count += 1
 	return count
 
-## Case 10.
+## Case 10: heard by the grille, and no aura of hers for it.
 func aura() -> void:
 	await in_duct_at_e()
 	await listen_at(centre_of(room_r))
-	await wait(1.0)
-	var listener: Vector3 = audio.listener_position()
-	var route: Dictionary = lurker.sound_route(listener)
+	await wait(1.5)
+	var route: Dictionary = lurker.sound_route(audio.listener_position())
 	var aura = audio.aura
-	check("El aura la siente por la rejilla, sin respiración", aura.cue_point != Vector3.INF and (aura.cue_point as Vector3).distance_to(route.position) <= 0.15 and absf(float(aura.route_distance) - float(route.distance)) <= 0.5 and not aura.breath.playing and aura.rise == 0.0, "%s %s %.2f %.2f" % [str(aura.cue_point), str(route.position), float(aura.route_distance), float(route.distance)])
+	var cutoff: float = aura.muffle.cutoff_hz if aura.muffle != null else 20000.0
+	check("Sin aura: a un paso de la rejilla por la que se la oye, ni zumbido, ni chasquidos, ni ambiente apagado", bool(route.audible) and not aura.aura_on and aura.intensity == 0.0 and not aura.drone.playing and not aura.chitter.playing and not aura.breath.playing and cutoff >= 19999.0, "%s %.2f %s %s %.0f" % [str(route.audible), float(aura.intensity), str(aura.drone.playing), str(aura.chitter.playing), cutoff])
 
 ## Case 11: the hum of a room she drinks (the battens are what hums).
 func hum() -> void:
@@ -415,7 +415,4 @@ func presence() -> void:
 	lurker.place_over(hide.global_position)
 	lurker.word = &"wait"
 	await wait(1.5)
-	var ceiling := float(room.get("py", 0.0)) + OFFICE.height_of(room)
-	var at: Vector3 = audio.presence.global_position
-	var near := Vector2(at.x - hide.global_position.x, at.z - hide.global_position.z).length()
-	check("Su presencia no suena acechando, y sí encima de una taquilla, bajo el techo", quiet and audio.presence.playing and at.y < ceiling - 0.1 and near <= 1.2, "%s %s a %.2f m, %.2f bajo el techo" % [str(quiet), str(audio.presence.playing), near, ceiling - at.y])
+	check("Su presencia no suena acechando, ni encima de una taquilla, ni su subtítulo", quiet and lurker.presence_on() and not audio.presence.playing and audio.caption_text != String(audio.profile.caption), "%s %s '%s'" % [str(quiet), str(audio.presence.playing), audio.caption_text])

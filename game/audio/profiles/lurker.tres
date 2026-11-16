@@ -13,6 +13,7 @@ presence = ExtResource("2")
 volume_db = -14.0
 audible_distance = 14.0
 caption = "[Algo respira encima]"
+aura = false
 aura_start = 22.0
 aura_full = 3.0
 aura_breath = false

@@ -9,12 +9,16 @@ extends SceneTree
 ## ducts; in the freight lobby nothing of her; her face where she is not is
 ## her own model, round a dark door's jamb, over a partition and in a ceiling
 ## corner, peeking or staring; in a locker the mind wears as in the dark; and
-## a room she drinks stays lit for the mind.
+## a room she drinks stays lit for the mind. With no aura (the author, 16
+## November 2026) her lies make her felt near instead, and more so as the mind
+## goes: her own signals outweigh the office's, come right over the listener,
+## come down a duct towards them, two at a time, her faces sooner and nearer,
+## and her hanging over the lintel of the door just come through.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const LIES := preload("res://game/app/hallucinations/lurker_hallucinations.gd")
 const SANITY := preload("res://game/app/sanity.gd")
-const EVERYWHERE := ["garras", "ducto", "telefono", "maquina", "fotocopiadora", "silla", "persiana", "lampara"]
+const EVERYWHERE := ["garras", "ducto", "polvo", "placa", "tinta", "haz", "telefono", "maquina", "fotocopiadora", "silla", "persiana", "lampara"]
 const OWN := {0: ["tubo"], 1: ["palanca", "tictac"], 2: ["ventiladores"]}
 const WANTED := {0: ["tubo", "telefono"], 1: ["palanca", "tictac"], 2: ["ventiladores", "ducto"]}
 var checks: Array = []
@@ -48,7 +52,9 @@ func run() -> void:
 	await plantas()
 	await one_lamp()
 	await conditions()
+	await escalation()
 	await faces()
+	await lintel()
 	await locker()
 	drained()
 	finish()
@@ -129,6 +135,10 @@ func plantas() -> void:
 		check("En la planta %d miente con lo suyo (%s)" % [wing + 1, ", ".join(wanted)], wanted.all(func(k): return seen.has(k)), str(seen))
 		for k in lies.jobs.duplicate(): lies.step(k, 100.0)
 	await frames(90)
+	# The seconds told on the heels of others (TWICE_AFTER) come in too, and end.
+	await create_timer(LIES.TWICE_AFTER.y + 0.3).timeout
+	for k in lies.jobs.duplicate(): lies.step(k, 100.0)
+	await frames(90)
 	check("Cada mentira es de su planta", bad_kinds.is_empty(), str(bad_kinds))
 	check("Ninguna bebe la luz, ni suena su aviso, ni nada suyo que signifique algo", level.hotel.drains.is_empty() and level.world_audio.last_cue.is_empty() and never.is_empty(), "%s %s" % [str(level.hotel.drains), str(never)])
 	check("Ninguna toca un objetivo, sigue al que escucha, tapa con los ventiladores ni lleva subtítulo", int(power.red) == int(power_before[0]) and float(air.running_until) == air_before and var_to_str(files.get("requests")) == files_before and follows == 0 and masked == 0 and captions == 0, "%d %d %d" % [follows, masked, captions])
@@ -204,6 +214,118 @@ func conditions() -> void:
 	check("En el vestíbulo protegido ni garras ni ductos", not kinds.has("garras") and not kinds.has("ducto"), str(kinds.keys()))
 	for k in lies.jobs.duplicate(): lies.step(k, 100.0)
 
+## Case 6c: the further the mind has gone, the nearer she is felt.
+func escalation() -> void:
+	var room := first_room(0, func(r): return OFFICE.false_ceiling(r) and not level.point_protected(FLOOR.position_of(r)) and float(r.span_x) >= 4.0 and float(r.span_z) >= 4.0)
+	if room.is_empty():
+		check("Una sala de la planta 1 con falso techo", false)
+		return
+	var at := FLOOR.closest(level.get_world_3d().navigation_map, FLOOR.position_of(room)) + Vector3(0, 0.04, 0)
+	await stand_at(at)
+	var high: Dictionary = lies.kinds_here(0.1)
+	var low: Dictionary = lies.kinds_here(0.9)
+	check("Con poca cordura, bajo un falso techo, hay polvo, una placa que se levanta y tinta", low.has("polvo") and low.has("placa") and low.has("tinta"), str(low.keys()))
+	var share_high := hers_share(high)
+	var share_low := hers_share(low)
+	check("Sus señales pesan más cuanto menos cordura (las de la oficina, menos)", share_low > share_high * 1.5 and share_low > 0.6, "%.2f -> %.2f" % [share_high, share_low])
+	# Her claws: off to one side with a mind just going, right over them with none left.
+	var far := Vector2((lies.claws(at, 0.0) as Vector3).x - at.x, (lies.claws(at, 0.0) as Vector3).z - at.z).length()
+	var over: Vector3 = lies.claws(at, 1.0)
+	var near := Vector2(over.x - at.x, over.z - at.z).length()
+	check("Sus garras, lejos con poca locura y encima con mucha", near < 0.05 and far > 1.0, "%.2f %.2f" % [far, near])
+	var toward := true
+	var paths := 0
+	for i in 20:
+		var path: PackedInt32Array = lies.duct_path(level.player.camera.global_position, 0, 0.9)
+		if path.is_empty(): continue
+		paths += 1
+		var nodes: Array = level.creature.ducts.nodes
+		var ear: Vector3 = level.player.camera.global_position
+		if (nodes[path[path.size() - 1]] as Vector3).distance_to(ear) > (nodes[path[0]] as Vector3).distance_to(ear) + 1e-3: toward = false
+	check("Con mucha locura los golpes del ducto vienen hacia el que escucha", paths > 0 and toward, "%d caminos" % paths)
+	# Two at a time only when far gone (world sound off: nothing is heard, the lies count).
+	var seconds := {0.2: 0, 1.0: 0}
+	for gone in seconds:
+		# What was told before (the plantas' and the lobby's) has its seconds still to come.
+		await create_timer(LIES.TWICE_AFTER.y + 0.3).timeout
+		lies.told.clear()
+		for i in 25: lies.lie(Vector3.ZERO, float(gone))
+		await create_timer(LIES.TWICE_AFTER.y + 0.3).timeout
+		for entry in lies.told: if bool(entry.get("second", false)): seconds[gone] = int(seconds[gone]) + 1
+		for k in lies.jobs.duplicate(): lies.step(k, 100.0)
+	check("Con mucha locura, a veces dos a la vez; con poca, nunca", int(seconds[0.2]) == 0 and int(seconds[1.0]) > 0, str(seconds))
+	level.player.sanity = 50.0
+	var rest_high: Vector2 = lies.sight_rest()
+	var near_high: float = lies.sight_near()
+	level.player.sanity = 5.0
+	var rest_low: Vector2 = lies.sight_rest()
+	var near_low: float = lies.sight_near()
+	level.player.sanity = 100.0
+	check("Con menos cordura sus caras vienen antes y se dejan ver más cerca", rest_low.y < rest_high.y and near_low < near_high, "%s %s %.1f %.1f" % [str(rest_high), str(rest_low), near_high, near_low])
+	# The torch's beam on a wall ahead: a shadow may cross it.
+	level.player.torch.visible = true
+	var beam := false
+	for i in 12:
+		level.player.rotation.y = i * PI / 6.0
+		level.player.camera.rotation.x = 0.0
+		await physics_frame
+		if lies.kinds_here(0.9).has("haz"): beam = true
+	level.player.torch.visible = false
+	check("Con la linterna encendida hacia una pared, una sombra puede cruzar el haz", beam)
+
+func hers_share(kinds: Dictionary) -> float:
+	var all := 0.0
+	var hers := 0.0
+	for k in kinds:
+		all += float(kinds[k])
+		if LIES.HERS.has(k): hers += float(kinds[k])
+	return hers / maxf(all, 1e-6)
+
+## Case 7b: through a door and turned half back to it, her hanging over its lintel.
+func lintel() -> void:
+	level.player.sanity = 20.0
+	var sight = level.sanity.ensure_sight()
+	sight.ensure_model()
+	level.player.torch.visible = true
+	var found := false
+	var offered := 0
+	for door in level.hotel.doors:
+		if found: break
+		if not is_instance_valid(door) or door.locked or FLOOR.planta_of(door.doorway.y) != 0: continue
+		var across: Vector3 = door.across()
+		var base := FLOOR.planta_y(0) + 0.04
+		var before: Vector3 = door.doorway - across * 1.5
+		var after: Vector3 = door.doorway + across * 4.0
+		before.y = base
+		after.y = base
+		# In the doorway, a step short of its middle: the side come in from.
+		var through: Vector3 = door.doorway - across * 0.4
+		through.y = base
+		if FLOOR.room_at(level.manifest.rooms, before).is_empty() or FLOOR.room_at(level.manifest.rooms, after).is_empty() or level.point_protected(after): continue
+		if not door.opened: door.open_immediately()
+		lies.passed = {}
+		for p in [before, through, after]:
+			await stand_at(p)
+			lies.track_door()
+		if lies.passed.is_empty() or lies.passed.door != door: continue
+		for turn in [deg_to_rad(35.0), deg_to_rad(-35.0)]:
+			var to: Vector3 = door.doorway - after
+			level.player.rotation.y = atan2(-to.x, -to.z) + turn
+			level.player.camera.rotation.x = 0.1
+			await physics_frame
+			for spot in lies.sight_spots(sight, level.player.camera):
+				if String(spot.kind) != "lintel": continue
+				offered += 1
+				var over_side: bool = ((spot.point as Vector3) - door.doorway).dot(across) < 0.0
+				if over_side and sight.place_spot(spot, level.player.camera): found = true
+				sight.kind = ""
+			if found: break
+	sight.model.visible = false
+	level.player.torch.visible = false
+	level.player.camera.rotation.x = 0.0
+	level.player.sanity = 100.0
+	check("Tras cruzar una puerta y volverse a medias, se la ve colgada sobre su dintel, del lado del que vino", found, "%d ofrecidas" % offered)
+
 ## Case 7: her face where she is not.
 func faces() -> void:
 	level.player.sanity = 30.0
@@ -215,7 +337,8 @@ func faces() -> void:
 	var own: bool = sight.model.get_script() == preload("res://game/enemies/lurker/lurker_visual.gd") and not sight.model.find_children("*", "Skeleton3D", true, false).is_empty()
 	var head: Vector3 = sight.poser.point(LIES.HEAD)
 	check("Su cara donde no está es su modelo, con su cabeza", own and head.is_finite())
-	check("Su descanso entre caras es el suyo", sight.rest >= LIES.SIGHT_REST.x * 0.5 - 1e-3 and sight.rest <= LIES.SIGHT_REST.y + 1e-3, "%.1f" % sight.rest)
+	var span: Vector2 = lies.sight_rest()
+	check("Su descanso entre caras es el suyo", sight.rest >= span.x * 0.5 - 1e-3 and sight.rest <= span.y + 1e-3, "%.1f de %s" % [sight.rest, str(span)])
 	level.player.torch.visible = true
 	var found := {}
 	var offered := {}
