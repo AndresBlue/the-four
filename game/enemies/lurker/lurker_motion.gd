@@ -536,6 +536,10 @@ var free_moved := 0.0
 ## seconds for the 1.15 m. Her shown heading turns this fast to the camera.
 const DROP_RATE := 2.0
 const FREE_TURN := 8.0
+## A person's ramps (phase 0 felt soft: 1.1 s to her pace at ACCEL): to 4.5
+## m/s in about a third of a second, and stopped in a quarter.
+const FREE_ACCEL := 14.0
+const FREE_BRAKE := 18.0
 
 ## A player's order: these legs from where she is, run whole, with no goal to
 ## plan for again (a door shut on them turns her back and leaves her there).
@@ -577,6 +581,18 @@ func follow_free(delta: float) -> void:
 	var shown: float = state.heading
 	state.heading = atan2(way.y, way.x)
 	free_moved = shell.advance(state, speed * delta)
+	# Met a column (or a held span) short of her step: the rest along its face,
+	# the one of her push's two flat parts that still moves her.
+	var rest: float = speed * delta - free_moved
+	if rest > 1e-4 and int(shell.patches[state.patch].kind) == SHELL.Kind.TRAY:
+		var parts := [Vector2(way.x, 0.0), Vector2(0.0, way.y)]
+		if absf(way.y) > absf(way.x): parts.reverse()
+		for part: Vector2 in parts:
+			if part.length() < 0.2: continue
+			state.heading = atan2(part.y, part.x)
+			var slid: float = shell.advance(state, rest * part.length() / way.length())
+			free_moved += slid
+			if slid > 1e-4: break
 	state.heading = shown
 
 # --- Queries (2b's percept, spec_f2_mind 8.3) ------------------------------------------
@@ -628,7 +644,7 @@ func ramp(to: float, delta: float) -> void:
 	if bolting:
 		speed = to
 		return
-	var rate: float = BURST_ACCEL if in_bursts() else (ACCEL if to > speed else BRAKE)
+	var rate: float = BURST_ACCEL if in_bursts() else ((FREE_ACCEL if to > speed else FREE_BRAKE) if steering else (ACCEL if to > speed else BRAKE))
 	speed = move_toward(speed, to, rate * delta)
 
 ## An order waiting for its plan (REPLAN_GAP) is not there yet.
@@ -961,7 +977,9 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	var band_off := PI
 	# Bolting, she faces the way she shoots off at once (the visual eases it).
 	if bolting and heading_to.length() > 1e-6: ease_heading(heading_to, TAU / maxf(delta, 1e-4), delta)
-	elif next_band and left <= LOOKAHEAD: band_off = ease_heading(band_heading(legs[1]), HEADING_RATE, delta)
+	# A person's door (lurker_player.gd): lined up at once, the visual eases
+	# what shows and her camera is her own; no stop at the band.
+	elif next_band and left <= LOOKAHEAD: band_off = ease_heading(band_heading(legs[1]), TAU / maxf(delta, 1e-4) if steering else HEADING_RATE, delta)
 	elif heading_to.length() > 1e-6: ease_heading(heading_to, HEADING_RATE, delta)
 	var hang_target: float = hang_goal if is_nan(float(leg.hang)) else float(leg.hang)
 	ease_hang(hang_target, delta)
@@ -969,7 +987,8 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 		if next_band:
 			band_switch(legs[1], delta)
 			return
-		speed = 0.0 if legs.size() == 1 else speed
+		# A person's order ends on her stick, at the pace she had.
+		speed = 0.0 if legs.size() == 1 and not steering else speed
 		stall = 0.0
 		next_leg()
 		# On at once along the next waypoint's leg (spec_lurker_rebuild 3.3):
@@ -979,7 +998,7 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	var want := pace_now()
 	# Slowing into a band's start only while her heading is not yet its own
 	# (spec_lurker_rebuild 3.6); to a stop at her last waypoint.
-	if not bolting and (legs.size() == 1 or (next_band and band_off >= DOOR_ALIGN)): want = minf(want, sqrt(2.0 * BRAKE * left))
+	if not bolting and ((legs.size() == 1 and not steering) or (next_band and band_off >= DOOR_ALIGN)): want = minf(want, sqrt(2.0 * BRAKE * left))
 	ramp(want, delta)
 	var dir := heading_to.normalized()
 	if not bolting and body_in_way(dir, speed * delta):
@@ -1007,7 +1026,7 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 ## room under the head; then onto it at her speed once within DOOR_ALIGN
 ## (spec_lurker_rebuild 3.6). Waiting too long is watch_progress()'s.
 func band_switch(band_leg: Dictionary, delta: float) -> void:
-	var off := ease_heading(band_heading(band_leg), HEADING_RATE, delta)
+	var off := ease_heading(band_heading(band_leg), TAU / maxf(delta, 1e-4) if steering else HEADING_RATE, delta)
 	ease_hang(SHELL.BAND_CLEAR, delta)
 	# Bolting, nothing lines her up: onto the band as she is.
 	if bolting: state.hang = SHELL.BAND_CLEAR

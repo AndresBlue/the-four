@@ -52,7 +52,7 @@ func build_environment() -> void:
 	lens_layer = level.get_node("Presentation/Lens")
 	level.camcorder = level.get_node("Presentation/Camcorder")
 	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), level.settings.values.reduced))
-	authored_tone = {"mode": level.environment.tonemap_mode, "exposure": level.environment.tonemap_exposure, "glow": level.environment.glow_hdr_threshold, "fog_length": level.environment.volumetric_fog_length, "contrast": level.environment.adjustment_contrast, "saturation": level.environment.adjustment_saturation, "fog_density": level.environment.volumetric_fog_density, "fog_anisotropy": level.environment.volumetric_fog_anisotropy}
+	authored_tone = {"mode": level.environment.tonemap_mode, "exposure": level.environment.tonemap_exposure, "glow": level.environment.glow_hdr_threshold, "fog_length": level.environment.volumetric_fog_length, "contrast": level.environment.adjustment_contrast, "saturation": level.environment.adjustment_saturation, "fog_density": level.environment.volumetric_fog_density, "fog_anisotropy": level.environment.volumetric_fog_anisotropy, "adjust": level.environment.adjustment_enabled}
 	# Only where there is a RenderingDevice to run it (not headless, not
 	# Compatibility): elsewhere the game keeps AgX.
 	if RenderingServer.get_rendering_device() != null:
@@ -77,8 +77,11 @@ func apply_camera(preset: Dictionary, hunter: bool) -> void:
 		blur_effect.enabled = on and blur_effect.samples > 0
 	# The camera's own video knee does the tonemapping; Godot's stays linear.
 	# Its highlights end just under 1, so the bloom starts lower.
-	level.environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if on else authored_tone.mode
-	level.environment.tonemap_exposure = 1.0 if on else authored_tone.exposure
+	# Her infrared is written in its own colours: nothing may tone them.
+	var plain: bool = on or lurker_seat()
+	level.environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if plain else authored_tone.mode
+	level.environment.tonemap_exposure = 1.0 if plain else authored_tone.exposure
+	level.environment.adjustment_enabled = bool(authored_tone.get("adjust", true)) and not lurker_seat()
 	level.environment.glow_hdr_threshold = 0.9 if on else authored_tone.glow
 	# The sensor's noise grows with the gain the iris had to add, which the
 	# lens reads straight from the camera stage on the GPU.
@@ -193,10 +196,14 @@ func hunter_seat() -> bool:
 ## looks at the lit hotel.
 func echo_seat() -> bool:
 	if not hunter_seat(): return false
-	# The Lurker's seat sees the floor as it is until her own view comes
-	# (.claude/specs/lurker_versus.md 4, phase 2).
-	if not level.observer and is_instance_valid(level.creature) and level.creature.kind_id() == &"lurker": return false
+	# The Lurker's seat sees only with her eyes (lurker_view.gd), whatever the room.
+	if lurker_seat(): return true
 	return level.observer or level.rule("plain_sight") == 0
+
+## This machine drives The Lurker: her infrared (.claude/specs/lurker_versus.md
+## 4) is the picture, on the echo seat's dark floor (no lamps, no lens).
+func lurker_seat() -> bool:
+	return not level.observer and is_instance_valid(level.creature) and level.creature.kind_id() == &"lurker" and hunter_seat()
 
 ## Every value that changes with the quality setting (graphics_presets.gd).
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
@@ -309,6 +316,13 @@ func apply_settings() -> void:
 	apply_camera(preset, hunter)
 	# The warm tape cast would break the monochrome reading.
 	level.post_material.set_shader_parameter("tint", Vector3.ONE if hunter else Vector3(1.02, 1.0, 0.9))
+	# Her infrared is no tape: no wobble, lines or fringes over a map whose
+	# colours are its meaning; a third of the grain and a light vignette keep
+	# it a sensor's picture.
+	if lurker_seat():
+		for key in ["vhs", "scanlines", "chromatic"]: level.post_material.set_shader_parameter(key, 0.0)
+		level.post_material.set_shader_parameter("grain", 0.0 if reduced else level.settings.values.grain / 3.0)
+		level.post_material.set_shader_parameter("vignette", 0.0 if reduced else 0.3)
 	if level.settings.values.reduced:
 		level.post_material.set_shader_parameter("enclosure", 0.0)
 	level.player.torch.shadow_enabled = level.settings.values.shadows

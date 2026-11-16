@@ -50,7 +50,7 @@ func run() -> void:
 			if hunting(): level.hand_creature_to_player()
 			else: level.enter_observer_mode()
 			say("PISO %d · semilla %d · %d bots%s" % [played, seed_value, current.bodies.size(), " · clemencia" if bool(options.get("mercy", false)) else ""])
-			if hunting(): level.ui.flash("CAZA · %d BOTS · SEMILLA %d" % [current.bodies.size(), seed_value], 4.0)
+			if hunting(): level.ui.flash("CAZA CON %d BOTS, SEMILLA %d" % [current.bodies.size(), seed_value], 4.0)
 			current.report_to = self
 			while current.outcome.is_empty(): await get_tree().physics_frame
 		var summary: Dictionary = current.finish()

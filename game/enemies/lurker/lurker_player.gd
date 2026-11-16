@@ -11,19 +11,24 @@ extends Node
 ## She has no floor and opens no door.
 ##
 ## The camera is at her face with the world's up, apart from her body, which
-## it does not draw. Through a grille, a tile or a duct it cuts to black; at
-## rest in a grille's mouth it looks out of it (the ducts' plan is phase 2's).
+## it does not draw, and sees with her eyes (lurker_view.gd, phase 2). Through
+## a grille, a tile or a duct it cuts to the ducts' plan; at rest in a
+## grille's mouth it looks out of it.
 ## lurker_stalk, lurker_release, lurker_drink and lurker_peek are declared
 ## (settings_service.LURKER_ACTIONS) and do nothing yet (phases 1 to 4).
 const MOTION := preload("res://game/enemies/lurker/lurker_motion.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
 const VISUAL := preload("res://game/enemies/lurker/lurker_visual.gd")
 const PAD_FEEL := preload("res://game/player/pad_feel.gd")
+const VIEW := preload("res://game/enemies/lurker/lurker_view.gd")
 var pad := PAD_FEEL.new()
+var view
 ## Pushed at a door within this of its doorway (plan metres), this near its
 ## way (cosine); along an aisle the same, at its mouth.
 const DOOR_REACH := 1.6
 const PUSH_TOWARD := 0.6
+## And the camera this near the way through (cosine).
+const LOOK_THROUGH := 0.5
 ## A grille or a tile within this of her (plan metres), the one nearest where
 ## she looks; out of the ducts, a way out within LEAVE_REACH. A way off where
 ## she looks costs LOOK_COST metres per unit of cosine lost.
@@ -40,6 +45,10 @@ const AISLE_HOLD := 1.8
 const EYE_CLEAR := 0.12
 ## Looking out of a grille she rests in: this far out of it.
 const GRILLE_OUT := 0.25
+## On a door's band her eye kept this far off a leaf, a jamb or a wall: the
+## world's, a shut door's and an open one's layers (hotel_door.gd).
+const LEAF_CLEAR := 0.35
+const LEAF_MASK := 1 | 8 | 128
 var creature
 var level
 var camera: Camera3D
@@ -80,6 +89,11 @@ func setup(owner) -> void:
 	blind.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	blind.visible = false
 	cover.add_child(blind)
+	# Her eyes (lurker_view.gd): the picture her camera is drawn into, and the
+	# ducts' plan over the black.
+	view = VIEW.new()
+	add_child(view)
+	view.setup(self, cover)
 	var facing: Vector3 = creature.global_basis.z
 	yaw = atan2(-facing.x, -facing.z) if Vector2(facing.x, facing.z).length() > 0.1 else 0.0
 
@@ -88,6 +102,10 @@ func can_act() -> bool:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if scripted or not can_act(): return
+	# The test order for the flash (phase 3 decides who fires it): F8, in a
+	# build with the debug tools, from the nearest survivor or from ahead.
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F8:
+		view.flash(view.nearest_survivor_way())
 	pad.pressed(event, level.settings)
 	if event is InputEventMouseMotion:
 		var sensitivity: float = level.settings.values.sensitivity
@@ -149,12 +167,28 @@ func eye_now() -> Array:
 	if motion.surface():
 		var at: Vector3 = motion.anchor()
 		var face: Vector3 = creature.face_point()
-		var hit: Dictionary = creature.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(at, face, 1, [creature.get_rid()]))
-		return [face] if hit.is_empty() else [(hit.position as Vector3) + (at - face).normalized() * EYE_CLEAR]
+		var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
+		var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(at, face, 1, [creature.get_rid()]))
+		if not hit.is_empty(): return [(hit.position as Vector3) + (at - face).normalized() * EYE_CLEAR]
+		if int(creature.shell.patches[motion.state.patch].kind) == SHELL.Kind.BAND: face = off_leaf(space, at, face)
+		return [face]
 	if motion.in_duct and motion.legs.is_empty() and motion.mouth_exit >= 0:
 		var exit: Dictionary = creature.ducts.exits[motion.mouth_exit]
 		if String(exit.kind) != "tile": return [(exit.position as Vector3) + (exit.normal as Vector3) * GRILLE_OUT]
 	return []
+
+## Over a door head an open leaf stood at her cheek and took half the view:
+## the eye moved off whatever is within LEAF_CLEAR round it, flat, just so
+## far, and only where the way from her anchor stays clear.
+func off_leaf(space: PhysicsDirectSpaceState3D, at: Vector3, face: Vector3) -> Vector3:
+	var push := Vector3.ZERO
+	for k in 8:
+		var way := Vector3(cos(k * TAU / 8.0), 0, sin(k * TAU / 8.0))
+		var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(face, face + way * LEAF_CLEAR, LEAF_MASK, [creature.get_rid()]))
+		if not hit.is_empty(): push -= way * (LEAF_CLEAR - face.distance_to(hit.position))
+	if push.length() < 0.01: return face
+	var moved: Vector3 = face + push.limit_length(LEAF_CLEAR)
+	return moved if space.intersect_ray(PhysicsRayQueryParameters3D.create(at, moved, LEAF_MASK, [creature.get_rid()])).is_empty() else face
 
 func _process(delta: float) -> void:
 	if creature == null or level == null: return
@@ -210,6 +244,9 @@ func through_door(push: Vector3) -> bool:
 		var other := int(record.rooms[1]) if int(record.rooms[0]) == room else int(record.rooms[0])
 		var end: Vector3 = shell.anchor_of(shell.band_start(int(band), other))
 		var out := Vector3(end.x - origin.x, 0, end.z - origin.z).normalized()
+		# Through only on purpose: looking the way through as well as pushing
+		# (phase 0 crossed doors she only brushed past).
+		if forward().dot(out) < LOOK_THROUGH: continue
 		if order({"room": other, "point": end + out * 0.6, "surface": true}, [pair]): return true
 	return false
 
@@ -259,8 +296,16 @@ func enter() -> bool:
 ## most where she looks, the nearer of two alike; resting in one's mouth,
 ## looking out of it, that one.
 func leave() -> bool:
+	var way: Array = way_out()
+	if way.is_empty(): return false
+	creature.motion.run_legs(way[1], top_pace())
+	return true
+
+## The way out leave() would take now: [exit, legs], or [] with none. Her
+## ducts' plan marks it (lurker_view.gd).
+func way_out() -> Array:
 	var motion = creature.motion
-	if not motion.transit.is_empty(): return false
+	if not motion.transit.is_empty() or not motion.in_duct: return []
 	var ducts = creature.ducts
 	var at: Vector3 = motion.duct_point
 	var ahead := forward()
@@ -285,9 +330,8 @@ func leave() -> bool:
 		var p: Vector3 = creature.routes.exit_anchor(e) if String(ducts.exits[e].kind) != "tile" else ducts.exits[e].position
 		var out: Dictionary = creature.routes.plan({"duct": [node, node], "metres": [0.0, 0.0], "point": ducts.nodes[node]}, {"room": int(ducts.exits[e].room), "point": p}, null, ducts.nodes[node])
 		if not bool(out.ok) or not (out.pairs as Array).is_empty(): continue
-		motion.run_legs(inside.legs + out.legs, top_pace())
-		return true
-	return false
+		return [e, inside.legs + out.legs]
+	return []
 
 ## A way in and out of hers: a grille, a gap or a tile of a room she has a
 ## ceiling in; never the survivors' hatch.
