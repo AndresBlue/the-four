@@ -106,6 +106,8 @@ const SIGHT_NEAR := 1.5
 const SENSE_EVERY := 0.1
 ## At a grille, listening, she hears this much further.
 const LISTEN_EAR := 1.4
+## x her reach settled where she lies in wait (lurker.settled(); versus).
+const SETTLED_EAR := 1.5
 ## How much of her hearing the fans take at full cover (planta 3).
 const FAN_DEAF := 0.7
 ## A torch switched on or off: heard this many metres off (OFICINAS 4: she
@@ -207,6 +209,8 @@ func hear_route(point: Vector3, radius: float) -> Dictionary:
 	if level.point_protected(point) or FLOOR.planta_of(point.y) != FLOOR.planta_of(face.y) or body.in_transit(): return missed
 	var mask: float = float(level.sound_mask(face)) if level.has_method("sound_mask") else 0.0
 	var reach := radius * NOISE.HEARING_SCALE * hearing * float(body.dull) * (LISTEN_EAR if listening else 1.0) * (1.0 - FAN_DEAF * mask)
+	# Settled where she lies in wait, she hears further (lurker_versus.md 6).
+	if body.has_method("settled") and body.settled(): reach *= SETTLED_EAR
 	var best := missed
 	if not body.in_network_duct():
 		var by_room := room_route(face, point, reach)

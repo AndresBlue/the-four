@@ -819,6 +819,30 @@ func request_release() -> void:
 	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
 	if is_instance_valid(level.creature): level.creature.judge_release()
 
+## Versus (lurker_versus.md 8): who drives her drinks the room she is in.
+## Asked of the host, which judges it on its copy of her (lurker.judge_drink():
+## a room she may drink, her wait over, out of a hidden duct) and tells every
+## machine.
+func lurker_drink() -> void:
+	if in_charge():
+		if is_instance_valid(level.creature): level.creature.judge_drink()
+	elif local_is_locust(): request_drink.rpc_id(1)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_drink() -> void:
+	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
+	if is_instance_valid(level.creature): level.creature.judge_drink()
+
+## A moment of hers the host tells (lurker.tell_all()) also to the guest that
+## drives her, whose copy is no puppet and takes nothing from
+## creature_event_rpc.
+func driver_event(kind: String, data: Array) -> void:
+	if versus() and net.is_host and locust_seat() != net.local_seat and locust_peer() > 0: driver_rpc.rpc_id(locust_peer(), kind, data)
+
+@rpc("authority", "call_remote", "reliable")
+func driver_rpc(kind: String, data: Array) -> void:
+	if local_is_locust() and is_instance_valid(level.creature) and level.creature.control == "player": level.creature.on_event(kind, data)
+
 ## The take the host judged due: the machine that drives her leaps (or holds,
 ## near enough), and only then.
 func order_take(point: Vector3, leap: bool) -> void:
@@ -830,6 +854,31 @@ func order_take(point: Vector3, leap: bool) -> void:
 @rpc("authority", "call_remote", "reliable")
 func cue_take(point: Vector3, leap: bool) -> void:
 	if local_is_locust() and is_instance_valid(level.creature): level.creature.take_leap(point, leap)
+
+## The host sent her off (lurker.scare_off(); lurker_versus.md 4.3): blinded
+## (`flash`, by `seat`'s torch, drunk `seconds`) or looked at, from `from`.
+## The machine that drives her bolts her in (lurker.scared_here()).
+func lurker_scared(flash: bool, from: Vector3, seat: int, seconds: float) -> void:
+	var creature = level.creature
+	if not is_instance_valid(creature): return
+	if creature.control == "player": creature.scared_here(flash, from, seat, seconds)
+	elif versus() and net.is_host and locust_peer() > 0: scared_rpc.rpc_id(locust_peer(), flash, from, seat, seconds)
+
+@rpc("authority", "call_remote", "reliable")
+func scared_rpc(flash: bool, from: Vector3, seat: int, seconds: float) -> void:
+	if local_is_locust() and is_instance_valid(level.creature): level.creature.scared_here(flash, from, seat, seconds)
+
+## Her peek (lurker_versus.md 7): whom it frightens is the host's to say
+## (lurker.judge_peek()).
+func lurker_peek() -> void:
+	if in_charge():
+		if is_instance_valid(level.creature): level.creature.judge_peek()
+	elif local_is_locust(): request_peek.rpc_id(1)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_peek() -> void:
+	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
+	if is_instance_valid(level.creature): level.creature.judge_peek()
 
 ## The round trip to each guest, eased (docs/OFICINAS.md 1: in a match the
 ## victim's latency is added to its window). The host asks every PING_EVERY

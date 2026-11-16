@@ -818,6 +818,7 @@ func versus_hunter() -> void:
 
 const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const SIGHT := preload("res://game/enemies/creature_sight.gd")
 ## One way of the slow line, in s.
 const LAG := 0.075
 ## The slow line listens this far above the room's port.
@@ -973,11 +974,13 @@ func lurker_versus_host() -> void:
 	level.player.torch.visible = false
 	var W := float(level.tuning().back_window)
 	check("Ve a la cazadora moverse", await wait_for(func(): return not lurker.net_states.is_empty(), 20.0))
+	await drink_host(spot)
 	var ended: bool = await wait_for(func():
 		var mine: Array = lurker.warning.ledger.filter(func(e): return int(e.seat) == victim)
 		return mine.size() >= 2 and String(mine[1].outcome) != "active", 150.0)
 	check("Juzga los dos avisos que pide la cazadora", ended, str(lurker.warning.ledger))
 	check("Rechaza lo que no cumple: delante de la víctima, a destiempo", int(lurker.get("releases_refused")) >= 2, str(lurker.get("releases_refused")))
+	check("La linterna de la víctima la ciega: lo juzga el anfitrión, con su chillido", int(lurker.scares) >= 1, str(lurker.tally()))
 	await judge_ledger(lurker.warning.ledger.filter(func(e): return int(e.seat) == victim), victim, W)
 	await pause_for(3.0)
 
@@ -997,30 +1000,78 @@ func lurker_hunter() -> void:
 	var victim := seat_named("Víctima")
 	check("Ve a la víctima", await wait_for(func(): return level.match_net.bodies.has(victim), 30.0))
 	var body = level.match_net.bodies[victim]
+	await drink_hunter(spot, body)
+	# Phase 3: no warning from 2.4 m behind any more without her charge; she
+	# lies in wait behind it and watches it first.
+	var perch := lurker_perch(spot)
+	check("Un sitio de acecho detrás de la víctima", perch >= 0)
+	if perch < 0: return
 	for round in 2:
 		check("La víctima espera de espaldas (%d)" % round, await wait_for(func(): return body.global_position.distance_to(victim_stand(spot)) < 0.6 and body.velocity.length() < 0.1, 60.0))
 		await pause_for(1.0)
-		# Asked from in front of it, where it would see her: the host says no.
-		lurker.place_over((spot.centre as Vector3) + (spot.along as Vector3) * 3.5, body.camera.global_position)
-		await pause_for(0.6)
-		level.match_net.lurker_release()
-		await pause_for(0.6)
-		check("Delante de la víctima, el anfitrión no empieza ningún aviso (%d)" % round, not lurker.cue)
-		lurker.place_over(lurker_over(spot), body.camera.global_position)
-		await pause_for(1.0)
+		# Asked from in front of it, where it would see her: the host says no
+		# (not in the first round, whose torch on her would blind her).
+		if round == 1:
+			lurker.place_over((spot.centre as Vector3) + (spot.along as Vector3) * 3.5, body.camera.global_position)
+			await pause_for(0.6)
+			level.match_net.lurker_release()
+			await pause_for(0.6)
+			check("Delante de la víctima, el anfitrión no empieza ningún aviso (%d)" % round, not lurker.cue)
+		check("Se asienta en su sitio de acecho, detrás (%d)" % round, await settle_at(perch, body), " / ".join(lurker.debug_lines()))
+		# Watching it settled: charged on the host (CHARGE, 2 s).
+		await pause_for(3.0)
+		var flashed: float = lurker.driver.view.flash_clock
 		# Asked twice at once: the second is too soon.
 		level.match_net.lurker_release()
 		level.match_net.lurker_release()
 		var began: bool = await wait_for(func(): return lurker.cue, 5.0)
-		check("Soltar detrás de la víctima: el anfitrión empieza el aviso (%d)" % round, began)
+		check("Soltar con carga detrás de la víctima: el anfitrión empieza el aviso (%d)" % round, began)
 		if not began: return
 		check("Y se acaba cuando el anfitrión lo dice (%d)" % round, await wait_for(func(): return not lurker.cue, 5.0))
 		if round == 0:
 			await pause_for(0.6)
 			check("Salvada la víctima, no salta", level.execution.is_empty())
+			check("El fogonazo le llega por la red, del anfitrión", lurker.driver.view.flash_clock != flashed)
+			check("Y huye sola al techo, sin que nadie la lleve", await wait_for(func(): return lurker.motion.in_duct, 2.0), " / ".join(lurker.debug_lines()))
+			# Her warning waits after a flash (FLASH_WAIT).
+			await pause_for(lurker.FLASH_WAIT)
 		else:
 			check("Vencido el plazo, el anfitrión ordena el salto", await wait_for(func(): return not level.execution.is_empty() and int(level.execution.seat) == victim, 5.0))
 	await pause_for(15.0)
+
+## A place she lies in wait (lurker_stalk.gd) of planta 1 behind where the
+## victim stands, 3 to 6.3 m from its eye with nothing between: the one
+## nearest 5 m, its index; -1 none.
+func lurker_perch(spot: Dictionary) -> int:
+	var lurker = level.creature
+	var eye: Vector3 = victim_stand(spot) + Vector3(0, 1.6, 0)
+	var along: Vector3 = spot.along
+	var best := -1
+	var best_off := INF
+	for i in lurker.stalk_sites.size():
+		var site: Dictionary = lurker.stalk_sites[i]
+		var p: Vector3 = site.point
+		var flat := Vector3(p.x - eye.x, 0, p.z - eye.z)
+		if int(site.wing) != 0 or flat.length() < 3.0 or flat.length() > 6.3 or flat.normalized().dot(along) > -0.5: continue
+		if not SIGHT.clear(level, p, eye, [lurker.get_rid()]): continue
+		if absf(flat.length() - 5.0) < best_off:
+			best_off = absf(flat.length() - 5.0)
+			best = i
+	return best
+
+## Her driver to that site (lurker_stalk) from a metre off it, looking at the
+## victim, and settled there.
+func settle_at(perch: int, body) -> bool:
+	var lurker = level.creature
+	var p: Vector3 = lurker.stalk_sites[perch].point
+	var to: Vector3 = body.camera.global_position - p
+	var flat := Vector3(to.x, 0, to.z).normalized()
+	lurker.teleport(Vector3(p.x, body.global_position.y + 1.0, p.z) + flat * 0.8, NAN, &"prueba")
+	lurker.driver.yaw = atan2(-flat.x, -flat.z)
+	lurker.driver.pitch = -0.2
+	await pause_for(0.2)
+	lurker.driver.asked[&"lurker_stalk"] = true
+	return await wait_for(func(): return lurker.driver.settled(), 8.0)
 
 ## The victim, on its slow line: back to her, it hears its own warning in its
 ## own ears, with its window and its latency. The first time it turns with its
@@ -1045,6 +1096,7 @@ func lurker_victim(versus: bool) -> void:
 		if seat == net.local_seat: heard.append({"id": cue_id, "hold": float(lurker.my_cue.get("hold", -1.0)) if "my_cue" in lurker else -1.0}))
 	var player = level.player
 	var along: Vector3 = spot.along
+	if versus: await drink_victim(spot)
 	for round in 2:
 		var count := heard.size()
 		player.torch.visible = round == 0
@@ -1072,3 +1124,102 @@ func lurker_victim(versus: bool) -> void:
 		else:
 			check("Sin girarse, lo coge al vencer el plazo", await wait_for(func(): return not level.execution.is_empty() and int(level.execution.seat) == net.local_seat, W + WARNING.LATENCY_CAP + 3.0))
 	await pause_for(15.0)
+
+# --- Her drink over the net (lurker_versus.md 8, phase 4) ------------------------
+# The hunter drinks the victim's corridor: refused first over a room that may
+# never be dark; taken, the corridor dark and the victim's torch out on every
+# machine and lit again together 6 s later; asked again within her wait over
+# another room, refused. The victim lights its torch again by pressing it.
+# Every machine prints its wall clock when the dark comes and goes (all three
+# run on this one machine): DRINK_WALL.
+
+## A room of planta 1 with a ceiling of hers, not off limits nor `other`:
+## one that may never be dark, or one that may.
+func drink_room(never: bool, other := -1) -> int:
+	var lurker = level.creature
+	var off: Array = level.off_limits_rooms()
+	for room in level.manifest.rooms:
+		var id := int(room.id)
+		if id == other or int(room.get("wing", -1)) != 0 or FLOOR.is_void(room) or off.has(id) or not lurker.shell.tray_of.has(id): continue
+		if OFFICE.may_be_dark(room) != never and not level.point_protected(FLOOR.position_of(room)): return id
+	return -1
+
+## This machine has `room` dark and then lit again: how long, -1 if not.
+func drink_seen(room: int, role: String) -> float:
+	var lurker = level.creature
+	if not await wait_for(func(): return lurker.deep_room == room, 120.0): return -1.0
+	var from := Time.get_ticks_msec()
+	print("DRINK_WALL %s oscuro %.3f" % [role, Time.get_unix_time_from_system()])
+	if not await wait_for(func(): return lurker.deep_room < 0, 20.0): return -1.0
+	print("DRINK_WALL %s luz %.3f" % [role, Time.get_unix_time_from_system()])
+	return float(Time.get_ticks_msec() - from) / 1000.0
+
+func drink_host(spot: Dictionary) -> void:
+	var lurker = level.creature
+	var room := int(spot.room)
+	# Her first quiet seconds of the floor are over here too.
+	lurker.grace = 0.0
+	var dark := await drink_seen(room, "anfitrión")
+	var victim := seat_named("Víctima")
+	check("Bebe el pasillo de la víctima: lo juzga el anfitrión", lurker.drinks.size() == 1 and int(lurker.drinks[0].room) == room and Array(lurker.drinks[0].seats).has(victim), str(lurker.drinks))
+	check("Y lo devuelve a los %d s" % int(lurker.VERSUS_DARK), absf(dark - lurker.VERSUS_DARK) <= 0.4, "%.2f s" % dark)
+	check("La linterna apagada de la víctima vuelve en el anfitrión", await wait_for(func(): return not lurker.dead_torches.has(victim), 10.0))
+	check("Rechaza beber una sala de hito y en su espera", await wait_for(func(): return int(lurker.drinks_refused) >= 2, 10.0) and lurker.drinks.size() == 1, "%d %s" % [int(lurker.drinks_refused), str(lurker.drinks)])
+
+func drink_hunter(spot: Dictionary, body) -> void:
+	var lurker = level.creature
+	var room := int(spot.room)
+	check("La víctima espera para la bebida", await wait_for(func(): return body.global_position.distance_to(victim_stand(spot)) < 0.6, 60.0))
+	var landmark := drink_room(true)
+	check("Una sala de hito con techo suyo", landmark >= 0)
+	if landmark >= 0:
+		lurker.place_over(FLOOR.position_of(level.manifest.rooms[landmark]))
+		await pause_for(1.0)
+		level.match_net.lurker_drink()
+		await pause_for(1.5)
+		check("En una sala de hito, el anfitrión no la deja beber", lurker.deep_room < 0)
+	lurker.place_over(lurker_over(spot), body.camera.global_position)
+	await pause_for(1.0)
+	level.match_net.lurker_drink()
+	var dark := await drink_seen(room, "cazadora")
+	check("Pide beber el pasillo: a oscuras también en su máquina, y la luz vuelve a la vez", absf(dark - lurker.VERSUS_DARK) <= 0.4, "%.2f s" % dark)
+	var other := drink_room(false, room)
+	if other >= 0:
+		lurker.place_over(FLOOR.position_of(level.manifest.rooms[other]))
+		await pause_for(1.0)
+		level.match_net.lurker_drink()
+		await pause_for(1.5)
+		check("En su espera, otra sala tampoco", lurker.deep_room < 0)
+
+func drink_victim(spot: Dictionary) -> void:
+	var lurker = level.creature
+	var player = level.player
+	var along: Vector3 = spot.along
+	var room := int(spot.room)
+	var seat: int = level.net.local_seat
+	player.torch.visible = true
+	var got: bool = await wait_for(func():
+		if lurker.deep_room != room:
+			player.global_position = victim_stand(spot) + Vector3(0, 0.05, 0)
+			player.velocity = Vector3.ZERO
+			player.rotation.y = atan2(-along.x, -along.z)
+			player.camera.rotation.x = 0.0
+		return lurker.deep_room == room, 120.0)
+	check("Su pasillo, a oscuras en su máquina", got)
+	if not got: return
+	var from := Time.get_ticks_msec()
+	print("DRINK_WALL víctima oscuro %.3f" % Time.get_unix_time_from_system())
+	check("Y su linterna, apagada sin quedar bebida", not player.torch.visible and lurker.dead_torches.has(seat) and not lurker.drunk.has(seat))
+	# Its thumb: after its reaction, off and on; after each on, a moment to see it light.
+	await pause_for(0.35)
+	var pressed := 0
+	while lurker.dead_torches.has(seat) and pressed < 15:
+		player.torch.visible = not player.torch.visible
+		pressed += 1
+		await pause_for(0.4 if player.torch.visible else 0.15)
+	var after := float(Time.get_ticks_msec() - from) / 1000.0
+	check("Vuelve pulsándola, a la tercera o más, nunca antes de 1,0 s", not lurker.dead_torches.has(seat) and player.torch.visible and pressed >= 3 and after >= 0.9, "%d pulsaciones, %.2f s" % [pressed, after])
+	check("Y la luz del pasillo vuelve", await wait_for(func(): return lurker.deep_room < 0, 10.0))
+	print("DRINK_WALL víctima luz %.3f" % Time.get_unix_time_from_system())
+	var dark := float(Time.get_ticks_msec() - from) / 1000.0
+	check("A los 6 s, como en las otras máquinas", absf(dark - lurker.VERSUS_DARK) <= 0.5, "%.2f s" % dark)

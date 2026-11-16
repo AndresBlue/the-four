@@ -47,10 +47,15 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
   - Con subtítulos, sale también como subtítulo.
 - **No abre puertas.** Una puerta cerrada le corta el paso y la obliga a ir por los ductos. Cerrar puertas sirve, pero no salva.
 - **Nunca coge a quien la está mirando en la luz**, ni a nadie en el vestíbulo del montacargas o dentro de él.
-- **Las luces tiemblan cuando está cerca.** Su tinta bebe la luz: las lámparas de la sala bajan y suben **a la vez**, y el zumbido de los fluorescentes baja de tono.
+- **Las luces tiemblan cuando se mueve cerca.** Su tinta bebe la luz: las lámparas de la sala bajan y tiemblan **a la vez**, y el zumbido de los fluorescentes baja de tono.
   - Es distinto del tubo que falla solo, que parpadea a su aire.
-  - **Puede beberse la sala entera** (de Equilibrada para arriba): si acecha a alguien en una sala con luz el tiempo de su dificultad, la deja a oscuras, y **a oscuras para todas las reglas**, mientras le dure el encuentro allí. Nunca un vestíbulo protegido ni una sala que no puede estar a oscuras.
-- **La linterna ya no salva siempre** (de Equilibrada para arriba). La que la espanta queda **bebida** unos segundos: el haz baja al 15 % y titila, y vuelve en el último segundo. A veces se **apaga del todo** y no vuelve hasta apagarla y encenderla (encendida antes de que acabe la bebida, solo chispea). Mientras tanto no la espanta, no sirve para distinguirle la cara y no salva del aviso. Siguen salvando la luz de la sala, la linterna de un compañero y alejarse corriendo.
+  - **Quieta un segundo, dejan de temblar y siguen bajas**: la señal no desaparece, solo deja de llamar la atención.
+  - **El haz de una linterna encendida a menos de 4,5 m titila** mientras se mueve: su paso se nota también a oscuras.
+  - **Puede beberse la sala entera** (de Equilibrada para arriba; en Versus, quien la lleva). En cooperativo se nota venir: las lámparas bajan temblando y sube un siseo de tubos. Luego, **su propio chillido** (no el de espantarse: no asusta la cordura ni cambia la música), la sala queda **a oscuras del todo en 0,2 s** y **a oscuras para todas las reglas** unos segundos, y **las linternas de dentro se apagan**. Nunca un hito, un vestíbulo ni un refugio, y no apaga la emergencia ni las lámparas de los hitos.
+  - Tras el chillido no avisa a nadie durante un momento (1,5 s en Equilibrada y en Versus, 1,2 en Desafiante, 1 en Pesadilla); en cooperativo intenta coger una sola vez por apagón.
+- **Una linterna apagada por una sala bebida se reenciende a pulsaciones**: vuelve **a la tercera pulsación** (encender, apagar, encender) y **nunca antes de 1 s** desde el chillido; antes, solo chispea. Siempre la misma cifra, nunca al azar. No queda bebida.
+- **Una linterna recién encendida está fría**: encendida hace menos de 0,5 s, ni la espanta ni salva del aviso. Ir a oscuras y encenderla al oír el aviso llega tarde.
+- **La linterna ya no salva siempre** (de Equilibrada para arriba). La que la espanta queda **bebida** unos segundos: el haz baja al 15 % y titila, y vuelve en el último segundo. A veces se **apaga del todo** y no vuelve hasta apagarla y encenderla (encendida antes de que acabe la bebida, solo chispea). Mientras tanto no la espanta, no sirve para distinguirle la cara y no salva del aviso. Siguen salvando la luz de la sala, la linterna de un compañero y alejarse corriendo; tras beberse la sala, la linterna reencendida, la de un compañero y correr.
 - **Por los ductos se la oye y no se la ve.** El sonido sale por las rejillas, nunca a través de los muros.
 - **Su cercanía no suena** (decisión del autor, 16 de noviembre de 2026: «menos es más; si el jugador no sabe, siempre se va a sentir perseguido»). En solitario, en cooperativo y en Versus:
   - no tiene aura: ni zumbido, ni ambiente apagado, ni chasquidos por la ruta, ni latido por su distancia, ni bucle de presencia ni su subtítulo, a ninguna distancia;
@@ -353,14 +358,21 @@ El estado **Quieta** ya no se usa: solo lo ponen a mano las herramientas.
 ### La luz, de los dos lados
 
 - **Bebe la luz**: a menos de la distancia de su dificultad (de 3 a 4,5 m) de una lámpara, la lámpara baja al 30–60 % y vuelve cuando se aleja.
-  - Las de una misma sala bajan juntas, el zumbido cae de tono y los tubos titilan.
+  - Las de una misma sala bajan juntas, el zumbido cae de tono y, mientras se mueve, los tubos titilan. Quieta 1 s (en cualquier máquina, por su posición), dejan de titilar y siguen bajas.
+  - Mientras se mueve, el haz de una linterna encendida a menos de 4,5 m de ella titila (`lurker.flicker_step()`); con efectos reducidos solo baja.
   - Es su señal más clara y la que la hace visible por donde pasa.
   - Este drenaje no deja la sala a oscuras para las reglas.
-- **Se bebe la sala entera** (de Equilibrada para arriba; `lurker.snuff_step()`): si acecha a alguien que está en una sala con luz el tiempo de su dificultad seguido (12 s en Equilibrada, 4 en Desafiante, 2,5 en Pesadilla), la apaga temblando en unos segundos, y **queda a oscuras para las reglas** (`hotel.lit()`). La devuelve en un segundo cuando acaba su encuentro allí, cuando la presa lleva 3 s fuera de la sala o a los 25 s, y no vuelve a beberse la misma en 45 s. Solo salas que pueden estar a oscuras, ni protegidas ni prohibidas. Que la devuelva no la espanta, como sí lo hace que alguien encienda la luz.
+- **Se bebe la sala entera** (`lurker.drink()`, lurker_versus.md 8 y 10):
+  - **Su mente** (de Equilibrada para arriba; `lurker.snuff_step()`): si acecha a alguien que está en una sala con luz el tiempo de su dificultad seguido (12 s en Equilibrada, 4 en Desafiante, 2,5 en Pesadilla), primero el **preaviso**: las lámparas de esa sala bajan temblando al 30 % y suena el siseo de los tubos (`drink_warn`, con su subtítulo). Si su presa sigue en la sala, la bebe; si sale, lo deja.
+  - Nunca contra una presa con la linterna ya bebida o apagada, ni en los 10 s siguientes a un susto suyo, ni con un aviso en marcha, ni antes de su espera entre bebidas (`drink_every`).
+  - **Quien la lleva en Versus** la pide (`match_net.lurker_drink()`) y el anfitrión la juzga (`lurker.judge_drink()`): la sala en la que tiene la cara, fuera de un ducto oculto, sin aviso en marcha, sin otra sala suya a oscuras y 25 s desde la anterior. Sin preaviso. Si se enciende la luz de la sala en la que está, huye como la IA (`lit_out`).
+  - **La bebida**: su chillido (`drink_0.wav`, el de espantarse más lento y con el golpe del cuadro debajo; no asusta la cordura ni la música), la sala a oscuras del todo en 0,2 s y para las reglas (`hotel.lit()`) durante `drink_dark` (6 s en Versus); la devuelve la máquina a cargo en un segundo y no vuelve a beberse la misma en 45 s. Las linternas de quien está dentro se apagan con el interruptor y un clic, sin quedar bebidas (`lurker.outed`), y vuelven a la tercera pulsación, nunca antes de 1 s (las cuenta la máquina a cargo). Su primer aviso, no antes de `drink_cue`; en cooperativo, un intento por apagón y va a por su presa en cuanto bebe.
+  - Solo salas que pueden estar a oscuras (`may_snuff()`): ni hitos (ventanilla, cuarto eléctrico, seguridad, climatización), ni vestíbulos, ni refugios, ni protegidas ni prohibidas. No toca la emergencia ni las lámparas de hito: solo baja las lámparas propias de la sala. Que la devuelva no la espanta, como sí lo hace que alguien encienda la luz.
 - **En una sala con luz no coge** a quien la tiene a la vista, pero puede cruzarla por el techo, deprisa, si nadie mira hacia arriba. Sus emboscadas, nunca bajo un techo con luz.
 - **La linterna** sigue sin batería.
   - Es la única luz que se lleva, y el arma contra el aviso de la espalda: una vuelta a tiempo, con la linterna encendida, la espanta.
   - Con la linterna apagada y a oscuras, la vuelta a tiempo no basta: hay que alumbrarla.
+  - Encendida hace menos de 0,5 s está **fría** (`creature_sight.torch_cold()`): ni la espanta, ni le da en la cara para el aviso, ni la ciega.
   - Llevarla encendida baja menos la cordura, pero **la delata** (ella oye el clic y ve el haz desde 35 m).
   - **Ella la bebe** (`lurker.drink_torches()`): cada vez que una linterna la espanta, las que tenía en la cara quedan bebidas los segundos de su dificultad (nunca en Apacible): el haz al 15 % con un parpadeo irregular, de vuelta en rampa el último segundo, con un clic donde está. Con una probabilidad de su dificultad, **se apaga del todo** y no vuelve hasta que su dueño la apaga y la enciende (encendida antes de que acabe la bebida, solo chispea un instante). Una linterna bebida o apagada no la espanta, no sirve para distinguirle la cara (quien la lleva solo se la ve con la luz de la sala o a 1,2 m) y no salva del aviso.
 
@@ -430,6 +442,10 @@ Sus claves están en `game/floors/difficulty.gd` (`CREATURE_PROFILES`), encima d
 | Se bebe la sala de su presa a los (`snuff_time`) | Nunca | 12 s | 4 s | 2,5 s |
 | Linterna que la espanta, bebida durante (`torch_drunk`) | Nunca | 3 s | 10 s | 14 s |
 | Probabilidad de que una linterna bebida se apague del todo (`torch_kill`) | 0 % | 25 % | 60 % | 80 % |
+| Preaviso antes de beberse la sala (`drink_warn`) | Nunca bebe | 1 s | 0,8 s | 0,6 s |
+| Sala a oscuras tras beberla (`drink_dark`) | Nunca bebe | 4 s | 5 s | 6 s |
+| Primer aviso tras su chillido de beber (`drink_cue`) | Nunca bebe | 1,5 s | 1,2 s | 1 s |
+| Espera entre dos bebidas (`drink_every`) | Nunca bebe | 60 s | 45 s | 35 s |
 | Primera etapa a oscuras (`office_geometry.darken_first_stage`) | Todo con luz | Las salas oscuras del manifiesto | Todas las que pueden estarlo, menos un 10 % | Todas las que pueden estarlo |
 
 El tope al acercarse queda siempre por debajo de la carrera de un superviviente (6 m/s) menos medio metro. Las demás claves (el director, los ascensores, los reintentos de etapa y el oído) son las compartidas con el hotel, las de The Locust.

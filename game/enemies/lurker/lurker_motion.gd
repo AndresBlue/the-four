@@ -1056,7 +1056,7 @@ func follow_band(leg: Dictionary, delta: float) -> void:
 	var dir := int(leg.dir)
 	# Its door shutting with her short of half way: back the way she came.
 	var pair: Vector2i = record.pair
-	if pair.x >= 0 and not bool(leg.get("turned", false)) and not routes.door_open(pair):
+	if pair.x >= 0 and not leg.has("stop") and not bool(leg.get("turned", false)) and not routes.door_open(pair):
 		var done: float = state.u / length if dir > 0 else 1.0 - state.u / length
 		if done < 0.5:
 			leg["turned"] = true
@@ -1065,7 +1065,13 @@ func follow_band(leg: Dictionary, delta: float) -> void:
 			deferred = goal
 	state.heading = 0.0 if dir > 0 else PI
 	ramp(pace_now(), delta)
-	shell.advance(state, speed * delta)
+	# A person lying in wait over a door (lurker_stalk.gd): held at `stop`.
+	var stop := float(leg.get("stop", -1.0))
+	shell.advance(state, minf(speed * delta, absf(stop - state.u)) if stop >= 0.0 else speed * delta)
+	if stop >= 0.0 and absf(state.u - stop) < 1e-4:
+		speed = 0.0
+		next_leg()
+		return
 	var at_end: bool = state.u >= length - 1e-6 if dir > 0 else state.u <= 1e-6
 	if not at_end: return
 	var end_room := int(record.rooms[1]) if dir > 0 else int(record.rooms[0])

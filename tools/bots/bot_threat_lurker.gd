@@ -242,14 +242,43 @@ func cue_summary() -> Array:
 
 # --- What a person does that a bot would not (bot_brain.mind_creature) ------------------------
 
-## null: not its business this frame; true: it took the frame.
+## null: not its business this frame; true: it took the frame. Whatever it
+## does, a torch she put out is pressed as a person would (relight()).
 func mind(brain, delta: float) -> Variant:
 	match_ref = brain.owner_match
+	var out = mind_now(brain, delta)
+	# Driven by a person too (--bots-hunt): her torches are hers all the same.
+	if is_instance_valid(creature) and "outed" in creature and not brain.body.hidden: relight(brain)
+	return out
+
+## s between two presses of a person's thumb on the torch's switch.
+const PRESS := 0.15
+## Seat -> {from, off}: its pressing, from when, and whether her drink of a
+## room switched it off (lurker.outed: its first press is on).
+var presses := {}
+
+## Its torch put out (iteration 3, H1; or with a room, lurker_versus.md 8):
+## after its reaction from when it went, or from the end of her drink of it,
+## pressed every PRESS, off and on, until it lights again (lurker.gd counts
+## the presses: back at the third after a room's drink, at the second after
+## H1's). Never in two frames: a person's thumb.
+func relight(brain) -> void:
+	var seat := int(brain.seat)
+	if not creature.dead_torches.has(seat) or creature.drunk.has(seat):
+		presses.erase(seat)
+		return
+	if not presses.has(seat): presses[seat] = {"from": now() + REACT[skill()] + rng.randf_range(-REACT_JITTER, REACT_JITTER), "off": creature.outed.has(seat)}
+	var pressing: Dictionary = presses[seat]
+	var since := now() - float(pressing.from)
+	if since < 0.0:
+		if bool(pressing.off): brain.body.torch_wanted = false
+		return
+	var made := int(since / PRESS) + 1
+	brain.body.torch_wanted = made % 2 == (1 if bool(pressing.off) else 0)
+
+func mind_now(brain, delta: float) -> Variant:
 	if not active or brain.body.hidden: return null
 	var seat := int(brain.seat)
-	# Its torch put out (iteration 3, H1): off for a frame once her drink is
-	# over; on again next frame (wants_torch()) brings it back.
-	if creature.dead_torches.has(seat) and not creature.drunk.has(seat) and brain.body.torch.visible: brain.body.torch_wanted = false
 	var face: Vector3 = creature.face_point()
 	var head: Vector3 = brain.body.camera.global_position
 	# 1. Its own warning: after its reaction, round to her with the torch on.
@@ -271,7 +300,7 @@ func mind(brain, delta: float) -> Variant:
 	# 2. A teammate's: near her face and seeing it, its torch on her.
 	for other in cues.keys():
 		var theirs: Dictionary = cues[other]
-		if int(other) == seat or cue_over(theirs) or creature.drunk.has(seat): continue
+		if int(other) == seat or cue_over(theirs) or creature.drunk.has(seat) or creature.dead_torches.has(seat): continue
 		if head.distance_to(face) > MATE_REACH or not clear(head, face): continue
 		var helpers: Dictionary = theirs.helpers
 		if not helpers.has(seat): helpers[seat] = now() + REACT[skill()] + rng.randf_range(-REACT_JITTER, REACT_JITTER)

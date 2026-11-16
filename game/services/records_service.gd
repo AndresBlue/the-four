@@ -167,7 +167,9 @@ static func clean(run: Dictionary) -> Dictionary:
 			line.events.append(entry)
 	var differs := RULES.changed(run.get("rules", {}))
 	if not differs.is_empty(): line["rules"] = differs
-	if run.get("hunter") is Dictionary: line["hunter"] = {"seat": int(number(run.hunter.get("seat", 0))), "name": String(run.hunter.get("name", "")).left(24)}
+	if run.get("hunter") is Dictionary:
+		line["hunter"] = {"seat": int(number(run.hunter.get("seat", 0))), "name": String(run.hunter.get("name", "")).left(24)}
+		if run.hunter.has("longest"): line.hunter["longest"] = clampf(float(number(run.hunter.longest)), 0.0, 99.0)
 	# Settled by whoever ran the floor: kept as it was said.
 	if run.has("score"):
 		line["score"] = maxi(int(number(run.score)), 0)

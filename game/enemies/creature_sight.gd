@@ -25,6 +25,10 @@ const DARK_FACE := 1.2
 ## The aim is the camera's, not the lamp's lagging node.
 const TORCH_FACE_ANGLE := 20.0
 const TORCH_REACH := 20.0
+## A torch switched on less than this ago is cold (lurker_versus.md 4.2): it
+## neither saves nor blinds, or going dark and lighting it at the warning
+## would be the best play.
+const TORCH_COLD := 0.5
 ## watched(): The Locust's SIGHT_RANGE and its cone.
 const WATCH_REACH := 70.0
 const WATCH_DOT := 0.35
@@ -83,13 +87,25 @@ static func watched(level, target: Vector3, exclude: Array, reach := WATCH_REACH
 ## distance: a torch on her face a metre away counts most of all.
 static func torch_covers(level, body, face: Vector3, exclude: Array) -> bool:
 	if not alive(level, body) or bool(body.get("hidden")): return false
-	if not "torch" in body or not is_instance_valid(body.torch) or not body.torch.visible: return false
+	if not "torch" in body or not is_instance_valid(body.torch) or not body.torch.visible or torch_cold(body): return false
 	var eye: Vector3 = body.camera.global_position
 	var to := face - eye
 	var d := to.length()
 	if d > TORCH_REACH or d < 0.05: return false
 	if rad_to_deg((-body.camera.global_basis.z).angle_to(to)) > TORCH_FACE_ANGLE: return false
 	return clear(level, eye, face, exclude + [body.get_rid()])
+
+## Their torch came on here less than TORCH_COLD ago, in physics frames (a
+## test's frames count as play's). Its switch is watched from the first ask
+## on (a torch already on then is warm): the Lurker asks every tick.
+static func torch_cold(body) -> bool:
+	var torch = body.get("torch")
+	if not is_instance_valid(torch) or not torch.visible: return false
+	if not torch.has_meta(&"lit_frame"):
+		torch.set_meta(&"lit_frame", -1000000)
+		torch.visibility_changed.connect(func(): if torch.visible: torch.set_meta(&"lit_frame", Engine.get_physics_frames()))
+		return false
+	return Engine.get_physics_frames() - int(torch.get_meta(&"lit_frame")) < int(TORCH_COLD * Engine.physics_ticks_per_second)
 
 ## They are looking at her: their view within REGARD_LOCAL (REGARD_REMOTE for
 ## a puppet) of `face`, within REGARD_REACH, a clear ray, and she can be made
@@ -102,7 +118,7 @@ static func regards(level, body, face: Vector3, exclude: Array, lit_face: bool) 
 ## One body's look at her face, one ray: {"regards": bool, "torch": bool}.
 static func look_of(level, body, face: Vector3, exclude: Array, lit_face: bool) -> Dictionary:
 	if not alive(level, body) or bool(body.get("hidden")): return {"regards": false, "torch": false}
-	var torch_on: bool = "torch" in body and is_instance_valid(body.torch) and body.torch.visible
+	var torch_on: bool = "torch" in body and is_instance_valid(body.torch) and body.torch.visible and not torch_cold(body)
 	var cone := REGARD_REMOTE if is_remote(level, body) else REGARD_LOCAL
 	return look_from(level, body.camera.global_transform, torch_on, face, exclude + [body.get_rid()], lit_face, cone, TORCH_FACE_ANGLE)
 

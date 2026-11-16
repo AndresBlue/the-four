@@ -368,6 +368,9 @@ func close(won: bool) -> Dictionary:
 		"events": events.duplicate(true),
 	}
 	if versus: line["hunter"] = {"seat": level.match_net.locust_seat(), "name": level.seat_name(level.match_net.locust_seat())}
+	# Whoever drove The Lurker: her longest warning that took somebody, in metres
+	# (lurker_versus.md 11: the figure says it, no rule spelled out).
+	if versus and is_instance_valid(level.creature) and level.creature.longest_warning() > 0.0: line.hunter["longest"] = snappedf(level.creature.longest_warning(), 0.1)
 	# Played by other rules than the game's own: it says which, and goes on
 	# the board kept for those.
 	var differs: Dictionary = level.MATCH_RULES.changed(level.rules)

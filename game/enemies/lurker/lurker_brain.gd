@@ -126,6 +126,15 @@ var took_point := Vector3.INF
 var torches: Array = []
 ## This tick's delta.
 var step := 0.0
+## Her drink of a room (lurker_versus.md 8 and 10), set by lurker.drink():
+## when her shriek was, no warning before cue_after, and until drink_until one
+## attempt at most (the AI's: a person's ends with the shriek). scared_at: her
+## last fright, which no drink follows for SCARE_CALM s.
+var drank_at := -INF
+var cue_after := -INF
+var drink_until := -INF
+var scared_at := -INF
+const SCARE_CALM := 10.0
 ## Survivors in play on her planta (Percept.team): the encounter is shared out
 ## among them (2.3).
 var team := 1
@@ -856,7 +865,20 @@ func cue_allowed(p, v) -> bool:
 	return bool(v.seen) and bool(v.fair) and not bool(v.hidden) \
 		and not bool(p.in_duct) and not bool(p.off_limits) and float(v.distance) >= CUE_RANGE.x and float(v.distance) <= CUE_RANGE.y \
 		and bool(v.behind) and p.regarded_by.is_empty() and p.torch_by.is_empty() and (lit_takes or not bool(v.lit)) \
-		and warning.can_start(clock)
+		and warning.can_start(clock) and clock >= cue_after and not drink_spent()
+
+## Her one attempt of a blackout made: a warning begun since her shriek, while
+## its room is still dark (lurker_versus.md 10).
+func drink_spent() -> bool:
+	return clock < drink_until and not warning.ledger.is_empty() and float(warning.ledger[warning.ledger.size() - 1].at) >= drank_at
+
+## She drank a room dark for `seconds`, its warnings held `gap` s; `seat`, the
+## one she was after there, she closes in on now (her one attempt).
+func on_drank(seat: int, gap: float, seconds: float) -> void:
+	drank_at = clock
+	cue_after = clock + gap
+	drink_until = clock + seconds
+	if seat >= 0 and seat == prey and state in [State.STALK, State.HUSH]: enter(State.CREEP)
 
 func creep_tick(p) -> Dictionary:
 	var v = p.victim
@@ -986,6 +1008,7 @@ func flee_from(p, seat: int) -> void:
 ## `counts`: she was after them (2.3), so it is a failed attempt.
 func recoil(by: int, cause: String, p, counts: bool) -> void:
 	if counts: failed_attempt(prey)
+	scared_at = clock
 	away_from = p.face
 	for seen in p.bodies.values():
 		if int(seen.seat) == by: away_from = seen.eye

@@ -53,8 +53,8 @@ func run() -> void:
 	# stay at their default and are not counted as changed.
 	var ids: Array = RULES.RULES.map(func(rule): return String(rule.id))
 	var hotel_ids: Array = RULES.shown(&"locust", 1).map(func(rule): return String(rule.id))
-	check("En el hotel valen todas, en el orden de siempre", ids == ["restarts", "sanity", "code", "blackout", "plan", "plan_fade", "shared_sheet", "onslaught", "tv_travel", "plain_sight"] and hotel_ids == ids and RULES.shown() == RULES.RULES)
-	check("Las de The Locust son suyas, y el apagón y el código son del hotel", RULES.shown(&"lurker", 2).map(func(rule): return String(rule.id)) == ["restarts", "sanity", "plan", "plan_fade", "shared_sheet"] and RULES.applies(RULES.entry("code"), &"locust", 1) and not RULES.applies(RULES.entry("code"), &"lurker", 2))
+	check("En el hotel valen todas las de antes, en el orden de siempre (la ventana de The Lurker no)", ids == ["restarts", "sanity", "code", "blackout", "plan", "plan_fade", "shared_sheet", "onslaught", "tv_travel", "plain_sight", "lurker_window"] and hotel_ids == ids.slice(0, 10) and RULES.shown() == RULES.RULES)
+	check("Las de The Locust son suyas, y el apagón y el código son del hotel", RULES.shown(&"lurker", 2).map(func(rule): return String(rule.id)) == ["restarts", "sanity", "plan", "plan_fade", "shared_sheet", "lurker_window"] and RULES.applies(RULES.entry("code"), &"locust", 1) and not RULES.applies(RULES.entry("code"), &"lurker", 2))
 	var foreign := {"id": "prueba", "creature": &"lurker"}
 	check("Una regla de otra criatura no sale en el hotel", not RULES.applies(foreign, &"locust", 1) and RULES.applies(foreign, &"lurker", 2) and RULES.applies(foreign) and not RULES.applies({"id": "prueba", "kind": 2}, &"locust", 1) and RULES.applies({"id": "prueba"}, &"lurker", 2))
 	var said := {"onslaught": 1, "tv_travel": 0, "plain_sight": 1, "blackout": 0, "sanity": 0, "code": 1}
@@ -163,8 +163,8 @@ func run() -> void:
 	level.ui.menu("lobby")
 	level.on_action("lobby_rules")
 	await process_frame
-	check("Las reglas de la sala, en una sola lista: una fila cada una, con su lista", level.ui.screen == "rules" and level.ui.rule_rows.size() == RULES.RULES.size() and level.ui.rule_pickers.size() == RULES.RULES.size())
-	check("En el hotel, la pantalla trae las de siempre en su orden", level.ui.rule_rows.keys() == ids and level.ui.rule_pickers.keys() == ids)
+	check("Las reglas de la sala, en una sola lista: una fila cada una, con su lista", level.ui.screen == "rules" and level.ui.rule_rows.size() == hotel_ids.size() and level.ui.rule_pickers.size() == hotel_ids.size())
+	check("En el hotel, la pantalla trae las de siempre en su orden", level.ui.rule_rows.keys() == hotel_ids and level.ui.rule_pickers.keys() == hotel_ids)
 	# Resting on a rule brings up what it does, under the list.
 	level.ui.rule_rows["sanity"].mouse_entered.emit()
 	check("Posarse en una regla trae lo que hace", String(level.ui.rule_detail.words.text) == String(RULES.RULES.filter(func(rule): return rule.id == "sanity")[0].note))

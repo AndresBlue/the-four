@@ -121,6 +121,10 @@ func run() -> void:
 		"snuff_time": [0.0, 12.0, 4.0, 2.5],
 		"torch_kill": [0.0, 0.25, 0.6, 0.8],
 		"ambush_odds": [0.15, 0.3, 0.6, 0.7],
+		"drink_warn": [0.0, 1.0, 0.8, 0.6],
+		"drink_dark": [0.0, 4.0, 5.0, 6.0],
+		"drink_cue": [0.0, 1.5, 1.2, 1.0],
+		"drink_every": [0.0, 60.0, 45.0, 35.0],
 	}
 	var lurker_wrong: Array = []
 	for step in DIFFICULTY.ORDER.size():

@@ -14,9 +14,27 @@ extends Node
 ## it does not draw, and sees with her eyes (lurker_view.gd, phase 2). Through
 ## a grille, a tile or a duct it cuts to the ducts' plan; at rest in a
 ## grille's mouth it looks out of it.
-## lurker_stalk, lurker_release, lurker_drink and lurker_peek are declared
-## (settings_service.LURKER_ACTIONS) and do nothing yet (phases 1 to 4).
+##
+## Phase 3 (lurker_versus.md 6 and 7): lurker_stalk takes her to the nearest
+## place to lie in wait within STALK_REACH (lurker_stalk.gd), run whole; still
+## there SETTLE s, she has settled (settled(): the host reads it in her flags
+## and charges her on whom she watches). lurker_release asks the host for her
+## warning (match_net.lurker_release()); lurker_peek shows her to the edge of
+## somebody's view (match_net.lurker_peek()). While the warning runs she goes
+## no faster than a walker. Blinded or looked at in the light, the host sends
+## her off (scared()): her body bolts into the ceiling as the AI's does, and
+## the stick is not hers until it is in. lurker_drink is phase 4's.
 const MOTION := preload("res://game/enemies/lurker/lurker_motion.gd")
+const STALK := preload("res://game/enemies/lurker/lurker_stalk.gd")
+const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
+## A place to lie in wait within this of her (plan metres); still this long at
+## it, she has settled; off it by more than SITE_NEAR she has left it.
+const STALK_REACH := 3.0
+const SETTLE := 1.0
+const SITE_NEAR := 0.4
+## The pose of a peek, and of a fright, held this long.
+const PEEK_POSE := 1.2
+const SCARE_POSE := 0.4
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
 const VISUAL := preload("res://game/enemies/lurker/lurker_visual.gd")
 const PAD_FEEL := preload("res://game/player/pad_feel.gd")
@@ -68,6 +86,11 @@ var asked := {}
 var active := true
 ## The grille or tile she was sent into: once in, the mouth she rests in.
 var into_exit := -1
+## The site she lies in wait at (creature.stalk_sites), -1 none; how long
+## she has held still at it; how long more a pose is held.
+var stalk_at := -1
+var settle_clock := 0.0
+var pose_clock := 0.0
 
 func setup(owner) -> void:
 	creature = owner
@@ -123,11 +146,11 @@ func forward() -> Vector3: return Vector3(-sin(yaw), 0, -cos(yaw))
 func top_pace() -> float: return maxf(float(creature.unseen_speed), MOTION.SCURRY_SPEED)
 
 ## Every physics tick, before her motion's (lurker.step_physics()).
-func drive(_delta: float) -> void:
+func drive(delta: float) -> void:
 	var motion = creature.motion
 	if not scripted:
 		axis = Input.get_vector("left", "right", "forward", "backward") if can_act() else Vector2.ZERO
-		for action in [&"lurker_enter", &"lurker_drop"]:
+		for action in [&"lurker_enter", &"lurker_drop", &"lurker_stalk", &"lurker_peek", &"lurker_release"]:
 			if InputMap.has_action(action) and Input.is_action_just_pressed(action): asked[action] = true
 	var free: bool = (scripted or can_act()) and creature.grace <= 0.0
 	var ahead := forward()
@@ -135,11 +158,19 @@ func drive(_delta: float) -> void:
 	if into_exit >= 0 and motion.legs.is_empty():
 		if motion.in_duct: motion.mouth_exit = into_exit
 		into_exit = -1
+	if free and asked.has(&"lurker_release"): level.match_net.lurker_release()
+	if free and asked.has(&"lurker_peek"): peek()
+	watch_site(delta)
+	pose_clock -= delta
+	if pose_clock <= 0.0 and creature.intent_clip in ["peek", "scare"]: creature.intent_clip = ""
 	motion.steering = true
 	motion.free_face = ahead
-	motion.free_way = push if free and motion.legs.is_empty() else Vector3.ZERO
+	# On a door's band the stick does not slide her about it: act() takes her off.
+	motion.free_way = push if free and motion.legs.is_empty() and not on_band() else Vector3.ZERO
 	if free and motion.legs.is_empty():
 		motion.pace = top_pace() * minf(push.length(), 1.0)
+		# During her warning no faster than a walker: running always saves (7).
+		if creature.cue: motion.pace = minf(motion.pace, BRAIN.CUE_FOLLOW)
 		act(push)
 	asked.clear()
 	if creature.visual != null: creature.visual.look_point = camera.global_position - camera.global_basis.z * 10.0
@@ -202,6 +233,17 @@ func _process(delta: float) -> void:
 ## What the buttons and the push ask of her while no order runs.
 func act(push: Vector3) -> void:
 	var motion = creature.motion
+	if push.length() >= 0.3 or asked.has(&"lurker_enter") or asked.has(&"lurker_drop"): stalk_at = -1
+	if asked.has(&"lurker_stalk") and motion.surface() and not on_band():
+		stalk()
+		return
+	if on_band():
+		# Off the lintel she lies in wait on, the way the stick says: back onto
+		# her room's ceiling, or through the door.
+		if push.length() >= 0.3:
+			var record: Dictionary = creature.shell.patches[motion.state.patch]
+			motion.run_legs([{"kind": "band", "patch": motion.state.patch, "dir": 1 if push.dot(record.across) > 0.0 else -1, "v": motion.state.v}], top_pace())
+		return
 	if asked.has(&"lurker_drop") and motion.surface(): motion.drop(not motion.state.lowered)
 	# Let down, she gets back up before any way through.
 	var low: bool = motion.surface() and (motion.state.lowered or motion.state.hang > SHELL.HANG_MAX + 0.05)
@@ -332,6 +374,85 @@ func way_out() -> Array:
 		if not bool(out.ok) or not (out.pairs as Array).is_empty(): continue
 		return [e, inside.legs + out.legs]
 	return []
+
+# --- Lying in wait (phase 3) -----------------------------------------------------------
+
+func on_band() -> bool:
+	var motion = creature.motion
+	return motion.surface() and int(creature.shell.patches[motion.state.patch].kind) == SHELL.Kind.BAND
+
+## Her sites on her planta within `reach` of her, nearest first: [[metres, index]].
+func sites_near(reach: float) -> Array:
+	var motion = creature.motion
+	var out: Array = []
+	if not motion.surface(): return out
+	var at: Vector3 = motion.anchor()
+	for i in creature.stalk_sites.size():
+		var site: Dictionary = creature.stalk_sites[i]
+		var d := Vector2((site.point as Vector3).x - at.x, (site.point as Vector3).z - at.z).length()
+		if int(site.wing) == motion.wing() and d <= reach: out.append([d, i])
+	out.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	return out
+
+## To the nearest site she can reach with no door on the way.
+func stalk() -> bool:
+	for near in sites_near(STALK_REACH):
+		if go_to_site(int(near[1])):
+			stalk_at = int(near[1])
+			settle_clock = 0.0
+			return true
+	return false
+
+## The order to a site: onto a door's band from her room's side, held at its
+## lintel; into an aisle and up its shelf; or over the ceiling to it.
+func go_to_site(i: int) -> bool:
+	var site: Dictionary = creature.stalk_sites[i]
+	var shell = creature.shell
+	var room := int(site.room)
+	match String(site.kind):
+		"door":
+			var start: Vector3 = shell.anchor_of(shell.band_start(int(site.patch), room))
+			return order({"room": room, "point": start, "surface": true}, [], [{"kind": "tray", "to": Vector2(start.x, start.z), "room": room, "hang": NAN}, {"kind": "band", "patch": int(site.patch), "dir": int(site.dir), "v": 0.0, "stop": float(site.u)}])
+		"aisle":
+			var mouth: Vector3 = shell.anchor_of(shell.channel_mouth(int(site.patch)))
+			return order({"room": room, "point": mouth, "surface": true}, [], [{"kind": "into_channel", "patch": int(site.patch)}, {"kind": "channel", "patch": int(site.patch), "v_to": float(site.v), "u_goal": float(site.u)}])
+	return order({"room": room, "point": site.point, "surface": true}, [])
+
+## Every tick: still at her site she settles; off it, she has left it.
+func watch_site(delta: float) -> void:
+	var motion = creature.motion
+	if stalk_at < 0 or stalk_at >= creature.stalk_sites.size():
+		stalk_at = -1
+		settle_clock = 0.0
+		return
+	if not motion.legs.is_empty():
+		settle_clock = 0.0
+		return
+	var point: Vector3 = creature.stalk_sites[stalk_at].point
+	var at: Vector3 = motion.anchor()
+	if not motion.surface() or Vector2(at.x - point.x, at.z - point.z).length() > SITE_NEAR or absf(at.y - point.y) > SITE_NEAR + SHELL.HANG_MAX:
+		stalk_at = -1
+		settle_clock = 0.0
+		return
+	settle_clock += delta
+
+func settled() -> bool: return stalk_at >= 0 and settle_clock >= SETTLE
+
+## Shows herself at the edge of somebody's view: her peek, and the host's
+## judgement of whom it frightens.
+func peek() -> void:
+	creature.intent_clip = "peek"
+	pose_clock = PEEK_POSE
+	level.match_net.lurker_peek()
+
+## Sent off by the host (lurker.scared_here()): out of her site, and with a
+## flash, her eyes white from `from`'s side.
+func scared(flash: bool, from: Vector3) -> void:
+	stalk_at = -1
+	settle_clock = 0.0
+	creature.intent_clip = "scare"
+	pose_clock = SCARE_POSE
+	if flash: view.flash((from - camera.global_position).normalized())
 
 ## A way in and out of hers: a grille, a gap or a tile of a room she has a
 ## ceiling in; never the survivors' hatch.

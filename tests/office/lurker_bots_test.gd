@@ -52,6 +52,7 @@ func run() -> void:
 			await cover_case(rooms[0])
 			await turn_case(wide[0], false)
 			await turn_case(wide[1], true)
+			for id in ["apacible", "equilibrada", "desafiante", "pesadilla"]: await drink_case(wide[0], id)
 	var file := FileAccess.open("res://evidence/lurker_bots_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"checks": checks}, "\t"))
 	print("LURKER_BOTS_TEST_RESULT ", checks.size() - failed, "/", checks.size())
@@ -195,3 +196,67 @@ func turn_case(room: int, late: bool) -> void:
 		check("Quien se gira tarde es cogido, después de su aviso", played >= 0.0 and lurker.takes.size() == takes_before + 1 and String(last.get("outcome", "")) == "taken", "%s %s %d, sonó %.1f, asiento %d, %s" % [str(last.get("outcome")), str(last.get("reason")), lurker.takes.size() - takes_before, played, int(a.seat), str(log.slice(-3).map(func(e): return [int(e.seat), String(e.outcome), String(e.reason)]))])
 		check("Y el vigilante no ve nada injusto: ni captura sin aviso ni registro torcido", reports.is_empty() and int(tally.get("unpaired", -1)) == 0, "%s %s" % [str(reports), str(tally)])
 	model.react_override.clear()
+
+## Her drink of the room an expert stands in, its torch on, her behind it
+## (lurker_versus.md 10), in each difficulty (Apacible's mind never drinks;
+## its numbers are versus' here): its torch goes out; it presses it as a
+## person would (bot_threat_lurker.relight()) and her one warning in the dark
+## ends saved, by its torch lit again or by running; nobody taken. The bot
+## is driven by its model of her only (mind()), not sent on its errands.
+func drink_case(room: int, id: String) -> void:
+	if not level.execution.is_empty(): level.release_execution()
+	level.set_difficulty(id)
+	level.arm_creature()
+	model.refresh()
+	park_her()
+	var a = bots.brains[0]
+	var other = bots.brains[1]
+	if not a.alive():
+		check("El bot de la bebida sigue vivo (%s)" % id, false)
+		return
+	other.body.place(floor_point(dark_rooms()[dark_rooms().size() - 1]), 0.0)
+	other.body.torch_wanted = false
+	var back := back_of(room)
+	var yaw := atan2(back.x, back.z)
+	var at := floor_point(room, back * -2.0)
+	a.body.place(at, 0.0)
+	a.body.look_yaw = yaw
+	a.task = {}
+	a.state = BOT_BRAIN.State.IDLE
+	a.body.torch_wanted = true
+	a.halt()
+	other.halt()
+	lurker.undrain()
+	lurker.outed.clear()
+	lurker.dead_torches.clear()
+	lurker.drunk.clear()
+	lurker.brain.spurned = {}
+	lurker.brain.attempts = {}
+	lurker.brain.sated_until = -INF
+	lurker.brain.quiet_until = -INF
+	for i in 40: await physics_frame
+	lurker.teleport(lurker.clue_point(at + back * 4.0), yaw + PI, &"prueba")
+	await physics_frame
+	lurker.thinking = true
+	lurker.brain.force(&"creep", {"seat": int(a.seat)})
+	var tuning: Dictionary = level.tuning()
+	var dark: float = maxf(float(tuning.drink_dark), lurker.VERSUS_DARK) if id == "apacible" else float(tuning.drink_dark)
+	var gap: float = lurker.VERSUS_CUE if id == "apacible" else float(tuning.drink_cue)
+	var takes_before: int = lurker.takes.size()
+	var started: int = lurker.warning.ledger.size()
+	lurker.drink(lurker.room_of_point(a.body.camera.global_position), dark, gap, int(a.seat))
+	var put_out: bool = lurker.dead_torches.has(int(a.seat))
+	var lit_again := -1.0
+	var clock := 0.0
+	# Only what it does against her (relight() and its warning), not its errands.
+	for i in int(12.0 / DT):
+		clock += DT
+		model.refresh()
+		model.mind(a, DT)
+		await physics_frame
+		if lit_again < 0.0 and not lurker.dead_torches.has(int(a.seat)): lit_again = clock
+		if lurker.warning.ledger.size() > started and String(lurker.warning.ledger[started].outcome) != "active": break
+	var entry: Dictionary = lurker.warning.ledger[started] if lurker.warning.ledger.size() > started else {}
+	check("%s: tras beber su sala, el bot la reenciende a pulsaciones y su aviso acaba salvado" % id.capitalize(), put_out and lit_again >= lurker.RELIGHT_AFTER and String(entry.get("outcome", "")) == "saved" and lurker.takes.size() == takes_before, "%s, reencendida a %.2f s, %s" % [str(put_out), lit_again, str(entry)])
+	lurker.thinking = false
+	lurker.undrain()

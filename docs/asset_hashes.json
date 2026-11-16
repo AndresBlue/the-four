@@ -2694,5 +2694,9 @@
   "assets/props/office/potus_colgante_kemowolfpaw/material_baseColor.jpg": {
     "bytes": 59888,
     "sha256": "721f1a6c7608b801cbfba65e3add8351ffad3f73ce32e54b71571838f288a4c7"
+  },
+  "assets/audio/sfx/lurker/drink_0.wav": {
+    "bytes": 171540,
+    "sha256": "cd09827d6aa3a88df54f7760e1c9c5a88c58dce393f014170024c8598c556592"
   }
 }

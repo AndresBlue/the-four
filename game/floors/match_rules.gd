@@ -17,7 +17,7 @@ extends RefCounted
 const BY_DIFFICULTY := -2
 
 ## The tabs of the screen, in order.
-const GROUPS := ["EL EQUIPO", "EL PISO", "LA HOJA", "THE LOCUST"]
+const GROUPS := ["EL EQUIPO", "EL PISO", "LA HOJA", "THE LOCUST", "THE LURKER"]
 
 ## {id, group (index into GROUPS), title, note, values, labels, default}.
 ## `versus`: only means anything with a player as the creature.
@@ -45,6 +45,9 @@ const RULES := [
 		"note": "Un televisor encendido es una puerta para ella. Sin esto, solo anda."},
 	{"id": "plain_sight", "group": 3, "title": "Vista del cazador", "values": [0, 1], "labels": ["Lectura acústica", "Ve como una persona"], "default": 0, "versus": true, "creature": &"locust",
 		"note": "Solo con un jugador de cazador: ve el hotel iluminado en vez de reconstruirlo de oído, sin rutas ni ecos de lo que suena."},
+	# Tenths of a second: never under difficulty.LEAST_WINDOW (lurker_versus.md 3).
+	{"id": "lurker_window", "group": 4, "title": "Ventana del aviso", "values": [12, 9, 15, 20], "labels": ["1,2 s", "0,9 s", "1,5 s", "2 s"], "default": 12, "versus": true, "creature": &"lurker",
+		"note": "Solo con un jugador llevándola: lo que tarda en coger desde el aviso a la espalda, más la latencia de quien lo oye."},
 ]
 
 static func entry(id: String) -> Dictionary:

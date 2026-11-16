@@ -370,9 +370,25 @@ func claim_look(_seat: int, _cue_id: int) -> void: pass
 ## (match_net.lurker_release); whether a warning began.
 func judge_release() -> bool: return false
 
+## On the machine in charge: the player driving it drinks the light of the
+## room it is in (match_net.lurker_drink); whether it drank.
+func judge_drink() -> bool: return false
+
 ## On the machine that drives it: the take the machine in charge judged due,
 ## a leap at `point` or a hold (match_net.order_take).
 func take_leap(_point: Vector3, _leap: bool) -> void: pass
+
+## On the machine that drives it: the machine in charge sent it off from
+## `from` (match_net.lurker_scared), blinded by `seat`'s torch when `flash`.
+func scared_here(_flash: bool, _from: Vector3, _seat: int, _seconds: float) -> void: pass
+
+## On the machine in charge: the player driving it shows itself at the edge
+## of somebody's view (match_net.lurker_peek).
+func judge_peek() -> void: pass
+
+## For the floor's report of whoever drove it (run_ledger): its longest
+## warning that took somebody, in metres; 0 with none.
+func longest_warning() -> float: return 0.0
 
 ## The beats of throwing a hiding place open (match_net.update_wardrobe_jobs),
 ## seconds from its start: the leaves burst, it reaches in, it is done.

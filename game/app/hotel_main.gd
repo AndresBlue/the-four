@@ -150,7 +150,13 @@ const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 var difficulty := DIFFICULTY.REFERENCE
 
 func tuning() -> Dictionary:
+	if versus_play(): return DIFFICULTY.versus_profile(kind.CREATURE_KEY, rule("lurker_window") / 10.0)
 	return DIFFICULTY.profile(difficulty, kind.CREATURE_KEY)
+
+## A person drives a creature that has a versus of its own (difficulty.VERSUS):
+## a versus match, or this machine hunting bots (lurker_versus.md 3).
+func versus_play() -> bool:
+	return (match_net.versus() or solo_locust) and DIFFICULTY.VERSUS.has(kind.CREATURE_KEY)
 
 func set_difficulty(id: Variant) -> void:
 	difficulty = DIFFICULTY.valid(id)
@@ -959,7 +965,7 @@ func mount_geometry(difficulty_id := "", fallback := false) -> void:
 	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
 	hotel.perf = perf
 	hotel.bounce.perf = perf
-	if not fallback and "difficulty_id" in hotel: hotel.difficulty_id = DIFFICULTY.valid(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
+	if not fallback and "difficulty_id" in hotel: hotel.difficulty_id = DIFFICULTY.VERSUS_DARK[kind.CREATURE_KEY] if versus_play() else DIFFICULTY.valid(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
 	add_child(hotel)
 	await hotel.build(manifest)
 	configure_hotel()

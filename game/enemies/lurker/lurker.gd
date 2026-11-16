@@ -21,6 +21,7 @@ const VOICE := preload("res://game/enemies/lurker/lurker_voice.gd")
 const CAPTURE := preload("res://game/app/capture_styles/lurker_capture.gd")
 const PLAYER := preload("res://game/enemies/lurker/lurker_player.gd")
 const SCORE := preload("res://game/app/capture_styles/lurker_score.gd")
+const STALK := preload("res://game/enemies/lurker/lurker_stalk.gd")
 ## Her sound out of the plenum, through the tile under her: this much quieter
 ## and duller than in the room (spec_f3_integration 3.5).
 const PLENUM_LOSS := -6.0
@@ -43,7 +44,7 @@ const CLIPS := ["idle", "crawl", "crawl_fast", "vent_crawl", "retreat", "loom", 
 const PACK_SIZE := 12
 ## TRAY and BAND: the patch kind (neither: a channel), for visual.cling.
 ## SCARED: drawing back from a fright or fleeing it.
-enum Flag { IN_DUCT = 1, HIDDEN = 2, SURFACE = 4, DRAINING = 8, CUE = 16, DROP = 32, ARRIVING = 64, TRAY = 128, BAND = 256, SCARED = 512 }
+enum Flag { IN_DUCT = 1, HIDDEN = 2, SURFACE = 4, DRAINING = 8, CUE = 16, DROP = 32, ARRIVING = 64, TRAY = 128, BAND = 256, SCARED = 512, SETTLED = 1024 }
 ## Her face in her frame: the offset shell.cue_pose() uses.
 const FACE_OFFSET := SHELL.FACE_OFFSET
 ## How hard her hands hold on, by what she holds (the bench's 0.6 held up).
@@ -117,31 +118,61 @@ var switch_was := {}
 var sparks := {}
 var torch_kill := 0.0
 const SPARK := 0.2
-## Her drink of a whole room past LIT_DRAIN (iteration 2, G8): the room, on
-## every machine from her "snuff" event (-1 none); on the machine in charge,
-## whom for, since when, how long they have been out of it, the room she is
-## counting towards it and for how long, and when each room was last given
-## back. snuff_time: tune()'s seconds (0 never).
+## Her drink of a whole room (lurker_versus.md 8 and 10): the room dark, on
+## every machine from her "snuff" event (-1 none), and the one whose lamps go
+## down before it, from her "warn" event; on the machine in charge, until when
+## it stays dark (INF: until given back), the room her mind is counting
+## towards it and for how long, the warning's end and prey, her last drink,
+## and when each room was last given back. snuff_time: tune()'s seconds of
+## stalking before it (0 never); the rest of her numbers are tuning's drink_*.
 var deep_room := -1
-var deep_prey := -1
-var deep_since := 0.0
-var deep_out := 0.0
+var deep_until := INF
+var warn_room := -1
+var warn_until := 0.0
+var warn_prey := -1
 var snuff_aim := -1
 var snuff_clock := 0.0
+var last_drink := -INF
 var snuffed := {}
 var snuff_time := 0.0
-## How far she drinks it and how fast (it goes in about two seconds and comes
-## back in one), the most she keeps it, the most the prey may be out of it,
-## how soon the same room again; the tremble as it goes, and what is left of
-## it once dark.
-const DEEP := 0.93
-const DEEP_RISE := 0.3
+## All of it, in 0.2 s, and back in one; not the same room within DEEP_AGAIN;
+## her warning takes the lamps down to WARN_LOW, trembling by DEEP_WOBBLE.
+const DEEP := 1.0
+const DEEP_RISE := 5.0
 const DEEP_FALL := 1.0
-const DEEP_MOST := 25.0
-const DEEP_OUT := 3.0
 const DEEP_AGAIN := 45.0
+const WARN_LOW := 0.7
 const DEEP_WOBBLE := 0.12
-const DEEP_REST_WOBBLE := 0.02
+## A person's drink (versus, lurker_versus.md 8): dark this long, this long
+## between two, no warning this long after it.
+const VERSUS_DARK := 6.0
+const VERSUS_EVERY := 25.0
+const VERSUS_CUE := 1.5
+## Her shriek as she drinks (tools/audio/prepare_lurker_drink.py), the hiss of
+## her warning, their captions within CAPTION_NEAR.
+const DRINK_SOUND := "res://assets/audio/sfx/lurker/drink_0.wav"
+const DRINK_GAIN := -2.0
+const WARN_SOUND := "res://assets/audio/sfx/office/tube_hiss.wav"
+const WARN_GAIN := -4.0
+const DRINK_CAPTION := "[Un chillido ahogado]"
+const WARN_CAPTION := "[Zumban los tubos]"
+const CAPTION_NEAR := 12.0
+## Torches she put out with a room (seat -> {at, ons}: her clock then, and
+## switched on since): not drunk, they light again at the RELIGHT_ONS-th
+## switching on (the third press, the drink having switched them off) and
+## never sooner than RELIGHT_AFTER (decision G; a fixed count, never a draw).
+var outed := {}
+const RELIGHT_ONS := 2
+const RELIGHT_AFTER := 1.0
+## Her passing told without an aura (lurker_versus.md 2.6 and 8): s still
+## after which the lamps she drinks stop trembling (still low), and the beam
+## of a torch on within FLICKER_REACH of her flickering while she moves.
+const SETTLE := 1.0
+const SETTLE_MOVE := 0.05
+const FLICKER_REACH := 4.5
+var still_at := Vector3.INF
+var still_time := 0.0
+var flickering := {}
 ## Every capture of hers: {seat, cue, at, forced} (spec_f3_integration 5.9).
 var takes: Array = []
 
@@ -177,6 +208,9 @@ func face_point() -> Vector3: return eye_point()
 func sight_point() -> Vector3: return face_point()
 
 func gaze() -> Vector3:
+	# A puppet looks where its driver's machine says (the host judging whom
+	# a person driving her sees: lurker_versus.md 6).
+	if control == "puppet" and net_look != Vector3.INF: return net_look - eye_point()
 	if visual != null and visual.look_point != Vector3.INF: return visual.look_point - eye_point()
 	return global_basis.z
 
@@ -231,6 +265,7 @@ func arrive() -> void:
 	motion.bodies_ahead = bodies_ahead
 	motion.left_behind = left_behind
 	motion.tile_turned.connect(func(room: int, tile: Vector2i, open: bool, from_below: bool): tell("tile", [room, tile.x, tile.y, open, from_below]))
+	stalk_sites = STALK.sites(shell)
 	think_setup()
 	var stage := int(level.session.stage) if level.get("session") != null else 1
 	var den := den_point(stage)
@@ -494,6 +529,7 @@ func flags() -> int:
 		if kind == SHELL.Kind.TRAY: out |= Flag.TRAY
 		elif kind == SHELL.Kind.BAND: out |= Flag.BAND
 	if draining: out |= Flag.DRAINING
+	if settled(): out |= Flag.SETTLED
 	if cue: out |= Flag.CUE
 	if motion.transit_phase() == &"drop": out |= Flag.DROP
 	if motion.transit_phase() == &"arriving": out |= Flag.ARRIVING
@@ -1319,9 +1355,12 @@ func hallucinations() -> Variant: return load("res://game/app/hallucinations/lur
 ##           `seats` drunk for `seconds` (G1; the last two may be missing)
 ##   "tile"  [room, tile_x, tile_y, open, from_below]: a tile she went through
 ##   "snuff" [room]: the room she drinks dark (G8), -1 when she gives it back
+##   "warn"  [room]: its lamps going down before she drinks it, -1 no more
+##   "drink" [room, seats, at]: her shriek at `at`, the room dark ("snuff")
+##           and the torches of `seats` put out, not drunk (lurker_versus.md 8)
+##   "lit_out" [from]: the light came on where a person drives her: she bolts
 ##   "torch" [seat, "back" | "spark"]: a torch she put out lights again, or
 ##           only sparks (H1); "scare" carries, sixth, the seats put out
-## Phase 4 adds "room_off" [room, seconds] (versus: a room she drinks dark).
 ## Her going into and out of a grille is heard on every machine from her
 ## flags (sound_step()), with no event of its own.
 func tell(kind: String, data: Array) -> void:
@@ -1341,6 +1380,13 @@ func on_event(kind: String, data: Array) -> void:
 			if data.size() >= 2: torch_event(int(data[0]), String(data[1]))
 		"snuff":
 			deep_room = int(data[0]) if data.size() >= 1 else -1
+		"warn":
+			warn_room = int(data[0]) if data.size() >= 1 else -1
+			if warn_room >= 0: drink_sound(WARN_SOUND, FLOOR.position_of(level.manifest.rooms[warn_room]) + Vector3(0, 2.4, 0), WARN_GAIN, WARN_CAPTION)
+		"drink":
+			if data.size() >= 3: drunk_room(int(data[0]), data[1], data[2])
+		"lit_out":
+			if control == "player" and motion != null and data.size() >= 1: motion.bolt(data[0])
 		"tile":
 			if ducts != null and data.size() == 5: turn_tile(int(data[0]), Vector2i(int(data[1]), int(data[2])), bool(data[3]), bool(data[4]))
 
@@ -1462,8 +1508,12 @@ func end_capture() -> void:
 ## heard by the floor by anybody else (spec_f2_mind 9.2). On every machine,
 ## from the one in charge (match_net.send_cue()); `above`: from over them.
 func play_cue(seat: int, cue_id: int, point: Vector3, hold: float, above := false) -> void:
-	# Whoever drives her is held to the warning's pose (motion.cue) until it ends.
-	if control == "player": cue = true
+	# Whoever drives her is held to the warning's pose (motion.cue) until it
+	# ends, let down off her site as far as the warning goes (7.1).
+	if control == "player" and driver != null:
+		cue = true
+		driver.stalk_at = -1
+		if motion != null and motion.surface(): motion.drop(true)
 	var audio = level.get("world_audio")
 	if audio == null or not audio.has_method("play_cue"): return
 	var mine: bool = level.get("player") != null and seat == int(level.player.slot) and (not level.has_method("local_alive") or level.local_alive())
@@ -1482,7 +1532,9 @@ func play_cue(seat: int, cue_id: int, point: Vector3, hold: float, above := fals
 	cue_played.emit(seat, cue_id, point)
 
 func cue_over(cue_id: int, _outcome: String) -> void:
-	if control == "player": cue = false
+	if control == "player":
+		cue = false
+		if motion != null and motion.surface() and motion.state.lowered: motion.drop(false)
 	if int(my_cue.get("id", -1)) == cue_id: my_cue = {}
 	if voice != null: voice.quiet_until = INF
 	var audio = level.get("world_audio")
@@ -1523,21 +1575,32 @@ func in_charge_here() -> bool:
 ## machine): on the machine in charge her warning keeps its clock and is
 ## judged as her mind judges its own (lurker_brain.cue_tick()), on this
 ## machine's copy of her; the take is ordered from here.
+## Phase 3: her percept every tick, for her charge (watch_prey()) and the
+## light's rules out of a warning (judge_light()); a warning saved by a torch
+## or a look sends her off as those do.
 func judge(delta: float) -> void:
 	if brain == null or level == null or not in_charge_here(): return
 	brain.clock += delta
-	if warning.active.is_empty(): return
 	var entry: Dictionary = warning.active
-	var p = senses.perceive(delta, brain.clock, int(entry.seat))
+	var p = senses.perceive(delta, brain.clock, int(entry.seat) if not entry.is_empty() else -1)
 	senses.clicks = []
 	apply_claim(p)
+	watch_prey(p, delta)
+	if entry.is_empty():
+		judge_light(p, delta)
+		return
 	var verdict: StringName = warning.check(brain.clock, p.victim, p, brain.lit_takes)
 	if verdict == &"": return
 	if verdict != &"due":
 		brain.cue_ended.emit(entry)
+		if verdict == &"saved" and String(entry.reason) in ["linterna", "mirada"]: scare_off(String(entry.reason) == "linterna", int(entry.by), p)
 		return
 	var v = p.victim
 	warning.take(brain.clock)
+	longest_take = maxf(longest_take, float(release_metres.get(int(entry.id), 0.0)))
+	# Those near a take are left be `sated` s, as by her mind (lurker_versus.md 3).
+	brain.sated_until = brain.clock + brain.sated
+	brain.sated_point = v.point
 	if level.get("match_net") != null: level.match_net.order_take(FLOOR.floor_point(v.point), float(v.distance) > WARNING.TAKE_REACH)
 	if level.has_method("capture_survivor"): level.capture_survivor(v.body)
 
@@ -1551,18 +1614,30 @@ func judge_release() -> bool:
 	var early := clock - release_at < RELEASE_GAP
 	release_at = clock
 	var best = null
-	if not early and grace <= 0.0 and not in_transit() and warning.can_start(clock):
+	if not early and grace <= 0.0 and not in_transit() and warning.can_start(clock) and not stunned():
 		var p = senses.perceive(0.0, clock, -1)
 		senses.clicks = []
 		for one in level.survivors():
 			if not is_instance_valid(one) or not "slot" in one: continue
 			var v = senses.seen_of(one, p, clock)
 			v.seen = senses.sees(one)
-			if not brain.cue_allowed(p, v) or clock - float(warned.get(int(v.seat), -INF)) < SAME_PREY: continue
-			if best == null or float(v.distance) < float(best.distance): best = v
+			# Her reach (lurker_versus.md 2, rule 4): CHARGED_REACH on whom she
+			# is charged; else LOOSE_REACH, and only from over them.
+			var metres := float(v.distance)
+			var charge: bool = charged.has(int(v.seat))
+			if metres > (CHARGED_REACH if charge else LOOSE_REACH) or not (charge or bool(v.above)): continue
+			# cue_allowed()'s own range is her mind's; hers is the one above.
+			v.distance = clampf(metres, BRAIN.CUE_RANGE.x, BRAIN.CUE_RANGE.y)
+			if not brain.cue_allowed(p, v) or brain.sated_on(v) or clock - float(warned.get(int(v.seat), -INF)) < SAME_PREY: continue
+			v.distance = metres
+			if best == null or metres < float(best.distance): best = v
 		if best != null:
 			warned[int(best.seat)] = clock
-			brain.cue_started.emit(warning.start(int(best.seat), clock, brain.window, float(best.latency), p.face, bool(best.above)))
+			var entry: Dictionary = warning.start(int(best.seat), clock, brain.window, float(best.latency), p.face, bool(best.above))
+			release_metres[int(entry.id)] = float(best.distance)
+			charged.clear()
+			watching.clear()
+			brain.cue_started.emit(entry)
 			return true
 	releases_refused += 1
 	return false
@@ -1574,6 +1649,137 @@ func take_leap(point: Vector3, leap: bool) -> void:
 	if motion == null: return
 	if leap: motion.leap(point)
 	else: motion.hold()
+
+# --- Versus: lying in wait, the light on her, her peek (lurker_versus.md 4.3, 6, 7; phase 3) ---
+
+## m she may begin her warning from: on whom she is charged; on anybody else,
+## and then only from over them.
+const CHARGED_REACH := 7.0
+const LOOSE_REACH := 2.5
+## s settled, watching somebody nobody else sees her watch, before she is
+## charged on them (decision F).
+const CHARGE := 2.0
+## A torch not drunk on her face this long on end blinds her (4.3); her
+## warning and her drink wait FLASH_WAIT s after; nothing is judged of the
+## light on her for FLED s after she is sent off (she is on her way in).
+const BEAM_FLASH := 0.15
+const FLASH_WAIT := 6.0
+const FLED := 1.0
+## Her peek frightens a mind at most this often (7).
+const PEEK_EVERY := 10.0
+## The places she lies in wait (lurker_stalk.gd), from the shell.
+var stalk_sites: Array = []
+## On the machine in charge: seat -> s she has watched them settled; the
+## seats she is charged on; how long a torch has been on her face.
+var watching := {}
+var charged := {}
+var beam_time := 0.0
+var immune_until := -INF
+var stunned_until := -INF
+var fled_until := -INF
+## seat -> brain clock of the last peek that frightened them.
+var peeked := {}
+## The floor's report of whoever drove her: warning id -> metres it began
+## from; the longest of those that took somebody.
+var release_metres := {}
+var longest_take := 0.0
+
+func longest_warning() -> float: return longest_take
+
+## Settled where she lies in wait (lurker_player.settled()): her driver's,
+## or her flags on a puppet. The drain reads it (her light trembles not).
+func settled() -> bool:
+	if control == "puppet": return net_flags & Flag.SETTLED != 0
+	return control == "player" and driver != null and driver.settled()
+
+## Blinded not long ago: no warning, no drink (FLASH_WAIT), on the machine in charge.
+func stunned() -> bool: return brain != null and brain.clock < stunned_until
+
+## Every tick on the machine in charge: settled, her face out of any hole and
+## nobody making her out, each survivor she sees CHARGE s on end is hers to
+## warn from CHARGED_REACH while she stays so.
+func watch_prey(p, delta: float) -> void:
+	if not settled() or bool(p.in_duct) or not p.regarded_by.is_empty() or not p.torch_by.is_empty():
+		watching.clear()
+		charged.clear()
+		return
+	for one in level.survivors():
+		if not is_instance_valid(one) or not "slot" in one: continue
+		var seat := int(one.slot)
+		if not bool(senses.looked.get(seat, false)):
+			watching.erase(seat)
+			continue
+		watching[seat] = float(watching.get(seat, 0.0)) + delta
+		if float(watching[seat]) >= CHARGE: charged[seat] = true
+
+## Out of a warning, her mind's two rules of the light (4.3): a torch not
+## drunk on her face BEAM_FLASH s on end blinds her; a look at her face sends
+## her off.
+func judge_light(p, delta: float) -> void:
+	beam_time = beam_time + delta if not p.torch_by.is_empty() else 0.0
+	if brain.clock < fled_until or grace > 0.0 or in_transit(): return
+	# A torch on her face is its beam's to judge, not the look it also is
+	# (unless she is immune to it: then it is only a look).
+	if not p.torch_by.is_empty() and brain.clock >= immune_until:
+		if beam_time >= BEAM_FLASH: scare_off(true, int(p.torch_by[0]), p)
+	elif not p.regarded_by.is_empty(): scare_off(false, int(p.regarded_by[0]), p)
+
+## Sent off from `seat`, on the machine in charge. Blinded (`flash`): her
+## shriek and her fright as her mind's (the "scare" event drinks that torch
+## torch_drunk s), immune to another flash while hers lasts and FLASH_IMMUNE
+## more, and FLASH_WAIT s before her warning or her drink. Either way, her
+## driver's machine bolts her into the ceiling (match_net.lurker_scared()).
+func scare_off(flash: bool, seat: int, p) -> void:
+	var clock: float = brain.clock
+	var one = senses.body_of(seat)
+	var from: Vector3 = one.camera.global_position if one != null else p.face
+	fled_until = clock + FLED
+	beam_time = 0.0
+	watching.clear()
+	charged.clear()
+	if flash:
+		immune_until = clock + PLAYER.VIEW.FLASH_RISE + PLAYER.VIEW.FLASH_FALL + PLAYER.VIEW.FLASH_IMMUNE
+		stunned_until = clock + FLASH_WAIT
+		scares += 1
+		scream(p.face)
+		tell("scare", [seat, "linterna", p.face, [seat], torch_drunk, []])
+	if level.get("match_net") != null: level.match_net.lurker_scared(flash, from, seat if flash else -1, torch_drunk)
+
+## On the machine that drives her: the host sent her off from `from`. Her eyes
+## lose the torch that blinded her here too (a guest's driven copy of her
+## hears no "scare"); her body bolts in as her mind's does, or is taken in.
+func scared_here(flash: bool, from: Vector3, seat: int, seconds: float) -> void:
+	if driver == null or motion == null: return
+	driver.scared(flash, from)
+	if flash and seat >= 0 and not in_charge_here(): drink_torches([seat], seconds)
+	if motion.surface() and not motion.bolt(from): motion.place_in_duct(ducts.nearest_node(motion.anchor()))
+
+## Her peek (lurker_versus.md 7), on the machine in charge: whoever has her
+## at the edge of their view (SIGHT.beside_view()) and would make her out as
+## their mind does (sanity.sight_of_creature()'s light and reach) loses as
+## much as meeting her eyes, once in PEEK_EVERY s at most. No warning sound.
+func judge_peek() -> void:
+	var mind = level.get("sanity") if level != null else null
+	if brain == null or mind == null or not mind.has_method("fright") or not in_charge_here() or grace > 0.0 or bool(view().in_duct): return
+	peeks += 1
+	var face := face_point()
+	var lit_face := SIGHT.lit_point(level, face)
+	for one in level.survivors():
+		if not SIGHT.alive(level, one) or not level.survivor_active(one) or bool(one.get("hidden")) or not "slot" in one: continue
+		var seat := int(one.slot)
+		if brain.clock - float(peeked.get(seat, -INF)) < PEEK_EVERY: continue
+		var eye: Vector3 = one.camera.global_position
+		var gap := eye.distance_to(face)
+		var torch: bool = "torch" in one and is_instance_valid(one.torch) and one.torch.visible
+		if gap > mind.SANITY_SEEN or (not lit_face and not torch and gap > 6.0): continue
+		if not SIGHT.beside_view(one.camera, face) or not SIGHT.clear(level, eye, face, [get_rid(), one.get_rid()]): continue
+		peeked[seat] = brain.clock
+		mind.fright(one, mind.SANITY_STARE)
+
+## A noise the machine in charge measured her hearing (match_net.tell_hunter()):
+## a ring in her eyes (lurker_view.contact()).
+func hunter_contact(point: Vector3, apparent: Vector3, distance: float, strength: float, kind: int, _muffle: float) -> void:
+	if driver != null and driver.view != null: driver.view.contact(point, apparent, distance, strength, kind)
 
 ## The victim's machine says it heard warning `cue_id` (match_net.cue_heard):
 ## in the ledger, how long after its start the machine in charge knew.
@@ -1634,7 +1840,7 @@ func claim_agrees(seat: int) -> Dictionary:
 		view_now = Transform3D(Basis(Vector3.UP, float(last.yaw)), last.position as Vector3) * (last.view as Transform3D)
 	var face := face_point()
 	var lit_face := SIGHT.lit_point(level, face)
-	var torch_on: bool = "torch" in one and is_instance_valid(one.torch) and one.torch.visible and not senses.drank(one)
+	var torch_on: bool = "torch" in one and is_instance_valid(one.torch) and one.torch.visible and not senses.drank(one) and not SIGHT.torch_cold(one)
 	var look: Dictionary = SIGHT.look_from(level, view_now, torch_on, face, [get_rid(), one.get_rid()], lit_face, SIGHT.REGARD_REMOTE + CLAIM_MARGIN, SIGHT.TORCH_FACE_ANGLE + CLAIM_MARGIN)
 	if not bool(look.regards): return {}
 	if not lit_face and not bool(look.torch) and view_now.origin.distance_to(face) > SIGHT.DARK_FACE: return {}
@@ -1659,17 +1865,27 @@ func place_in_exit(exit: int) -> void:
 
 # --- The light she drinks (spec_f2_mind 5.6) ----------------------------------------------------
 
-## Every DRAIN_EVERY on every machine, from her own position: the targets.
+## Every tick on every machine: the room she drank given back on time by the
+## machine in charge; every DRAIN_EVERY, from her own position, the targets
+## and how long she has kept still; and, while a person drives her, the light
+## coming on where she is (lit_out()).
 func drain_step(delta: float) -> void:
+	if deep_room >= 0 and deep_until < INF and brain != null and in_charge_here() and brain.clock >= deep_until: snuff(-1)
 	drain_clock -= delta
 	if drain_clock > 0.0: return
 	drain_clock = SENSES.DRAIN_EVERY
+	still_time = still_time + SENSES.DRAIN_EVERY if global_position.distance_to(still_at) < SETTLE_MOVE else 0.0
+	still_at = global_position
 	var quiet: bool = grace > 0.0 or in_transit() or hushed() or level == null
 	drain_targets = {} if quiet else SENSES.drain_rooms(level, global_position, drain_reach, drain_cache)
+	if control != "ai" and level != null and in_charge_here(): lit_out()
 
 ## Every frame: each room's light eased towards its target and trembling
-## while she drinks (all its lamps together), nothing trembling on reduced
-## effects.
+## while she drinks (all its lamps together) and moves: still SETTLE s, it
+## stays low and steady (lurker_versus.md 8). The room she is about to drink
+## goes down trembling; the one she drank goes all dark at once. Nothing
+## trembles on reduced effects. Never the emergency units nor the landmarks'
+## lamps (decision E): drain() is the room's own lamps.
 func _process(delta: float) -> void:
 	if level == null or level.get("hotel") == null: return
 	var trace: PERF_TRACE = level.perf if "perf" in level else null
@@ -1681,30 +1897,27 @@ func _process(delta: float) -> void:
 	for r in drained: rooms[r] = true
 	for r in drain_targets: rooms[r] = true
 	if deep_room >= 0: rooms[deep_room] = true
+	if warn_room >= 0: rooms[warn_room] = true
 	var line := float(hotel.LIT_DRAIN)
+	var trembling: bool = not reduced and still_time < SETTLE
 	for r in rooms:
 		var deep: bool = int(r) == deep_room
+		var warned: bool = int(r) == warn_room and not deep
 		var was := float(drained.get(r, 0.0))
-		var target: float = DEEP if deep else float(drain_targets.get(r, 0.0))
-		# Drunk dark slowly, given back in about a second (G8); else as ever.
-		var rate: float = DEEP_RISE if deep else (DEEP_FALL if was > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE else SENSES.DRAIN_EASE)
+		var target: float = DEEP if deep else maxf(float(drain_targets.get(r, 0.0)), WARN_LOW if warned else 0.0)
+		# Her warning's lamps go down over its own time; given back in about a second.
+		var rate: float = DEEP_RISE if deep else WARN_LOW / maxf(0.2, float(tuning.get("drink_warn", 1.0))) if warned else (DEEP_FALL if was > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE else SENSES.DRAIN_EASE)
 		var now := move_toward(was, target, rate * delta)
 		var sent := now
 		var wave := sin(TAU * float(hash(int(r)) % 5 + 7) * drain_time + float(r))
-		if deep and not reduced:
-			# The tremble grows as it goes; once dark, what is left trembles on,
-			# never back over the line (lit() would blink).
-			if now >= line: sent = clampf(now + DEEP_REST_WOBBLE * wave, line + 0.005, 0.98)
-			else: sent = clampf(now + DEEP_WOBBLE * wave, 0.0, line - 0.01)
-		elif not deep and target > 0.0 and not reduced: sent = clampf(now + SENSES.DRAIN_WOBBLE * wave, 0.0, 0.89)
+		# Never back over the line (lit() would blink).
+		if warned and not reduced: sent = clampf(now + DEEP_WOBBLE * wave, 0.0, line - 0.01)
+		elif not deep and target > 0.0 and trembling: sent = clampf(now + SENSES.DRAIN_WOBBLE * wave, 0.0, 0.89)
 		if now <= 0.0:
 			drained.erase(r)
 			hotel.drain(int(r), 0.0)
-			if hotel.has_method("drain_emergency"): hotel.drain_emergency(int(r), 0.0)
 			continue
-		if absf(sent - float(hotel.drained(int(r)))) > 0.01:
-			hotel.drain(int(r), sent)
-			if hotel.has_method("drain_emergency"): hotel.drain_emergency(int(r), sent)
+		if absf(sent - float(hotel.drained(int(r)))) > 0.01 or (deep and sent >= 1.0 and float(hotel.drained(int(r))) < 1.0): hotel.drain(int(r), sent)
 		drained[r] = now
 	draining = not drained.is_empty()
 	torch_step(delta, reduced)
@@ -1723,7 +1936,8 @@ func drink_torches(seats: Array, seconds: float) -> void:
 ## Every frame: each drunk torch's beam down and flickering, back up at the
 ## end; given back whole once it is over.
 func torch_step(delta: float, reduced: bool) -> void:
-	if control == "ai": dead_torch_step()
+	if in_charge_here(): dead_torch_step()
+	flicker_step(reduced)
 	for seat in drunk.keys():
 		var left := float(drunk[seat]) - delta
 		var one = survivor_of(int(seat))
@@ -1755,16 +1969,24 @@ func kill_torches(seats: Array) -> void:
 		switch_was[int(seat)] = one != null and is_instance_valid(one.get("torch")) and one.torch.visible
 		if one != null and "torch_dim" in one: one.torch_dim = 0.0
 
-## On the machine in charge, every frame: a dead torch switched on again
-## lights once her drink is over, and before that only sparks (H1).
+## On the machine in charge (whoever drives her), every frame: a dead torch
+## switched on again lights once her drink is over, and before that only
+## sparks (H1); one she put out with a room, at its RELIGHT_ONS-th switching on
+## and RELIGHT_AFTER s after, and before that only sparks.
 func dead_torch_step() -> void:
+	var clock: float = brain.clock if brain != null else 0.0
 	for seat in dead_torches.keys():
 		var one = survivor_of(int(seat))
 		if one == null or not is_instance_valid(one.get("torch")): continue
 		var on: bool = one.torch.visible
 		var was: bool = bool(switch_was.get(seat, on))
 		switch_was[seat] = on
-		if on and not was: tell("torch", [int(seat), "spark" if drunk.has(seat) else "back"])
+		if not on or was: continue
+		var back: bool = not drunk.has(seat)
+		if outed.has(seat):
+			outed[seat].ons = int(outed[seat].ons) + 1
+			back = back and int(outed[seat].ons) >= RELIGHT_ONS and clock - float(outed[seat].at) >= RELIGHT_AFTER
+		tell_all("torch", [int(seat), "back" if back else "spark"])
 
 ## Her "torch" event (H1), on every machine.
 func torch_event(seat: int, kind: String) -> void:
@@ -1772,6 +1994,7 @@ func torch_event(seat: int, kind: String) -> void:
 		sparks[seat] = SPARK
 		return
 	dead_torches.erase(seat)
+	outed.erase(seat)
 	sparks.erase(seat)
 	var one = survivor_of(seat)
 	if one != null and "torch_dim" in one and not drunk.has(seat): one.torch_dim = 1.0
@@ -1783,54 +2006,167 @@ func survivor_of(seat: int):
 		if is_instance_valid(one) and "slot" in one and int(one.slot) == seat: return one
 	return null
 
-## On the machine in charge, after her mind (G8): stalking somebody in a lit
-## room for snuff_time s on end, she drinks that room dark; she keeps it while
-## her encounter on them goes on there, and gives it back when it ends, when
-## they have been out of it DEEP_OUT s, or after DEEP_MOST s.
+## Every frame on every machine: the beam of a torch on within FLICKER_REACH
+## of her flickers while she moves (her passing in the dark, 2.6), and is
+## steady again once she has kept still SETTLE s; on reduced effects it only
+## dips. Each torch's switch is watched for its cold from here on
+## (creature_sight.torch_cold()).
+func flicker_step(reduced: bool) -> void:
+	var moving: bool = still_time < SETTLE and grace <= 0.0 and not in_transit() and not hushed()
+	for one in level.survivors():
+		if not is_instance_valid(one) or not "slot" in one or not "torch_dim" in one or not is_instance_valid(one.get("torch")): continue
+		var seat := int(one.slot)
+		SIGHT.torch_cold(one)
+		var own: bool = drunk.has(seat) or dead_torches.has(seat) or sparks.has(seat)
+		if moving and not own and one.torch.visible and one.torch.global_position.distance_to(global_position) <= FLICKER_REACH:
+			flickering[seat] = true
+			# Two beats that rarely meet, as a drunk beam's, shallower.
+			one.torch_dim = 0.75 if reduced else 0.4 + 0.6 * absf(sin(drain_time * 29.0 + float(seat))) * (0.6 + 0.4 * sin(drain_time * 8.3 + float(seat) * 1.3))
+		elif flickering.has(seat):
+			flickering.erase(seat)
+			if not own: one.torch_dim = 1.0
+
+## On the machine in charge, after her mind (lurker_versus.md 10): stalking
+## somebody snuff_time s on end in a lit room she may drink (drink_fair()),
+## its lamps go down trembling and a hiss rises for drink_warn s; if it all
+## still holds then, she drinks it (drink()). They leave the room, it is off.
 func snuff_step(delta: float) -> void:
 	if snuff_time <= 0.0 or level == null or level.get("hotel") == null: return
 	var clock: float = brain.clock
-	var prey_body = senses.body_of(int(brain.prey)) if int(brain.prey) >= 0 else null
-	var theirs := room_of_point(prey_body.global_position) if prey_body != null else -1
-	if deep_room >= 0:
-		deep_out = deep_out + delta if theirs != deep_room else 0.0
-		var mine: int = motion.room()
-		var near: bool = mine == deep_room or (mine >= 0 and Array(level.manifest.adjacency[deep_room]).has(mine))
-		var going: bool = brain.state in [BRAIN.State.STALK, BRAIN.State.HUSH, BRAIN.State.CREEP, BRAIN.State.CUE] and int(brain.prey) == deep_prey
-		if not going or not near or deep_out > DEEP_OUT or clock - deep_since > DEEP_MOST: snuff(-1, -1)
+	if warn_room >= 0:
+		var body = senses.body_of(warn_prey)
+		if body == null or room_of_point(body.global_position) != warn_room or not drink_fair(warn_room, warn_prey, clock): tell_all("warn", [-1])
+		elif clock >= warn_until: drink(warn_room, float(tuning.get("drink_dark", 4.0)), float(tuning.get("drink_cue", 1.5)), warn_prey)
 		return
-	var aim := theirs if brain.state == BRAIN.State.STALK and theirs >= 0 and level.hotel.lit(theirs) and may_snuff(theirs, clock) else -1
+	var prey := int(brain.prey)
+	var prey_body = senses.body_of(prey) if prey >= 0 else null
+	var theirs := room_of_point(prey_body.global_position) if prey_body != null else -1
+	var aim := theirs if brain.state == BRAIN.State.STALK and theirs >= 0 and drink_fair(theirs, prey, clock) else -1
 	snuff_clock = snuff_clock + delta if aim >= 0 and aim == snuff_aim else 0.0
 	snuff_aim = aim
-	if aim >= 0 and snuff_clock >= snuff_time: snuff(aim, int(brain.prey))
+	if aim < 0 or snuff_clock < snuff_time: return
+	snuff_clock = 0.0
+	warn_prey = prey
+	warn_until = clock + float(tuning.get("drink_warn", 1.0))
+	tell_all("warn", [aim])
 
-## A room she may drink dark: one that may be dark at all, not protected nor
-## off limits, and not given back in the last DEEP_AGAIN s.
+## Her mind's drink may go on (lurker_versus.md 10): the room lit and hers to
+## drink (may_snuff()), none dark now nor within drink_every, no warning
+## running, not within SCARE_CALM of a fright of hers, and never at a prey
+## whose torch she already drank or put out.
+func drink_fair(room: int, seat: int, clock: float) -> bool:
+	if deep_room >= 0 or not warning.active.is_empty() or drunk.has(seat) or dead_torches.has(seat): return false
+	if clock - last_drink < float(tuning.get("drink_every", 60.0)) or clock - brain.scared_at < BRAIN.SCARE_CALM: return false
+	return level.hotel.lit(room) and may_snuff(room, clock)
+
+## A room she may drink dark: one that may be dark at all (never a landmark's,
+## a lobby nor a refuge), not protected nor off limits, and not given back in
+## the last DEEP_AGAIN s.
 func may_snuff(room: int, clock: float) -> bool:
 	var data: Dictionary = level.manifest.rooms[room]
 	if not OFFICE.may_be_dark(data) or level.point_protected(FLOOR.position_of(data)): return false
 	if level.has_method("off_limits_rooms") and level.off_limits_rooms().has(room): return false
 	return clock - float(snuffed.get(room, -INF)) >= DEEP_AGAIN
 
-## Drinks `room` dark for `seat`, or gives it back (-1): told to every machine.
-func snuff(room: int, seat: int) -> void:
-	var clock: float = brain.clock if brain != null else 0.0
-	if room < 0 and deep_room >= 0: snuffed[deep_room] = clock
-	deep_prey = seat
-	deep_since = clock
-	deep_out = 0.0
+## Her drinks: how many, and each {at, room, seats, dark} (her clock), for the
+## tests and the bots' count; a person's asks refused.
+var drinks: Array = []
+var drinks_refused := 0
+
+## Drinks `room` dark for `seconds` on the machine in charge (her mind's, or a
+## person's judged here): her shriek, the torches of everybody in it put out,
+## no warning for `gap` s, and her mind told (`seat`: whom she was after).
+func drink(room: int, seconds: float, gap: float, seat := -1) -> void:
+	var clock: float = brain.clock
+	var seats: Array = []
+	for one in level.survivors():
+		if is_instance_valid(one) and "slot" in one and SIGHT.alive(level, one) and room_of_point(one.camera.global_position) == room: seats.append(int(one.slot))
+	last_drink = clock
 	snuff_clock = 0.0
 	snuff_aim = -1
-	tell("snuff", [room])
+	brain.on_drank(seat, gap, seconds if control == "ai" else 0.0)
+	drinks.append({"at": clock, "room": room, "seats": seats, "dark": seconds})
+	tell_all("drink", [room, seats, face_point()])
+	deep_until = clock + seconds
+
+## Her drink of a room, on every machine from her "drink" event: her shriek
+## heard where she is (not a fright: no mind frightened, no flight for the
+## music), the room dark at once, and the torches of `seats` out, switched
+## off (this machine's own player's here; a bot's by its own hand,
+## bot_threat_lurker.relight()), not drunk: back by RELIGHT_ONS.
+func drunk_room(room: int, seats: Array, at: Vector3) -> void:
+	deep_room = room
+	warn_room = -1
+	deep_until = INF
+	drink_sound(DRINK_SOUND, at, DRINK_GAIN, DRINK_CAPTION)
+	var clock: float = brain.clock if brain != null else 0.0
+	var audio = level.get("world_audio")
+	for seat in seats:
+		var one = survivor_of(int(seat))
+		if one == null or not is_instance_valid(one.get("torch")): continue
+		if one.torch.visible and audio != null and audio.has_method("play_at"): audio.play_at(DRUNK_SOUND, one.torch.global_position, DRUNK_GAIN)
+		if one == level.get("player"): one.torch.visible = false
+		outed[int(seat)] = {"at": clock, "ons": 0}
+	kill_torches(seats)
+
+## A sound of her drink at a point, with its caption for whoever is near.
+func drink_sound(path: String, at: Vector3, gain: float, caption: String) -> void:
+	var audio = level.get("world_audio") if level != null else null
+	if audio == null or not audio.has_method("play_at"): return
+	audio.play_at(path, at, gain)
+	if audio.has_method("show_caption") and audio.listener_position().distance_to(at) <= CAPTION_NEAR: audio.show_caption(caption, false)
+
+## Her driver drinks the room she is in (match_net.lurker_drink();
+## lurker_versus.md 8), judged on the machine in charge: one she may drink
+## (may_snuff()), her face out of a hidden duct, no warning running nor a room
+## of hers dark, and not within VERSUS_EVERY of the last. Whether she drank.
+func judge_drink() -> bool:
+	if brain == null or control == "ai" or not in_charge_here(): return false
+	var clock: float = brain.clock
+	var room := -1 if in_network_duct() else room_of_point(face_point())
+	if grace <= 0.0 and not in_transit() and room >= 0 and deep_room < 0 and warning.active.is_empty() and clock - last_drink >= VERSUS_EVERY and may_snuff(room, clock):
+		drink(room, VERSUS_DARK, VERSUS_CUE)
+		return true
+	drinks_refused += 1
+	return false
+
+## On the machine in charge while a person drives her: the light coming on in
+## the room she is in, not her own drink given back, sends her off by the
+## nearest way in, as her mind's on_room_lit() does (OFICINAS 3).
+var lit_was := {}
+func lit_out() -> void:
+	var room := -1 if in_network_duct() else room_of_point(face_point())
+	if room < 0 or level.get("hotel") == null: return
+	var now: bool = level.hotel.lit(room)
+	var hers: bool = room == deep_room or float(drained.get(room, 0.0)) > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE
+	if lit_was.has(room) and not bool(lit_was[room]) and now and not hers: tell_all("lit_out", [face_point()])
+	lit_was = {room: now}
+
+## Told to every machine (tell()) and to the one that drives her, whose copy
+## takes no creature event (match_net.driver_event()). Her "lit_out" [from]
+## bolts her there (motion.bolt()); nowhere else does it do anything.
+func tell_all(kind: String, data: Array) -> void:
+	tell(kind, data)
+	var net = level.get("match_net") if level != null else null
+	if net != null and is_instance_valid(net) and net.has_method("driver_event"): net.driver_event(kind, data)
+
+## Drinks `room` dark until given back, or gives it back (-1): told to every
+## machine. (Her drink is drink(); this is its dark, for the tools and tests.)
+func snuff(room: int, _seat := -1) -> void:
+	var clock: float = brain.clock if brain != null else 0.0
+	if room < 0 and deep_room >= 0: snuffed[deep_room] = clock
+	deep_until = INF
+	snuff_clock = 0.0
+	snuff_aim = -1
+	tell_all("snuff", [room])
 
 ## Every room she drank given back at once (a stage given back, a floor continued).
 func undrain() -> void:
 	if level == null or level.get("hotel") == null: return
-	for r in drained:
-		level.hotel.drain(int(r), 0.0)
-		if level.hotel.has_method("drain_emergency"): level.hotel.drain_emergency(int(r), 0.0)
+	for r in drained: level.hotel.drain(int(r), 0.0)
 	drained = {}
 	drain_targets = {}
 	draining = false
 	deep_room = -1
-	deep_prey = -1
+	deep_until = INF
+	warn_room = -1

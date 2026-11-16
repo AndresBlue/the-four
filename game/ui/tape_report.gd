@@ -225,7 +225,10 @@ static func team(ui, page: VBoxContainer, line: Dictionary) -> void:
 		var row := row_in(page)
 		STYLE.cell(row, "", MARK, 17)
 		STYLE.cell(row, String(hunter.get("name", "")).to_upper(), 196, 18, STYLE.ALERT)
-		STYLE.cell(row, "THE LOCUST, %d captura%s" % [int(line.get("deaths", 0)), "" if int(line.get("deaths", 0)) == 1 else "s"], 420, 16, STYLE.ALERT)
+		var said := "%s, %d captura%s" % ["THE LURKER" if int(line.get("floor", 1)) == 2 else "THE LOCUST", int(line.get("deaths", 0)), "" if int(line.get("deaths", 0)) == 1 else "s"]
+		# Hers: her longest warning that took somebody (lurker_versus.md 11).
+		if float(hunter.get("longest", 0.0)) > 0.0: said += ", aviso más largo %s m" % String.num(float(hunter.longest), 1).replace(".", ",")
+		STYLE.cell(row, said, 420, 16, STYLE.ALERT)
 		ui.spacer(page, 3)
 	var earned: Array = SCORE.bonuses(line)
 	if not earned.is_empty():
