@@ -482,6 +482,10 @@ func build_audio() -> void:
 ## Each floor's own music while it is played (the hotel's, the author's of 16
 ## November 2026); any other floor, the game's theme.
 const FLOOR_THEMES := {1: "res://assets/audio/hotel_theme.mp3"}
+## Where a theme's loop starts again: past the encoder's lead-in (about 14 ms
+## of near silence at the head of the MP3), so its end overlaps into its start
+## with no gap (tools/audio/prepare_hotel_theme.py LOOP_OVERLAP).
+const LOOP_OFFSETS := {"res://assets/audio/hotel_theme.mp3": 0.014}
 const GAME_THEME := "res://assets/audio/the_four_theme.mp3"
 var floor_themes := {}
 func floor_theme(number: int) -> AudioStream:
@@ -489,6 +493,7 @@ func floor_theme(number: int) -> AudioStream:
 	if not floor_themes.has(path):
 		var stream: AudioStream = load(path).duplicate()
 		stream.set("loop", true)
+		stream.set("loop_offset", float(LOOP_OFFSETS.get(path, 0.0)))
 		floor_themes[path] = stream
 	return floor_themes[path]
 

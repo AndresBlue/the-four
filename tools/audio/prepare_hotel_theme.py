@@ -8,7 +8,8 @@ loud and cut short, and its start is soft, so it looped with a jolt. Here:
 
 - Forwards to just before its cut, then the last piece backwards, from that
   point back to 10:00, panning slowly from ear to ear, darkening and falling
-  to the start's level: where the loop turns over, soft meets soft.
+  to the start's level; and where the loop turns over, its last seconds and
+  its first overlap (LOOP_OVERLAP), soft into soft with no silence between.
 - Over all of it, kept low: wow and flutter (a tape's slow and fast wobble of
   pitch), two microtonally detuned copies (+18 and -23 cents), a tritone up
   and a minor second down swelling in and out, a frequency shift of a few
@@ -26,6 +27,7 @@ RATE = 48000
 MIRROR_BEFORE_CUT = 2.0   # seconds before the original's cut where it turns back
 BACK_TO = 600.0           # 10:00, the last piece's start
 TAIL_GAIN = 0.11          # the backwards part falls to this (about -19 dB)
+LOOP_OVERLAP = 8.0        # seconds the end and the start are heard together
 CHUNK = 1 << 22
 
 
@@ -51,7 +53,9 @@ def cut_point(x):
 
 def compose(x):
     end = cut_point(x) - int(MIRROR_BEFORE_CUT * RATE)
-    forward = x[:end]
+    # Without the near silence it opens on: the loop would fall into it.
+    first = int(np.argmax(np.abs(x).max(axis=1) > db(-60)))
+    forward = x[first:end]
     back = x[int(BACK_TO * RATE):end][::-1].copy()
     n = len(back)
     t = np.linspace(0.0, 1.0, n, dtype=np.float32)
@@ -81,12 +85,18 @@ def compose(x):
     fade = int(0.25 * RATE)
     ramp = np.linspace(0, 1, fade, dtype=np.float32)[:, None]
     joined = np.concatenate([forward[:-fade], forward[-fade:] * (1 - ramp) + back[:fade] * ramp, back[fade:]])
-    # Into the loop's start: the last seconds fade to nothing, the start comes up.
-    tail = int(4.0 * RATE)
-    joined[-tail:] *= np.linspace(1, 0, tail, dtype=np.float32)[:, None] ** 2
-    head = int(0.5 * RATE)
-    joined[:head] *= np.linspace(0, 1, head, dtype=np.float32)[:, None]
     return joined
+
+
+def overlap_loop(x):
+    """The file starts LOOP_OVERLAP seconds in, and its last seconds carry its
+    first ones fading in under the end fading out (equal power): played on a
+    loop, the end becomes the start with nothing between."""
+    n = int(LOOP_OVERLAP * RATE)
+    t = np.linspace(0, np.pi / 2, n, dtype=np.float32)[:, None]
+    out = x[n:].copy()
+    out[-n:] = x[-n:] * np.cos(t) + x[:n] * np.sin(t)
+    return out
 
 
 def delayed(x, delay):
@@ -200,6 +210,7 @@ def main():
         end = min(n, start + len(held))
         mix[start:end] += db(-8) * held[:end - start]
     print("frozen")
+    mix = overlap_loop(mix)
     # As loud as the original at its peak, never clipped.
     mix *= 0.95 / max(1e-9, float(np.abs(mix).max()))
     wavfile.write(target, RATE, (mix * 32767).astype(np.int16))
