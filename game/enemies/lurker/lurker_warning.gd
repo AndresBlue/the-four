@@ -2,7 +2,8 @@ extends RefCounted
 ## The guarantee, in code (docs/OFICINAS.md 1 and 11.5): The Lurker never
 ## takes anybody she has not warned, and never before the warning has run its
 ## window. One per Lurker, on the machine in charge, whoever drives her (the
-## brain, or phase 4's hunter): start() begins a warning behind a survivor,
+## brain, or the judge there when a person does, lurker.judge()): start()
+## begins a warning behind a survivor,
 ## check() is asked every tick while it runs with that tick's truth, and the
 ## take happens only on the tick check() says it is due. Every warning goes
 ## into the ledger with what came of it, and audit() says whether a ledger is
@@ -39,8 +40,8 @@ const CUE_CAPTION_ABOVE := "[Algo respira sobre ti]"
 ## Every warning of the floor: {id, seat, at, window, latency, due, point:
 ## [x, y, z], above, outcome: "active"|"taken"|"saved"|"aborted"|"expired",
 ## end, by (saver seat, -1), reason, take_at (-1), ran, captured, forced (a
-## tool's capture, no warning, skipped by audit()), heard_after (-1; phase 4:
-## the victim's machine said it played it this many s after `at`)}.
+## tool's capture, no warning, skipped by audit()), heard_after (-1; the
+## machine in charge had the victim's word it played it this many s after `at`)}.
 ## Reasons: "mirada", "linterna", "corriendo" (saves); "protegida",
 ## "escondida", "fuera", "con luz", "movida" (aborts); "lejos" (expired);
 ## "forzada" (a tool's capture).
@@ -48,7 +49,7 @@ var ledger: Array = []
 ## The ledger entry in hand, or {}.
 var active := {}
 var next_id := 1
-## seat -> s, set by tests only; wins over the net (phase 4).
+## seat -> s, set by tests only; wins over the net (match_net.latency_of()).
 var latency_for := {}
 
 func can_start(_clock: float) -> bool:
@@ -133,7 +134,7 @@ func captured(cue_id: int) -> void:
 	for entry in ledger:
 		if int(entry.id) == cue_id: entry["captured"] = true
 
-## Phase 4: the victim's machine played it this long after it started.
+## The victim's machine played it, known here this long after it started.
 func heard(cue_id: int, after: float) -> void:
 	for entry in ledger:
 		if int(entry.id) == cue_id: entry["heard_after"] = after

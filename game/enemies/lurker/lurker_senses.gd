@@ -33,7 +33,7 @@ class Seen extends RefCounted:
 	var fair := false
 	var protected := false
 	var remote := false
-	## s added to their window (tests, then phase 4).
+	## s added to their window: their machine's round trip (tests may set it).
 	var latency := 0.0
 	## Her face to their eye; whether she is behind or above them out of
 	## their look; whether they look at her face and can make it out.
@@ -412,7 +412,7 @@ func seen_of(one, p, clock: float):
 	s.fair = level.survivor_active(one) and (session == null or session.participants.get(s.seat, -1) == session.Life.EXPLORING)
 	s.protected = level.point_protected(s.point) or (level.lifts != null and level.lifts.riding.has(s.seat)) or (level.get("untouchable") != null and level.untouchable.has(s.seat))
 	s.remote = SIGHT.is_remote(level, one)
-	s.latency = float(body.warning.latency_for.get(s.seat, 0.0))
+	s.latency = float(body.warning.latency_for.get(s.seat, net_latency(s.seat)))
 	s.distance = (p.face as Vector3).distance_to(s.eye)
 	s.behind = SIGHT.behind_of(s.eye, s.view, p.face)
 	s.above = SIGHT.over_of(s.eye, s.view, p.face)
@@ -425,6 +425,12 @@ func seen_of(one, p, clock: float):
 	s.still_for = float(stills.get(s.seat, 0.0))
 	s.busy = one.get("reading") == true or s.still_for >= BUSY_STILL
 	return s
+
+## The round trip to the seat's machine (match_net.latency_of()): 0 for this
+## machine's own player and the bots.
+func net_latency(seat: int) -> float:
+	var net = level.get("match_net")
+	return float(net.latency_of(seat)) if net != null and net.has_method("latency_of") else 0.0
 
 ## A torch switched on or off where she can hear it: a noise like any other.
 func torch_clicks() -> void:

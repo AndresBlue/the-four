@@ -846,10 +846,17 @@ func ambush_tick(p) -> Dictionary:
 ## Everything a warning needs to begin, on this tick's truth.
 func cue_ready(p) -> bool:
 	var v = p.victim
-	return state in [State.CREEP, State.AMBUSH] and v != null and int(v.seat) == prey and bool(v.seen) and bool(v.fair) and not bool(v.hidden) \
+	return state in [State.CREEP, State.AMBUSH] and v != null and int(v.seat) == prey and cue_allowed(p, v) \
+		and not sated_on(v) and float(spurned.get(prey, -INF)) <= clock
+
+## What the moment asks of a warning behind `v`, whoever begins it: her mind
+## (cue_ready()) or, in versus, her driver's release judged on the machine in
+## charge (lurker.judge_release(); lurker_versus.md 7.1).
+func cue_allowed(p, v) -> bool:
+	return bool(v.seen) and bool(v.fair) and not bool(v.hidden) \
 		and not bool(p.in_duct) and not bool(p.off_limits) and float(v.distance) >= CUE_RANGE.x and float(v.distance) <= CUE_RANGE.y \
 		and bool(v.behind) and p.regarded_by.is_empty() and p.torch_by.is_empty() and (lit_takes or not bool(v.lit)) \
-		and warning.can_start(clock) and not sated_on(v) and float(spurned.get(prey, -INF)) <= clock
+		and warning.can_start(clock)
 
 func creep_tick(p) -> Dictionary:
 	var v = p.victim

@@ -117,8 +117,8 @@ foreach ($renderer in @('forward_plus','gl_compatibility')) {
 # Online play: real host and guest processes over 127.0.0.1 (tools/net_test.ps1,
 # which keeps its own time limit and kills what it started).
 $powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
-foreach ($scenario in @('coop', 'versus', 'late', 'observer', 'office_coop')) {
-    $port = @{ coop = 24600; versus = 24610; late = 24620; observer = 24630; office_coop = 24650 }[$scenario]
+foreach ($scenario in @('coop', 'versus', 'late', 'observer', 'office_coop', 'lurker_coop', 'lurker_versus')) {
+    $port = @{ coop = 24600; versus = 24610; late = 24620; observer = 24630; office_coop = 24650; lurker_coop = 24660; lurker_versus = 24670 }[$scenario]
     Add-Check "net/$scenario" "net_$scenario" @('-NoProfile','-File',(Join-Path $PSScriptRoot 'net_test.ps1'),'-GodotPath',$GodotPath,'-Scenario',$scenario,'-Port',$port) 540 'net' 2 '' $powershell
     $checks[-1].out = Join-Path $evidence "verify_net_$($scenario)_out.log"
     $checks[-1].err = Join-Path $evidence "verify_net_$($scenario)_err.log"

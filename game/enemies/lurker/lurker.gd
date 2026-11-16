@@ -568,6 +568,8 @@ func step_physics(delta: float) -> void:
 					apply_motion()
 		"puppet":
 			follow_state(delta)
+			watch_claim()
+	if control != "ai": judge(delta)
 	sound_beat(delta)
 	drain_step(delta)
 	show_body()
@@ -902,7 +904,7 @@ func think_setup() -> void:
 	brain = BRAIN.new()
 	brain.setup(self, rng, warning)
 	brain.tune(tuning)
-	brain.cue_started.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue"): level.match_net.send_cue(int(entry.seat), int(entry.id), Vector3(entry.point[0], entry.point[1], entry.point[2]), float(entry.due) - float(entry.at)))
+	brain.cue_started.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue"): level.match_net.send_cue(int(entry.seat), int(entry.id), Vector3(entry.point[0], entry.point[1], entry.point[2]), float(entry.due) - float(entry.at), bool(entry.above)))
 	brain.cue_ended.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue_over"): level.match_net.send_cue_over(int(entry.id), String(entry.outcome)))
 	brain.scared.connect(func(cause: String, seat: int):
 		scares += 1
@@ -914,6 +916,7 @@ func think(delta: float) -> void:
 	var trace: PERF_TRACE = level.perf if "perf" in level else null
 	var started := Time.get_ticks_usec() if trace != null else 0
 	var p = senses.perceive(delta, brain.clock, brain.prey_seat())
+	apply_claim(p)
 	if trace != null: trace.timed(&"lurker.senses", started)
 	for click in senses.clicks: brain.on_heard(click.route, click.point)
 	senses.clicks = []
@@ -1007,15 +1010,24 @@ func apply_intent(wanted: Dictionary) -> void:
 
 # --- The getters her percept reads (8.3) ---------------------------------------------------
 
-func in_network_duct() -> bool: return motion != null and motion.in_duct and motion.hidden
+## From view(): her motion where it moves her, her flags on a puppet (the
+## host's copy in versus, whose motion stands still).
+func in_network_duct() -> bool:
+	var v := view()
+	return bool(v.in_duct) and bool(v.hidden)
 
-func duct_node() -> int: return motion.near_node if motion != null and motion.in_duct else -1
+func duct_node() -> int:
+	var v := view()
+	return int(v.near) if bool(v.in_duct) else -1
 
 func at_exit() -> int:
-	if not in_network_duct() or not motion.legs.is_empty(): return -1
-	if motion.mouth_exit >= 0: return motion.mouth_exit
+	if not in_network_duct(): return -1
+	if control != "puppet":
+		if not motion.legs.is_empty(): return -1
+		if motion.mouth_exit >= 0: return motion.mouth_exit
+	var near := duct_node()
 	for e in ducts.exits.size():
-		if int(ducts.exits[e].node) == motion.near_node: return e
+		if int(ducts.exits[e].node) == near: return e
 	return -1
 
 func ahead(metres: float) -> PackedVector3Array:
@@ -1447,16 +1459,20 @@ func end_capture() -> void:
 	if brain != null: brain.on_released()
 
 ## Her warning, played here from where she is: in the victim's own ears, and
-## heard by the floor by anybody else (spec_f2_mind 9.2).
-func play_cue(seat: int, cue_id: int, point: Vector3, hold: float) -> void:
+## heard by the floor by anybody else (spec_f2_mind 9.2). On every machine,
+## from the one in charge (match_net.send_cue()); `above`: from over them.
+func play_cue(seat: int, cue_id: int, point: Vector3, hold: float, above := false) -> void:
+	# Whoever drives her is held to the warning's pose (motion.cue) until it ends.
+	if control == "player": cue = true
 	var audio = level.get("world_audio")
 	if audio == null or not audio.has_method("play_cue"): return
 	var mine: bool = level.get("player") != null and seat == int(level.player.slot) and (not level.has_method("local_alive") or level.local_alive())
 	var sounds: Array = WARNING.cue_sounds(hold)
 	var path: String = sounds[cue_id % sounds.size()]
 	audio.play_cue(path, point, mine)
-	var entry: Dictionary = warning.active if not warning.active.is_empty() else {}
-	var caption: String = WARNING.CUE_CAPTION_ABOVE if bool(entry.get("above", false)) else WARNING.CUE_CAPTION
+	var caption: String = WARNING.CUE_CAPTION_ABOVE if above else WARNING.CUE_CAPTION
+	# The victim's window, on its own machine when another judges it.
+	if mine and not in_charge_here(): my_cue = {"id": cue_id, "hold": hold, "until": Time.get_ticks_msec() + int(hold * 1000.0)}
 	if mine: audio.show_caption(caption, false, hold)
 	elif bool(audio.route_source(point, RID(), level.player.camera.global_position).get("audible", false)) and point.distance_to(level.player.camera.global_position) <= 10.0:
 		audio.show_caption(WARNING.CUE_CAPTION_NEAR, false)
@@ -1465,10 +1481,164 @@ func play_cue(seat: int, cue_id: int, point: Vector3, hold: float) -> void:
 	if mine and voice != null: voice.quiet_until = voice.now() + hold
 	cue_played.emit(seat, cue_id, point)
 
-func cue_over(_cue_id: int, _outcome: String) -> void:
+func cue_over(cue_id: int, _outcome: String) -> void:
+	if control == "player": cue = false
+	if int(my_cue.get("id", -1)) == cue_id: my_cue = {}
 	if voice != null: voice.quiet_until = INF
 	var audio = level.get("world_audio")
 	if audio != null and "caption_lock" in audio: audio.caption_lock = 0.0
+
+# --- Her warning over the net, and its judge (lurker_versus.md 7 and 11, phase 1) ---------------
+
+## A release asked sooner than this after the last is refused; nobody is
+## warned again within SAME_PREY s of their last warning (lurker_versus.md 7.4).
+const RELEASE_GAP := 0.5
+const SAME_PREY := 4.0
+## Degrees the host grants a victim's claim beyond its own cones (OFICINAS
+## 11.6): the victim saw its own view, the host has it late.
+const CLAIM_MARGIN := 15.0
+## s a claim waits for this machine's look to agree: the gap between two of
+## the claimant's states.
+const CLAIM_WAIT := 0.15
+var release_at := -INF
+var releases_refused := 0
+var claims_taken := 0
+var claims_refused := 0
+## seat -> brain clock of their last warning begun by a release.
+var warned := {}
+## A victim's claim the machine in charge holds ({id, seat, until}), read
+## into the next ticks' percepts (apply_claim()).
+var claimed := {}
+## On the victim's own machine, when another judges: the warning it heard
+## ({id, hold, until}, until in ms), while its window runs and it has not
+## claimed.
+var my_cue := {}
+
+## This machine judges her warning: the host online, the only machine offline.
+func in_charge_here() -> bool:
+	var net = level.get("match_net") if level != null else null
+	return net == null or not net.has_method("in_charge") or net.in_charge()
+
+## Every tick while nobody's mind drives her (a person does, here or on another
+## machine): on the machine in charge her warning keeps its clock and is
+## judged as her mind judges its own (lurker_brain.cue_tick()), on this
+## machine's copy of her; the take is ordered from here.
+func judge(delta: float) -> void:
+	if brain == null or level == null or not in_charge_here(): return
+	brain.clock += delta
+	if warning.active.is_empty(): return
+	var entry: Dictionary = warning.active
+	var p = senses.perceive(delta, brain.clock, int(entry.seat))
+	senses.clicks = []
+	apply_claim(p)
+	var verdict: StringName = warning.check(brain.clock, p.victim, p, brain.lit_takes)
+	if verdict == &"": return
+	if verdict != &"due":
+		brain.cue_ended.emit(entry)
+		return
+	var v = p.victim
+	warning.take(brain.clock)
+	if level.get("match_net") != null: level.match_net.order_take(FLOOR.floor_point(v.point), float(v.distance) > WARNING.TAKE_REACH)
+	if level.has_method("capture_survivor"): level.capture_survivor(v.body)
+
+## Her driver lets go (match_net.lurker_release()), judged on the machine in
+## charge: a warning begins behind the nearest survivor her mind would warn
+## now (lurker_brain.cue_allowed()), but never sooner than RELEASE_GAP after
+## the last ask nor on somebody warned in the last SAME_PREY s. Whether one began.
+func judge_release() -> bool:
+	if brain == null or senses == null or control == "ai" or not in_charge_here(): return false
+	var clock: float = brain.clock
+	var early := clock - release_at < RELEASE_GAP
+	release_at = clock
+	var best = null
+	if not early and grace <= 0.0 and not in_transit() and warning.can_start(clock):
+		var p = senses.perceive(0.0, clock, -1)
+		senses.clicks = []
+		for one in level.survivors():
+			if not is_instance_valid(one) or not "slot" in one: continue
+			var v = senses.seen_of(one, p, clock)
+			v.seen = senses.sees(one)
+			if not brain.cue_allowed(p, v) or clock - float(warned.get(int(v.seat), -INF)) < SAME_PREY: continue
+			if best == null or float(v.distance) < float(best.distance): best = v
+		if best != null:
+			warned[int(best.seat)] = clock
+			brain.cue_started.emit(warning.start(int(best.seat), clock, brain.window, float(best.latency), p.face, bool(best.above)))
+			return true
+	releases_refused += 1
+	return false
+
+## The take the machine in charge ordered (match_net.order_take()), on the
+## machine that drives her: her leap at them, or a hold near enough.
+func take_leap(point: Vector3, leap: bool) -> void:
+	cue = false
+	if motion == null: return
+	if leap: motion.leap(point)
+	else: motion.hold()
+
+## The victim's machine says it heard warning `cue_id` (match_net.cue_heard):
+## in the ledger, how long after its start the machine in charge knew.
+func cue_heard_by(seat: int, cue_id: int) -> void:
+	if brain == null: return
+	for entry in warning.ledger:
+		if int(entry.id) == cue_id and int(entry.seat) == seat and float(entry.heard_after) < 0.0: warning.heard(cue_id, brain.clock - float(entry.at))
+
+## On the victim's own machine while its window runs: the first tick its
+## player looks at her face as it would count here, it claims it, once.
+func watch_claim() -> void:
+	if my_cue.is_empty() or level == null or level.get("player") == null: return
+	if Time.get_ticks_msec() > int(my_cue.until):
+		my_cue = {}
+		return
+	var face := face_point()
+	var look: Dictionary = SIGHT.look_of(level, level.player, face, [get_rid()], SIGHT.lit_point(level, face))
+	if not bool(look.regards) or level.get("match_net") == null: return
+	level.match_net.claim_look(int(my_cue.id))
+	my_cue = {}
+
+## A victim's claim, on the machine in charge, for the warning it is about:
+## kept CLAIM_WAIT s for this machine's own look to agree (apply_claim()).
+func claim_look(seat: int, cue_id: int) -> void:
+	if brain == null or warning.active.is_empty() or int(warning.active.id) != cue_id or int(warning.active.seat) != seat: return
+	claimed = {"id": cue_id, "seat": seat, "until": brain.clock + CLAIM_WAIT}
+
+## Every tick a claim is kept: once this machine's own look at the claimant
+## agrees (claim_agrees()), into this tick's percept as a look (and a torch)
+## at her face; forgotten when its warning is over or it has waited enough.
+func apply_claim(p) -> void:
+	if claimed.is_empty(): return
+	var seat := int(claimed.seat)
+	var still: bool = not warning.active.is_empty() and int(warning.active.id) == int(claimed.id)
+	var agreed: Dictionary = claim_agrees(seat) if still else {}
+	if agreed.is_empty():
+		if still and brain.clock <= float(claimed.until): return
+		if still: claims_refused += 1
+		claimed = {}
+		return
+	if not p.regarded_by.has(seat): p.regarded_by.append(seat)
+	if bool(agreed.torch) and not p.torch_by.has(seat): p.torch_by.append(seat)
+	if p.victim != null and int(p.victim.seat) == seat: p.victim.regards = true
+	claims_taken += 1
+	claimed = {}
+
+## Whether this machine's own look at a claimant agrees, with a margin (OFICINAS
+## 11.6): from the newest view its machine sent, not the one drawn REMOTE_VIEW
+## behind, within CLAIM_MARGIN more of both cones; a drunk torch does not count
+## (lurker_senses.drop_drunk()). {} when not, else {"torch": bool}.
+func claim_agrees(seat: int) -> Dictionary:
+	var one = senses.body_of(seat)
+	if one == null or not SIGHT.alive(level, one) or bool(one.get("hidden")): return {}
+	var view_now: Transform3D = one.camera.global_transform
+	var states = one.get("states")
+	if states is Array and not states.is_empty():
+		var last: Dictionary = states[states.size() - 1]
+		view_now = Transform3D(Basis(Vector3.UP, float(last.yaw)), last.position as Vector3) * (last.view as Transform3D)
+	var face := face_point()
+	var lit_face := SIGHT.lit_point(level, face)
+	var torch_on: bool = "torch" in one and is_instance_valid(one.torch) and one.torch.visible and not senses.drank(one)
+	var look: Dictionary = SIGHT.look_from(level, view_now, torch_on, face, [get_rid(), one.get_rid()], lit_face, SIGHT.REGARD_REMOTE + CLAIM_MARGIN, SIGHT.TORCH_FACE_ANGLE + CLAIM_MARGIN)
+	if not bool(look.regards): return {}
+	if not lit_face and not bool(look.torch) and view_now.origin.distance_to(face) > SIGHT.DARK_FACE: return {}
+	return {"torch": bool(look.torch)}
 
 ## Tests and the workbench: on the ceiling over a point, facing `toward`, held.
 func place_over(point: Vector3, toward := Vector3.INF) -> void:

@@ -351,12 +351,28 @@ func cue_of(_body: Node3D) -> int: return -1
 func capture_log() -> Array: return []
 
 ## Its warning behind `seat`, decided on the machine in charge, played here
-## from `point`, where it really is (match_net.send_cue).
-func play_cue(_seat: int, _cue_id: int, _point: Vector3, _hold: float) -> void: pass
+## from `point`, where it really is (match_net.send_cue); `above`: from over them.
+func play_cue(_seat: int, _cue_id: int, _point: Vector3, _hold: float, _above := false) -> void: pass
 
 ## That warning is over (taken, saved, given up): whatever of it is still
 ## held on this machine lets go.
 func cue_over(_cue_id: int, _outcome: String) -> void: pass
+
+## On the machine in charge: the victim's machine said it heard warning
+## `cue_id` (match_net.cue_heard).
+func cue_heard_by(_seat: int, _cue_id: int) -> void: pass
+
+## On the machine in charge: the victim of warning `cue_id` says it was
+## looking at the creature (docs/OFICINAS.md 11.6), to be checked here.
+func claim_look(_seat: int, _cue_id: int) -> void: pass
+
+## On the machine in charge: the player driving it lets go behind somebody
+## (match_net.lurker_release); whether a warning began.
+func judge_release() -> bool: return false
+
+## On the machine that drives it: the take the machine in charge judged due,
+## a leap at `point` or a hold (match_net.order_take).
+func take_leap(_point: Vector3, _leap: bool) -> void: pass
 
 ## The beats of throwing a hiding place open (match_net.update_wardrobe_jobs),
 ## seconds from its start: the leaves burst, it reaches in, it is done.

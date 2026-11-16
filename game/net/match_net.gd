@@ -101,6 +101,7 @@ func end() -> void:
 	rejoin_snapshot = {}
 	floor_live = false
 	watching = 0
+	round_trips.clear()
 
 # --- Start ---------------------------------------------------------------------
 
@@ -270,6 +271,7 @@ func _process(delta: float) -> void:
 	if session_clock <= 0.0:
 		session_clock = 1.0 / SESSION_RATE
 		push_session()
+	update_ping(delta)
 
 func _physics_process(delta: float) -> void:
 	if not in_match() or not net.active() or level.session.state not in [level.session.State.PLAYING, level.session.State.TRANSITION]: return
@@ -765,17 +767,106 @@ func noise(point: Vector3, radius: float, kind := 0) -> void:
 func player_noise(point: Vector3, radius: float, kind: int) -> void:
 	if net.is_host and net.seat_of_peer(multiplayer.get_remote_sender_id()) != 0: level.locust_hear(point, radius, kind)
 
-## A world sound decided on the host (director events), heard by everyone.
-## Her warning behind somebody (docs/OFICINAS.md 1), decided on the machine in
-## charge: played here from where she really is. Phase 4 also sends it,
-## reliable, to every machine (the victim's in its own ears).
-func send_cue(seat: int, cue_id: int, point: Vector3, hold: float) -> void:
-	if is_instance_valid(level.creature): level.creature.play_cue(seat, cue_id, point, hold)
+## Her warning behind somebody (docs/OFICINAS.md 1 and 11.5), decided on the
+## machine in charge: played here from where she really is, and sent reliably
+## to every other machine, where the victim hears it in its own ears and its
+## window starts (`hold`: its window and its latency).
+func send_cue(seat: int, cue_id: int, point: Vector3, hold: float, above := false) -> void:
+	if is_instance_valid(level.creature): level.creature.play_cue(seat, cue_id, point, hold, above)
+	if in_match() and net.is_host: cue_rpc.rpc(seat, cue_id, point, hold, above)
 
-## That warning is over here (phase 4: and on every machine).
+@rpc("authority", "call_remote", "reliable")
+func cue_rpc(seat: int, cue_id: int, point: Vector3, hold: float, above: bool) -> void:
+	if not is_instance_valid(level.creature): return
+	level.creature.play_cue(seat, cue_id, point, hold, above)
+	# The host's ledger keeps when the victim's machine had it.
+	if seat == net.local_seat: cue_heard.rpc_id(1, cue_id)
+
+@rpc("any_peer", "call_remote", "reliable")
+func cue_heard(cue_id: int) -> void:
+	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
+	if net.is_host and seat != 0 and is_instance_valid(level.creature): level.creature.cue_heard_by(seat, cue_id)
+
+## That warning is over here, and on every machine.
 func send_cue_over(cue_id: int, outcome: String) -> void:
 	if is_instance_valid(level.creature): level.creature.cue_over(cue_id, outcome)
+	if in_match() and net.is_host: cue_over_rpc.rpc(cue_id, outcome)
 
+@rpc("authority", "call_remote", "reliable")
+func cue_over_rpc(cue_id: int, outcome: String) -> void:
+	if is_instance_valid(level.creature): level.creature.cue_over(cue_id, outcome)
+
+## The victim's word that it was looking at her during its window (OFICINAS
+## 11.6): the host takes it only if its own look at that body agrees, with a
+## margin (lurker.claim_look()).
+func claim_look(cue_id: int) -> void:
+	if in_match() and not net.is_host: claim_rpc.rpc_id(1, cue_id)
+
+@rpc("any_peer", "call_remote", "reliable")
+func claim_rpc(cue_id: int) -> void:
+	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
+	if net.is_host and seat != 0 and is_instance_valid(level.creature): level.creature.claim_look(seat, cue_id)
+
+## Versus (lurker_versus.md 7): who drives her lets go behind somebody. Asked
+## of the host, which judges it on its copy of her (lurker.judge_release()).
+func lurker_release() -> void:
+	if in_charge():
+		if is_instance_valid(level.creature): level.creature.judge_release()
+	elif local_is_locust(): request_release.rpc_id(1)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_release() -> void:
+	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
+	if is_instance_valid(level.creature): level.creature.judge_release()
+
+## The take the host judged due: the machine that drives her leaps (or holds,
+## near enough), and only then.
+func order_take(point: Vector3, leap: bool) -> void:
+	var creature = level.creature
+	if not is_instance_valid(creature): return
+	if creature.control == "player": creature.take_leap(point, leap)
+	elif versus() and net.is_host and locust_peer() > 0: cue_take.rpc_id(locust_peer(), point, leap)
+
+@rpc("authority", "call_remote", "reliable")
+func cue_take(point: Vector3, leap: bool) -> void:
+	if local_is_locust() and is_instance_valid(level.creature): level.creature.take_leap(point, leap)
+
+## The round trip to each guest, eased (docs/OFICINAS.md 1: in a match the
+## victim's latency is added to its window). The host asks every PING_EVERY
+## s; a guest answers at once with the host's own stamp. A slower answer
+## moves it by PING_EASE, a quicker one by PING_DROP: the stall of a guest
+## building its floor is soon forgotten, a spike of the line is not taken whole.
+const PING_EVERY := 0.5
+const PING_EASE := 0.25
+const PING_DROP := 0.6
+var round_trips := {}
+var ping_clock := 0.0
+
+## s there and back to a seat's machine: 0 for this machine's own player, a
+## bot, or before the first answer.
+func latency_of(seat: int) -> float:
+	return float(round_trips.get(seat, 0.0))
+
+func update_ping(delta: float) -> void:
+	ping_clock -= delta
+	if ping_clock > 0.0: return
+	ping_clock = PING_EVERY
+	ping.rpc(Time.get_ticks_usec())
+
+@rpc("authority", "call_remote", "unreliable")
+func ping(stamp: int) -> void:
+	pong.rpc_id(1, stamp)
+
+@rpc("any_peer", "call_remote", "unreliable")
+func pong(stamp: int) -> void:
+	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
+	if not net.is_host or seat == 0: return
+	var trip := float(Time.get_ticks_usec() - stamp) / 1000000.0
+	if trip < 0.0 or trip > 5.0: return
+	var was := float(round_trips.get(seat, trip))
+	round_trips[seat] = lerpf(was, trip, PING_EASE if trip > was else PING_DROP)
+
+## A world sound decided on the host (director events), heard by everyone.
 func world_sound(path: String, point: Vector3, gain: float, start: float) -> void:
 	if in_match() and net.is_host: play_world_sound.rpc(path, point, gain, start)
 

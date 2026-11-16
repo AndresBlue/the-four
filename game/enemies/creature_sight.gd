@@ -101,18 +101,23 @@ static func regards(level, body, face: Vector3, exclude: Array, lit_face: bool) 
 
 ## One body's look at her face, one ray: {"regards": bool, "torch": bool}.
 static func look_of(level, body, face: Vector3, exclude: Array, lit_face: bool) -> Dictionary:
+	if not alive(level, body) or bool(body.get("hidden")): return {"regards": false, "torch": false}
+	var torch_on: bool = "torch" in body and is_instance_valid(body.torch) and body.torch.visible
+	var cone := REGARD_REMOTE if is_remote(level, body) else REGARD_LOCAL
+	return look_from(level, body.camera.global_transform, torch_on, face, exclude + [body.get_rid()], lit_face, cone, TORCH_FACE_ANGLE)
+
+## A look from a camera `view` at her face (look_of()'s, with its cones given:
+## the host checks a guest's claim against its newest view, wider).
+static func look_from(level, view: Transform3D, torch_on: bool, face: Vector3, exclude: Array, lit_face: bool, cone: float, torch_cone: float) -> Dictionary:
 	var none := {"regards": false, "torch": false}
-	if not alive(level, body) or bool(body.get("hidden")): return none
-	var eye: Vector3 = body.camera.global_position
+	var eye := view.origin
 	var to := face - eye
 	var d := to.length()
 	if d > REGARD_REACH or d < 0.05: return none
-	var angle := rad_to_deg((-body.camera.global_basis.z).angle_to(to))
-	var cone := REGARD_REMOTE if is_remote(level, body) else REGARD_LOCAL
+	var angle := rad_to_deg((-view.basis.z).angle_to(to))
 	if angle > cone: return none
-	if not clear(level, eye, face, exclude + [body.get_rid()]): return none
-	var torch_on: bool = "torch" in body and is_instance_valid(body.torch) and body.torch.visible
-	var torch: bool = torch_on and d <= TORCH_REACH and angle <= TORCH_FACE_ANGLE
+	if not clear(level, eye, face, exclude): return none
+	var torch: bool = torch_on and d <= TORCH_REACH and angle <= torch_cone
 	return {"regards": lit_face or torch or d <= DARK_FACE, "torch": torch}
 
 ## Who regards her now and whose torch is on her face, over every alive,

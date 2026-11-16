@@ -78,6 +78,11 @@ func run() -> void:
 		"office_host": await office_host()
 		"office_alpha": await office_guest("Alpha", 1)
 		"office_bravo": await office_guest("Bravo", 2)
+		"lk_host": await lurker_coop_host()
+		"lk_victim": await lurker_victim(false)
+		"lv_host": await lurker_versus_host()
+		"lv_hunter": await lurker_hunter()
+		"lv_victim": await lurker_victim(true)
 	var file := FileAccess.open("res://evidence/net_%s.json" % role, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"role": role, "passed": failed == 0 and not checks.is_empty(), "checks": checks}, "\t"))
 	file.close()
@@ -804,3 +809,266 @@ func versus_hunter() -> void:
 	check("Abrir el armario acaba con quien estaba dentro", await wait_for(func(): return level.session.restarts >= 1 or level.session.state == level.session.State.FAILED, 25.0))
 	check("Y el piso termina cuando ya no hay a quién levantar", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.ui.screen == "online_failed", 40.0))
 	check("La caza queda en la ficha del cazador, con su hito", await wait_for(func(): return String(level.ui.summary.get("result", "")) == "lost", 10.0) and int(level.records.career.get("hunts", 0)) == 1 and int(level.records.career.get("hunts_won", 0)) == 1 and not level.records.reached(1, "hunter").is_empty(), str(level.records.career))
+
+# --- The Lurker's warning over the net (lurker_versus.md 11, phase 1) ------------
+# The victim is a guest on a slow line (Lag: 150 ms there and back), so what
+# is measured, heard and answered is as late as over a real connection. Co-op:
+# the host's AI warns it. Versus: another guest drives her and asks for the
+# warning; the host judges it, orders the take, and hears the victim's claim.
+
+const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
+const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+## One way of the slow line, in s.
+const LAG := 0.075
+## The slow line listens this far above the room's port.
+const LAG_PORT := 5
+
+## A slow line between one guest and the host: every datagram held `hold` s
+## each way. It listens on `listen` and talks to the host on `target`.
+class Lag extends Node:
+	var server := UDPServer.new()
+	var client: PacketPeerUDP
+	var upstream := PacketPeerUDP.new()
+	var hold := 0.0
+	## [due msec, to the host, bytes], in order (every one is held the same).
+	var queue: Array = []
+	func open(listen: int, target: int, one_way: float) -> bool:
+		hold = one_way
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		return server.listen(listen, "127.0.0.1") == OK and upstream.connect_to_host("127.0.0.1", target) == OK
+	func _process(_delta: float) -> void:
+		server.poll()
+		if server.is_connection_available(): client = server.take_connection()
+		var now := Time.get_ticks_msec()
+		var due := now + int(hold * 1000.0)
+		if client != null:
+			while client.get_available_packet_count() > 0: queue.append([due, true, client.get_packet()])
+		while upstream.get_available_packet_count() > 0: queue.append([due, false, upstream.get_packet()])
+		while not queue.is_empty() and int(queue[0][0]) <= now:
+			var item: Array = queue.pop_front()
+			if bool(item[1]): upstream.put_packet(item[2])
+			elif client != null: client.put_packet(item[2])
+
+## The lowest-id corridor of planta 1 at least 8 m long with a ceiling she can
+## hold on to, not next to an off-limits room (lurker_fairness_test's):
+## {room, centre, along}; the same on every machine, from the manifest.
+func lurker_corridor() -> Dictionary:
+	var off: Array = level.off_limits_rooms()
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR: continue
+		var span := FLOOR.size_of(room)
+		if maxf(span.x, span.y) < (7.0 if OFFICE.real_plan_on() else 8.0) or not level.creature.shell.tray_of.has(int(room.id)): continue
+		if level.manifest.adjacency[int(room.id)].any(func(other): return off.has(int(other))): continue
+		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
+		return {"room": int(room.id), "centre": FLOOR.position_of(room), "along": along}
+	return {}
+
+## Where the victim stands in the corridor, its back to where she will be.
+func victim_stand(spot: Dictionary) -> Vector3:
+	return (spot.centre as Vector3) + (spot.along as Vector3) * 1.5
+
+## Where she is put, 2.4 m behind it on the ceiling.
+func lurker_over(spot: Dictionary) -> Vector3:
+	return (spot.centre as Vector3) - (spot.along as Vector3) * 0.9
+
+## The round trip the host has measured to a seat (0 before any).
+func round_trip(seat: int) -> float:
+	return float(level.match_net.latency_of(seat)) if level.match_net.has_method("latency_of") else 0.0
+
+## A room for the warning on floor 2: the host, the victim on its slow line
+## (and in versus the hunter), floor 2 played.
+func lurker_room(versus: bool) -> bool:
+	var net = level.net
+	check("La sala se abre", net.host("Anfitrión", 0, port) == OK)
+	check("Llegan todos, la víctima por una línea lenta", await wait_for(func(): return net.connected_seats().size() == (3 if versus else 2), 60.0))
+	net.set_option("mode", net.Mode.VERSUS if versus else net.Mode.COOP)
+	if versus:
+		net.set_option("locust", seat_named("Cazadora"))
+		# The room's menus still keep versus to floor 1 (phase 5): the test
+		# plays it on floor 2 all the same.
+		net.options.floor = 2
+	else:
+		net.set_option("floor", 2)
+		net.set_option("difficulty", "equilibrada")
+	check("Empieza la partida en el piso 2", net.start_match(81))
+	check("Se juega en las oficinas", await wait_for(playing, 150.0) and int(level.manifest.get("floor", 1)) == 2)
+	var lurker = level.creature
+	check("La criatura es The Lurker", lurker != null and lurker.kind_id() == &"lurker")
+	if lurker == null or lurker.kind_id() != &"lurker": return false
+	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
+	var victim := seat_named("Víctima")
+	# Settled: the first answers come while the guest is still building its floor.
+	var rtt: float = await wait_for_value(func(): return round_trip(victim), func(value): return value >= 0.12 and value <= 0.3, 40.0)
+	check("El anfitrión mide la ida y vuelta con la víctima: unos 150 ms", rtt >= 0.12 and rtt <= 0.3, "%.3f s" % rtt)
+	check("Y con quien juega en su misma máquina, nada", round_trip(1) == 0.0)
+	return true
+
+## The host's view of the two warnings the victim was given: the first saved by
+## its own torch, the second taken at its due time; each heard on its machine,
+## each with its latency in the window; the ledger fair, and every capture
+## paired with its warning.
+func judge_ledger(entries: Array, victim: int, W: float) -> void:
+	var lurker = level.creature
+	var rtt := round_trip(victim)
+	check("Dos avisos a la víctima", entries.size() == 2, str(entries))
+	if entries.size() != 2: return
+	var saved: Dictionary = entries[0]
+	var taken: Dictionary = entries[1]
+	check("Quien se gira con la linterna se salva: lo juzga el anfitrión", String(saved.outcome) == "saved" and int(saved.by) == victim and String(saved.reason) == "linterna" and float(saved.end) < float(saved.due), str(saved))
+	check("Quien no se gira es capturado al vencer el plazo", String(taken.outcome) == "taken" and float(taken.take_at) >= float(taken.due) - WARNING.EPS and bool(taken.captured), str(taken))
+	var bad: Array = []
+	for e in entries:
+		if absf(float(e.window) - W) > 1e-6 or absf(float(e.latency) - rtt) > 0.08 or float(e.latency) < 0.1: bad.append(e)
+	check("Cada ventana lleva la latencia medida de la víctima", bad.is_empty(), "rtt %.3f: %s" % [rtt, str(bad)])
+	check("La máquina de la víctima dice que oyó cada aviso, dentro de su ventana", entries.all(func(e): return float(e.heard_after) >= 0.0 and float(e.heard_after) < float(e.due) - float(e.at)), str(entries.map(func(e): return e.heard_after)))
+	var audit: Array = WARNING.audit(lurker.capture_log())
+	check("El registro de avisos pasa la auditoría en red", audit.is_empty(), str(audit))
+	print("LURKER claims taken %d, refused %d; releases refused %d" % [int(lurker.claims_taken), int(lurker.claims_refused), int(lurker.releases_refused)])
+	var tally: Dictionary = lurker.tally()
+	check("Nadie capturado sin aviso", int(tally.unpaired) == 0 and int(tally.captures) == 1, str(tally))
+	check("Y la víctima muere", await wait_for(func(): return level.session.participants.get(victim) == level.session.Life.DEAD, 20.0))
+
+## Co-op: the host's AI on floor 2 goes for the guest twice, from behind it.
+func lurker_coop_host() -> void:
+	if not await lurker_room(false): return
+	var lurker = level.creature
+	check("El anfitrión la lleva con su IA", lurker.control == "ai")
+	var victim := seat_named("Víctima")
+	var spot := lurker_corridor()
+	check("Un pasillo para el aviso", not spot.is_empty())
+	if spot.is_empty(): return
+	var W := float(level.tuning().back_window)
+	var body = level.match_net.bodies[victim]
+	var start: int = lurker.warning.ledger.size()
+	for round in 2:
+		check("La víctima espera de espaldas (%d)" % round, await wait_for(func(): return body.global_position.distance_to(victim_stand(spot)) < 0.6 and body.velocity.length() < 0.1, 60.0))
+		await pause_for(1.0)
+		lurker.thinking = false
+		lurker.brain.forget_all(0.0)
+		lurker.brain.spurned = {}
+		lurker.brain.attempts = {}
+		lurker.brain.sated_until = -INF
+		# Dark here: only a torch or a face this near can save it.
+		level.hotel.set_room_power(int(spot.room), false)
+		lurker.place_over(lurker_over(spot), body.camera.global_position)
+		lurker.grace = 0.0
+		lurker.thinking = true
+		await physics_frame
+		lurker.brain.force(&"creep", {"seat": victim})
+		var ended: bool = await wait_for(func(): return lurker.warning.ledger.size() > start + round and String(lurker.warning.ledger[start + round].outcome) != "active", 20.0)
+		check("Su IA le da el aviso y se resuelve (%d)" % round, ended, "%s; %s" % [str(lurker.warning.ledger.slice(start)), " / ".join(lurker.debug_lines())])
+		if not ended: return
+	await judge_ledger(lurker.warning.ledger.slice(start), victim, W)
+
+## Versus: the hunter is a guest; this host is a survivor out of the way, and
+## the judge.
+func lurker_versus_host() -> void:
+	if not await lurker_room(true): return
+	var lurker = level.creature
+	check("En el anfitrión es una réplica de quien la lleva", lurker.control == "puppet")
+	var victim := seat_named("Víctima")
+	var spot := lurker_corridor()
+	if spot.is_empty(): return
+	level.hotel.set_room_power(int(spot.room), false)
+	level.player.torch.visible = false
+	var W := float(level.tuning().back_window)
+	check("Ve a la cazadora moverse", await wait_for(func(): return not lurker.net_states.is_empty(), 20.0))
+	var ended: bool = await wait_for(func():
+		var mine: Array = lurker.warning.ledger.filter(func(e): return int(e.seat) == victim)
+		return mine.size() >= 2 and String(mine[1].outcome) != "active", 150.0)
+	check("Juzga los dos avisos que pide la cazadora", ended, str(lurker.warning.ledger))
+	check("Rechaza lo que no cumple: delante de la víctima, a destiempo", int(lurker.get("releases_refused")) >= 2, str(lurker.get("releases_refused")))
+	await judge_ledger(lurker.warning.ledger.filter(func(e): return int(e.seat) == victim), victim, W)
+	await pause_for(3.0)
+
+## The hunter: a guest driving her by a script, as vs_hunter drives The Locust.
+func lurker_hunter() -> void:
+	var net = level.net
+	await pause_for(1.5)
+	check("La cazadora se conecta", net.join("127.0.0.1", "Cazadora", 1, port) == OK)
+	check("Entra en el versus del piso 2", await wait_for(playing, 150.0) and int(level.manifest.get("floor", 1)) == 2)
+	var lurker = level.creature
+	check("Lleva a The Lurker", lurker != null and lurker.kind_id() == &"lurker" and lurker.control == "player" and lurker.driver != null)
+	if lurker == null or lurker.driver == null: return
+	lurker.driver.scripted = true
+	lurker.grace = 0.0
+	var spot := lurker_corridor()
+	if spot.is_empty(): return
+	var victim := seat_named("Víctima")
+	check("Ve a la víctima", await wait_for(func(): return level.match_net.bodies.has(victim), 30.0))
+	var body = level.match_net.bodies[victim]
+	for round in 2:
+		check("La víctima espera de espaldas (%d)" % round, await wait_for(func(): return body.global_position.distance_to(victim_stand(spot)) < 0.6 and body.velocity.length() < 0.1, 60.0))
+		await pause_for(1.0)
+		# Asked from in front of it, where it would see her: the host says no.
+		lurker.place_over((spot.centre as Vector3) + (spot.along as Vector3) * 3.5, body.camera.global_position)
+		await pause_for(0.6)
+		level.match_net.lurker_release()
+		await pause_for(0.6)
+		check("Delante de la víctima, el anfitrión no empieza ningún aviso (%d)" % round, not lurker.cue)
+		lurker.place_over(lurker_over(spot), body.camera.global_position)
+		await pause_for(1.0)
+		# Asked twice at once: the second is too soon.
+		level.match_net.lurker_release()
+		level.match_net.lurker_release()
+		var began: bool = await wait_for(func(): return lurker.cue, 5.0)
+		check("Soltar detrás de la víctima: el anfitrión empieza el aviso (%d)" % round, began)
+		if not began: return
+		check("Y se acaba cuando el anfitrión lo dice (%d)" % round, await wait_for(func(): return not lurker.cue, 5.0))
+		if round == 0:
+			await pause_for(0.6)
+			check("Salvada la víctima, no salta", level.execution.is_empty())
+		else:
+			check("Vencido el plazo, el anfitrión ordena el salto", await wait_for(func(): return not level.execution.is_empty() and int(level.execution.seat) == victim, 5.0))
+	await pause_for(15.0)
+
+## The victim, on its slow line: back to her, it hears its own warning in its
+## own ears, with its window and its latency. The first time it turns with its
+## torch on her; the second it does not.
+func lurker_victim(versus: bool) -> void:
+	var net = level.net
+	var lag := Lag.new()
+	root.add_child(lag)
+	check("Abre su línea lenta", lag.open(port + LAG_PORT, port, LAG))
+	await pause_for(3.0)
+	check("Se conecta por ella", net.join("127.0.0.1", "Víctima", 2 if versus else 1, port + LAG_PORT) == OK)
+	check("Entra en las oficinas", await wait_for(playing, 150.0) and int(level.manifest.get("floor", 1)) == 2)
+	var lurker = level.creature
+	check("Aquí The Lurker es una réplica", lurker != null and lurker.control == "puppet")
+	if lurker == null: return
+	var spot := lurker_corridor()
+	check("El mismo pasillo que el anfitrión", not spot.is_empty())
+	if spot.is_empty(): return
+	var W := float(level.tuning().back_window)
+	var heard: Array = []
+	lurker.cue_played.connect(func(seat: int, cue_id: int, _point: Vector3):
+		if seat == net.local_seat: heard.append({"id": cue_id, "hold": float(lurker.my_cue.get("hold", -1.0)) if "my_cue" in lurker else -1.0}))
+	var player = level.player
+	var along: Vector3 = spot.along
+	for round in 2:
+		var count := heard.size()
+		player.torch.visible = round == 0
+		var got: bool = await wait_for(func():
+			if heard.size() == count:
+				player.global_position = victim_stand(spot) + Vector3(0, 0.05, 0)
+				player.velocity = Vector3.ZERO
+				player.rotation.y = atan2(-along.x, -along.z)
+				player.camera.rotation.x = 0.0
+			return heard.size() > count, 90.0)
+		check("Oye su propio aviso de la espalda, en su máquina (%d)" % round, got)
+		if not got: return
+		var hold := float(heard[count].hold)
+		check("Con su ventana y su latencia (%d)" % round, hold >= W + 0.1 and hold <= W + WARNING.LATENCY_CAP + 1e-6, "%.3f s; ventana %.2f" % [hold, W])
+		if round == 0:
+			# Turned with the torch on her face a quarter of a second after.
+			await pause_for(0.25)
+			var to: Vector3 = lurker.face_point() - player.camera.global_position
+			player.rotation.y = atan2(-to.x, -to.z)
+			player.camera.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+			await pause_for(W + 1.0)
+			check("Girarse lo salva", level.session.participants.get(net.local_seat) == level.session.Life.EXPLORING and level.execution.is_empty())
+			# Its back to her again: the room it is in may have been lit by the turn.
+			player.camera.rotation.x = 0.0
+		else:
+			check("Sin girarse, lo coge al vencer el plazo", await wait_for(func(): return not level.execution.is_empty() and int(level.execution.seat) == net.local_seat, W + WARNING.LATENCY_CAP + 3.0))
+	await pause_for(15.0)
