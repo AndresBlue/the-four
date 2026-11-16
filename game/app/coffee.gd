@@ -48,7 +48,10 @@ func place() -> void:
 	easing = -1.0
 	var manifest: Dictionary = level.manifest
 	if manifest.is_empty() or not is_instance_valid(level.hotel): return
-	var count := clampi(roundi(manifest.rooms.size() / 100.0) + 1, 3, 5)
+	# By the floor's size (manifest.area: 0.5 for one survivor, 1 for two or
+	# three, 1.2 and 1.35 for four and five): 3, 4 or 5.
+	var size := float(manifest.get("area", 1.0))
+	var count := 3 if size < 0.75 else 4 if size < 1.1 else 5
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([int(manifest.get("seed", 0)), "coffee"])
 	# By planta, best first; the plantas take turns, so each one has its own.

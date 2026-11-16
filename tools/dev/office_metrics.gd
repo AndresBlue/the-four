@@ -213,8 +213,10 @@ func _initialize() -> void:
 		judge("Huecos de la planta %d según GAP_SHARE" % p, gaps_ok, gaps_ok, "todos")
 		judge("Salas a oscuras en la planta %d, media" % p, snappedf((per.call("dark", p) as Array).reduce(func(a, b): return a + b, 0.0) / maxf(1.0, float(made)), 0.01), true, "hacia 0,23, 0,29, 0,36 (informativo)")
 		judge("Lados de cristal en la planta %d, mediana" % p, quantile(per.call("glazed", p), 0.5), true, "informativo")
-	var walks_ok: bool = all.all(func(m): return float(m.walk_0) >= float(OFFICE.LEAST_WALKS[0]) * sqrt(float(m.area_0)) - 0.5)
-	judge("Paseo al montacargas de la planta 0", snappedf(quantile(each.call("walk_0"), 0.0), 0.1), walks_ok, ">= %d × raíz del área" % int(OFFICE.LEAST_WALKS[0]))
+	# The least walk of the plan being drawn (the real building keeps 75 m, 13.3).
+	var least: float = float(OFFICE.least_walks()[0])
+	var walks_ok: bool = all.all(func(m): return float(m.walk_0) >= least * sqrt(float(m.area_0)) - 0.5)
+	judge("Paseo al montacargas de la planta 0", snappedf(quantile(each.call("walk_0"), 0.0), 0.1), walks_ok, ">= %d × raíz del área" % int(least))
 	for want in [["window_share", OFFICE.WINDOW_DEPTH, "Ventanilla"], ["electrical_share", OFFICE.ELECTRICAL_DEPTH, "Cuarto eléctrico"], ["security_share", OFFICE.SECURITY_DEPTH, "Seguridad"]]:
 		var shares: Array = each.call(want[0])
 		var band: Vector2 = want[1]

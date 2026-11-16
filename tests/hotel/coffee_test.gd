@@ -26,7 +26,7 @@ func run() -> void:
 	var machines: Array = level.coffee.machines
 	var wings := {}
 	for machine in machines: wings[int(level.FLOOR.room_at(level.manifest.rooms, machine.global_position).get("wing", -1))] = true
-	check("El hotel tiene de 3 a 5 máquinas", machines.size() >= 3 and machines.size() <= 5, str(machines.size()))
+	check("El hotel de un superviviente, el más pequeño, tiene 3 máquinas", machines.size() == 3, str(machines.size()))
 	check("Repartidas por las plantas", wings.size() >= mini(3, machines.size()) and not wings.has(-1), str(wings.keys()))
 	var start_room := int(level.manifest.start)
 	check("Una en la sala donde se empieza", machines.any(func(machine): return int(level.FLOOR.room_at(level.manifest.rooms, machine.global_position).get("id", -1)) == start_room))
@@ -59,9 +59,9 @@ func run() -> void:
 	for frame in int(level.coffee.BREW * 60.0) + 6: await physics_frame
 	check("El aviso sale aunque las sugerencias estén apagadas", card_words(level) == [level.coffee.FEEL], str(card_words(level)))
 	level.settings.values.control_hints = true
-	await level.start_floor(7, false, [1], "apacible", 2)
+	await level.start_floor(7, false, [1, 2, 3, 4, 5], "apacible", 2)
 	var office: Array = level.coffee.machines
-	check("El piso 2 tiene de 3 a 5", office.size() >= 3 and office.size() <= 5, str(office.size()))
+	check("El piso 2 de cinco supervivientes, el más grande, tiene 5", office.size() == 5, str(office.size()))
 	var palette = level.FLOOR.palette(level.manifest)
 	check("Alguna en una sala de descanso", office.any(func(one): return int(level.FLOOR.room_at(level.manifest.rooms, one.global_position).get("type", -1)) == palette.BREAK_ROOM))
 	print("COFFEE_TEST_RESULT %d fallos" % failed)
