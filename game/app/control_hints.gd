@@ -12,14 +12,15 @@ const HINT_GAMES := 5
 const DARK_ROOMS := 5
 ## Seconds into a game before Tab is shown, if nothing read showed it first.
 const SHEET_AFTER := 30.0
-## Seconds a card of hints stays up, and once one of its keys is pressed (the
-## author, 16 November 2026).
+## Seconds a card stays up. Each of its hints goes HEEDED seconds after it is
+## done, alone (the others stay, at least REST_AFTER more, to be tried too).
 const SHOWN_FOR := 5.0
 const HEEDED := 0.3
-## The keys that heed each card. The keypad's card goes when the keypad closes.
-const HEEDS := {"door": ["interact"], "hide": ["interact"], "inside": ["forward", "interact"], "container": ["interact"], "tv": ["interact"], "read": ["interact"], "reading": ["interact"], "panel": ["interact"], "keypad": ["interact"], "lift": ["interact"], "usable": ["interact"], "torch": ["flashlight"], "sheet": ["sheet"], "hunter": ["interact", "sprint", "locust_trace", "flashlight"]}
-## The kind of the card up.
-var kind_up := ""
+const REST_AFTER := 3.0
+## Held this long, a key is held ("MANTÉN"); let go sooner, it was a touch.
+const HOLD := 0.4
+## The keys whose touches and holds are told apart.
+const TRACKED := ["interact", "forward"]
 var level
 ## What was shown this game, by kind; the dark rooms it was shown in.
 var shown := {}
@@ -29,6 +30,13 @@ var clock := 0.0
 ## Cards waiting their turn, and how long the one up has left.
 var queue: Array = []
 var left := 0.0
+## The hints of the card up: what does each one ({heeds}), and the seconds
+## until a done one goes ("wait", -1 not done) and whether it has ("gone").
+var up: Array = []
+## Seconds each tracked key has been held, and the ones let go this frame
+## after a touch.
+var held := {}
+var tapped := {}
 
 func on() -> bool:
 	return bool(level.settings.values.control_hints) and not level.observer and not level.bot_match
@@ -38,11 +46,9 @@ func on() -> bool:
 func begin() -> void:
 	shown.clear()
 	dark_rooms.clear()
-	queue.clear()
 	last_room = -1
 	clock = 0.0
-	left = 0.0
-	level.ui.show_controls([])
+	clear()
 	if level.observer or level.bot_match: return
 	# Written straight into the values and saved: set_value() applies every
 	# setting again, the graphics too, as the floor starts.
@@ -60,7 +66,8 @@ func begin() -> void:
 
 ## Every frame of play (hotel_main, after drive_local).
 func tick(delta: float) -> void:
-	if left > HEEDED and heeded(): left = HEEDED
+	track(delta)
+	heed(delta)
 	if left > 0.0:
 		left -= delta
 		if left <= 0.0: next()
@@ -79,7 +86,59 @@ func tick(delta: float) -> void:
 	last_room = id
 	if id < 0 or level.hotel.lit(id) or level.player.torch.visible or dark_rooms.has(id) or dark_rooms.size() >= DARK_ROOMS: return
 	dark_rooms[id] = true
-	push(rows("torch"), "torch")
+	push(rows("torch"))
+
+## Touches and holds of the tracked keys.
+func track(delta: float) -> void:
+	tapped.clear()
+	for action: String in TRACKED:
+		if not InputMap.has_action(action): continue
+		var was := float(held.get(action, 0.0))
+		if Input.is_action_pressed(action): held[action] = was + delta
+		else:
+			if was > 0.0 and was < HOLD: tapped[action] = true
+			held[action] = 0.0
+
+## Each hint done goes HEEDED seconds later, alone; the last takes the card.
+func heed(delta: float) -> void:
+	if up.is_empty(): return
+	var going := false
+	for index in up.size():
+		var hint: Dictionary = up[index]
+		if hint.gone: continue
+		if float(hint.wait) < 0.0 and done(hint.heeds):
+			hint.wait = HEEDED
+			left = maxf(left, REST_AFTER)
+		if float(hint.wait) < 0.0: continue
+		hint.wait = float(hint.wait) - delta
+		if float(hint.wait) > 0.0: continue
+		hint.gone = true
+		going = true
+		if up.any(func(other): return not other.gone): level.ui.fade_control(index)
+	if going and up.all(func(other): return other.gone): next()
+
+## Whether the player just did one of these: an action pressed, "tap:" or
+## "hold:" one of TRACKED, "mouse_left" / "mouse_right", "digit" and
+## "backspace" (the keypad's keys), "lock" (the keypad closed) and "out" (out
+## of the wardrobe).
+func done(heeds: Array) -> bool:
+	for heed_id: String in heeds:
+		if heed_id.begins_with("tap:"):
+			if tapped.has(heed_id.trim_prefix("tap:")): return true
+		elif heed_id.begins_with("hold:"):
+			if float(held.get(heed_id.trim_prefix("hold:"), 0.0)) >= HOLD: return true
+		else:
+			match heed_id:
+				"mouse_left": if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT): return true
+				"mouse_right": if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT): return true
+				"backspace": if Input.is_physical_key_pressed(KEY_BACKSPACE): return true
+				"lock": if not level.lock_open: return true
+				"out": if not level.player.hidden: return true
+				"digit":
+					for code in range(KEY_0, KEY_9 + 1):
+						if Input.is_physical_key_pressed(code): return true
+				_: if InputMap.has_action(heed_id) and Input.is_action_just_pressed(heed_id): return true
+	return false
 
 ## What the player is on this frame (interaction.drive_local): the card for
 ## it, the first time in the game.
@@ -88,44 +147,36 @@ func aimed(kind: String, word := "", hold := false) -> void:
 	if kind == "usable":
 		if shown.has("usable:" + word): return
 		shown["usable:" + word] = true
-		push([[["MANTÉN", key("interact")] if hold else [key("interact")], word.left(1).to_upper() + word.substr(1).to_lower()]], "usable")
+		push([[["MANTÉN", key("interact")] if hold else [key("interact")], word.left(1).to_upper() + word.substr(1).to_lower(), ["hold:interact" if hold else "interact"]]])
 		return
 	offer(kind)
 
 func offer(kind: String) -> void:
 	if shown.has(kind): return
 	shown[kind] = true
-	push(rows(kind), kind)
+	push(rows(kind))
 
-func push(card: Array, kind: String) -> void:
+func push(card: Array) -> void:
 	if card.is_empty(): return
-	queue.append([kind, card])
-	if left <= 0.0: next()
+	queue.append(card)
+	if up.is_empty(): next()
 
 func next() -> void:
+	up.clear()
 	if queue.is_empty():
 		left = 0.0
-		kind_up = ""
 		level.ui.show_controls([])
 		return
 	left = SHOWN_FOR
-	var item: Array = queue.pop_front()
-	kind_up = item[0]
-	level.ui.show_controls(item[1])
+	var card: Array = queue.pop_front()
+	for row in card: up.append({"heeds": row[2], "wait": -1.0, "gone": false})
+	level.ui.show_controls(card)
 
 func clear() -> void:
 	queue.clear()
+	up.clear()
 	left = 0.0
-	kind_up = ""
 	level.ui.show_controls([])
-
-## Whether the player just did what the card up says.
-func heeded() -> bool:
-	if kind_up == "typing": return not level.lock_open
-	if kind_up == "hunter" and (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)): return true
-	for action in HEEDS.get(kind_up, []):
-		if InputMap.has_action(action) and Input.is_action_just_pressed(action): return true
-	return false
 
 ## An action's key, or its button on a pad.
 func key(action: String) -> String:
@@ -134,32 +185,33 @@ func key(action: String) -> String:
 func on_pad() -> bool:
 	return level.settings.using_pad and level.settings.pad_present()
 
-## A card: rows of [keys, what they do]. "MANTÉN" before a key says to hold it.
+## A card: rows of [keys, what they do, what does it (done())]. "MANTÉN"
+## before a key says to hold it.
 func rows(kind: String) -> Array:
 	var settings = level.settings
 	var pad := on_pad()
 	var e := key("interact")
 	match kind:
-		"sheet": return [[[key("sheet")], "Abrir la hoja"]]
-		"torch": return [[[key("flashlight")], "Encender la linterna"]]
-		"door": return [[[e], "Abrir o cerrar"], [["MANTÉN", e], "Despacio, sin ruido"]]
-		"hide": return [[[e], "Esconderte"]]
-		"inside": return [[["MANTÉN", "STICK IZQ. ↑" if pad else key("forward")], "Asomarte"], [[e], "Salir"], [["MANTÉN", e], "Salir sin ruido"]]
-		"container": return [[["MANTÉN", e], "Registrar"]]
-		"tv": return [[[e], "Encender la tele"]]
-		"read": return [[[e], "Leer"]]
-		"reading": return [[[e], "Dejar de leer"]]
-		"panel": return [[[e], "Abrir el cuadro y dar la corriente"]]
-		"keypad": return [[[e], "Usar el teclado"]]
-		"typing": return [] if pad else [[["0 A 9"], "Teclear el código"], [["RETROCESO"], "Borrar"], [["ESC"], "Salir"]]
-		"lift": return [[[e], "Pulsar el botón"]]
+		"sheet": return [[[key("sheet")], "Abrir la hoja", ["sheet"]]]
+		"torch": return [[[key("flashlight")], "Encender la linterna", ["flashlight"]]]
+		"door": return [[[e], "Abrir o cerrar", ["tap:interact"]], [["MANTÉN", e], "Despacio, sin ruido", ["hold:interact"]]]
+		"hide": return [[[e], "Esconderte", ["interact"]]]
+		"inside": return [[["MANTÉN", "STICK IZQ. ↑" if pad else key("forward")], "Asomarte", ["hold:forward", "out"]], [[e], "Salir", ["tap:interact", "out"]], [["MANTÉN", e], "Salir sin ruido", ["hold:interact", "out"]]]
+		"container": return [[["MANTÉN", e], "Registrar", ["hold:interact"]]]
+		"tv": return [[[e], "Encender la tele", ["interact"]]]
+		"read": return [[[e], "Leer", ["interact"]]]
+		"reading": return [[[e], "Dejar de leer", ["interact"]]]
+		"panel": return [[[e], "Abrir el cuadro y dar la corriente", ["interact"]]]
+		"keypad": return [[[e], "Usar el teclado", ["interact"]]]
+		"typing": return [] if pad else [[["0 A 9"], "Teclear el código", ["digit", "lock"]], [["RETROCESO"], "Borrar", ["backspace", "lock"]], [["ESC"], "Salir", ["lock"]]]
+		"lift": return [[[e], "Pulsar el botón", ["interact"]]]
 		"hunter":
 			return [
-				[[settings.trigger_name(true)] if pad else ["CLIC IZQ."], "Atacar"],
-				[[settings.trigger_name(false)] if pad else ["CLIC DER."], "Chillar y escuchar"],
-				[[key("sprint")], "Cazar a toda velocidad"],
+				[[settings.trigger_name(true)] if pad else ["CLIC IZQ."], "Atacar", ["mouse_left", "locust_strike"]],
+				[[settings.trigger_name(false)] if pad else ["CLIC DER."], "Chillar y escuchar", ["mouse_right", "locust_shriek"]],
+				[[key("sprint")], "Cazar a toda velocidad", ["sprint"]],
 				# On a pad the trace is the torch button (locust_player.gd).
-				[[key("flashlight") if pad else key("locust_trace")], "Rastro hasta una tele encendida"],
-				[[e], "Abrir puertas y armarios, pasar por una tele"],
+				[[key("flashlight") if pad else key("locust_trace")], "Rastro hasta una tele encendida", ["flashlight" if pad else "locust_trace"]],
+				[[e], "Abrir puertas y armarios, pasar por una tele", ["interact"]],
 			]
 	return []

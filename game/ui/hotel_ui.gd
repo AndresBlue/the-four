@@ -1167,6 +1167,11 @@ func keycap(words: String, size := 13) -> PanelContainer:
 ## (control_hints.gd): [keys, what they do], each key in its keycap and
 ## "MANTÉN" before one in words. An empty card takes them away.
 var controls_card: HBoxContainer
+## Whether a card is up (not going), and the fade under way.
+var controls_up := false
+var controls_fade: Tween
+## How long a card, or one of its hints, takes to fade out.
+const CONTROLS_FADE := 0.35
 func show_controls(card: Array) -> void:
 	if controls_card == null:
 		controls_card = HBoxContainer.new()
@@ -1178,10 +1183,23 @@ func show_controls(card: Array) -> void:
 		controls_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 		controls_card.offset_top = -150
 		controls_card.offset_bottom = -112
+	if controls_fade != null: controls_fade.kill()
+	controls_up = not card.is_empty()
+	# Going: a short fade, then gone.
+	if card.is_empty():
+		if not controls_card.visible: return
+		controls_fade = create_tween()
+		controls_fade.tween_property(controls_card, "modulate:a", 0.0, CONTROLS_FADE)
+		controls_fade.tween_callback(func():
+			controls_card.visible = false
+			for child in controls_card.get_children():
+				controls_card.remove_child(child)
+				child.queue_free())
+		return
 	for child in controls_card.get_children():
 		controls_card.remove_child(child)
 		child.queue_free()
-	controls_card.visible = not card.is_empty()
+	controls_card.visible = true
 	for row in card:
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 8)
@@ -1192,9 +1210,17 @@ func show_controls(card: Array) -> void:
 		outlined(label(line, String(row[1]), 19), STYLE.INK)
 		# Each at its own height, on one line: not stretched to the row's.
 		for piece: Control in line.get_children(): piece.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	if card.is_empty(): return
 	controls_card.modulate.a = 0.0
-	create_tween().tween_property(controls_card, "modulate:a", 1.0, 0.25)
+	controls_fade = create_tween()
+	controls_fade.tween_property(controls_card, "modulate:a", 1.0, 0.25)
+
+## One hint of the card fades out, done; its place stays, so the others do
+## not move under the eye.
+func fade_control(index: int) -> void:
+	if controls_card == null or index < 0 or index >= controls_card.get_child_count(): return
+	var line: Control = controls_card.get_child(index)
+	line.set_meta("gone", true)
+	create_tween().tween_property(line, "modulate:a", 0.0, CONTROLS_FADE)
 
 ## Words over the picture with nothing behind them: a dark edge keeps them
 ## readable on a lit wall.
