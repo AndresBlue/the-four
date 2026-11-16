@@ -1,6 +1,6 @@
 extends SceneTree
-## The control hints of the first games (control_hints.gd): the first card is
-## the moves, in keycaps; each thing is shown once a game; a dark room entered
+## The control hints of the first games (control_hints.gd): none as the floor
+## starts; keys in keycaps, side by side; each thing is shown once a game; a dark room entered
 ## with the torch off says F; five games and they turn off by themselves, and
 ## stay on once turned on by hand; floor 2 turns them on for its own five.
 var failed := 0
@@ -14,7 +14,7 @@ func check(title: String, passed: bool, detail := "") -> void:
 func card_words(level) -> Array:
 	var words: Array = []
 	if level.ui.controls_card == null or not level.ui.controls_card.visible: return words
-	for line in level.ui.controls_card.get_child(0).get_children():
+	for line in level.ui.controls_card.get_children():
 		if not line.is_queued_for_deletion(): words.append(String(line.get_child(line.get_child_count() - 1).text))
 	return words
 
@@ -29,22 +29,30 @@ func run() -> void:
 	await level.start_floor(7, false, [1], "apacible", 1)
 	check("Una partida empezada cuenta", int(settings.values.hint_games) == 1, str(settings.values.hint_games))
 	for frame in 150: await physics_frame
-	var words := card_words(level)
-	check("La primera tarjeta son los movimientos", words.has("Moverte") and words.has("Correr") and words.has("Asomarte por una esquina"), str(words))
-	var first: Node = level.ui.controls_card.get_child(0).get_child(0)
-	check("Cada tecla va en su keycap", first.get_child(0) is PanelContainer)
+	check("Al empezar no sale nada", card_words(level).is_empty(), str(card_words(level)))
 	var hints = level.hints
 	hints.clear()
 	hints.aimed("door")
 	check("La puerta: E abre o cierra, mantenida va despacio", card_words(level) == ["Abrir o cerrar", "Despacio, sin ruido"], str(card_words(level)))
+	var first: Node = level.ui.controls_card.get_child(0)
+	check("Una al lado de la otra, cada tecla en su keycap", level.ui.controls_card is HBoxContainer and first.get_child(0) is PanelContainer)
 	hints.clear()
 	hints.aimed("door")
 	check("Una vez por partida", card_words(level).is_empty())
 	hints.aimed("inside")
 	check("En el armario: asomarse, salir y salir sin ruido", card_words(level) == ["Asomarte", "Salir", "Salir sin ruido"], str(card_words(level)))
+	# Done what it says, it goes HEEDED seconds later.
+	await physics_frame
+	Input.action_press("forward")
+	await physics_frame
+	await physics_frame
+	Input.action_release("forward")
+	check("Hecho caso, se va a los 0,3 s", absf(hints.left - hints.HEEDED) < 0.05, "%.2f" % hints.left)
+	for frame in 30: await physics_frame
+	check("Y ya no está", card_words(level).is_empty(), str(card_words(level)))
 	hints.clear()
 	hints.aimed("usable", "ESCRIBIR", true)
-	check("Lo del piso 2 con su palabra, y MANTÉN si se mantiene", card_words(level) == ["Escribir"] and level.ui.controls_card.get_child(0).get_child(0).get_child(0) is Label, str(card_words(level)))
+	check("Lo del piso 2 con su palabra, y MANTÉN si se mantiene", card_words(level) == ["Escribir"] and level.ui.controls_card.get_child(0).get_child(0) is Label, str(card_words(level)))
 	hints.clear()
 	level.hotel.dark = true
 	level.player.torch.visible = false

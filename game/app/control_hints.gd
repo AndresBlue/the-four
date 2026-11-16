@@ -1,6 +1,6 @@
 extends RefCounted
 ## Control hints for the first games (the author, 16 November 2026): a key in
-## its keycap and what it does, on the left of the picture, the first time each
+## its keycap and what it does, at the foot of the picture, the first time each
 ## thing comes up in a game (hotel_ui.show_controls). On for the first
 ## HINT_GAMES games of each floor reached and off by itself after them; the box
 ## under the sensitivity in Controles turns them on or off again (settings
@@ -12,8 +12,14 @@ const HINT_GAMES := 5
 const DARK_ROOMS := 5
 ## Seconds into a game before Tab is shown, if nothing read showed it first.
 const SHEET_AFTER := 30.0
-## Seconds a card of hints stays up.
+## Seconds a card of hints stays up, and once one of its keys is pressed (the
+## author, 16 November 2026).
 const SHOWN_FOR := 5.0
+const HEEDED := 0.3
+## The keys that heed each card. The keypad's card goes when the keypad closes.
+const HEEDS := {"door": ["interact"], "hide": ["interact"], "inside": ["forward", "interact"], "container": ["interact"], "tv": ["interact"], "read": ["interact"], "reading": ["interact"], "panel": ["interact"], "keypad": ["interact"], "lift": ["interact"], "usable": ["interact"], "torch": ["flashlight"], "sheet": ["sheet"], "hunter": ["interact", "sprint", "locust_trace", "flashlight"]}
+## The kind of the card up.
+var kind_up := ""
 var level
 ## What was shown this game, by kind; the dark rooms it was shown in.
 var shown := {}
@@ -54,6 +60,7 @@ func begin() -> void:
 
 ## Every frame of play (hotel_main, after drive_local).
 func tick(delta: float) -> void:
+	if left > HEEDED and heeded(): left = HEEDED
 	if left > 0.0:
 		left -= delta
 		if left <= 0.0: next()
@@ -65,7 +72,6 @@ func tick(delta: float) -> void:
 		if clock > 1.5: offer("hunter")
 		return
 	if not level.local_alive(): return
-	if clock > 1.5: offer("move")
 	if clock > SHEET_AFTER: offer("sheet")
 	var room := FLOOR.room_at(level.manifest.rooms, level.player.global_position)
 	var id := int(room.get("id", -1))
@@ -73,7 +79,7 @@ func tick(delta: float) -> void:
 	last_room = id
 	if id < 0 or level.hotel.lit(id) or level.player.torch.visible or dark_rooms.has(id) or dark_rooms.size() >= DARK_ROOMS: return
 	dark_rooms[id] = true
-	push(rows("torch"))
+	push(rows("torch"), "torch")
 
 ## What the player is on this frame (interaction.drive_local): the card for
 ## it, the first time in the game.
@@ -82,32 +88,44 @@ func aimed(kind: String, word := "", hold := false) -> void:
 	if kind == "usable":
 		if shown.has("usable:" + word): return
 		shown["usable:" + word] = true
-		push([[["MANTÉN", key("interact")] if hold else [key("interact")], word.left(1).to_upper() + word.substr(1).to_lower()]])
+		push([[["MANTÉN", key("interact")] if hold else [key("interact")], word.left(1).to_upper() + word.substr(1).to_lower()]], "usable")
 		return
 	offer(kind)
 
 func offer(kind: String) -> void:
 	if shown.has(kind): return
 	shown[kind] = true
-	push(rows(kind))
+	push(rows(kind), kind)
 
-func push(card: Array) -> void:
+func push(card: Array, kind: String) -> void:
 	if card.is_empty(): return
-	queue.append(card)
+	queue.append([kind, card])
 	if left <= 0.0: next()
 
 func next() -> void:
 	if queue.is_empty():
 		left = 0.0
+		kind_up = ""
 		level.ui.show_controls([])
 		return
 	left = SHOWN_FOR
-	level.ui.show_controls(queue.pop_front())
+	var item: Array = queue.pop_front()
+	kind_up = item[0]
+	level.ui.show_controls(item[1])
 
 func clear() -> void:
 	queue.clear()
 	left = 0.0
+	kind_up = ""
 	level.ui.show_controls([])
+
+## Whether the player just did what the card up says.
+func heeded() -> bool:
+	if kind_up == "typing": return not level.lock_open
+	if kind_up == "hunter" and (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)): return true
+	for action in HEEDS.get(kind_up, []):
+		if InputMap.has_action(action) and Input.is_action_just_pressed(action): return true
+	return false
 
 ## An action's key, or its button on a pad.
 func key(action: String) -> String:
@@ -122,15 +140,6 @@ func rows(kind: String) -> Array:
 	var pad := on_pad()
 	var e := key("interact")
 	match kind:
-		"move":
-			return [
-				[["STICK IZQ."] if pad else [key("forward"), key("left"), key("backward"), key("right")], "Moverte"],
-				[[key("sprint")], "Correr"],
-				[[key("crouch")], "Agacharte"],
-				[[key("jump")], "Saltar"],
-				[[key("lean_left"), key("lean_right")], "Asomarte por una esquina"],
-				[["CRUCETA ↑ ↓"] if pad else ["RUEDA"], "Acercar la cámara"],
-			]
 		"sheet": return [[[key("sheet")], "Abrir la hoja"]]
 		"torch": return [[[key("flashlight")], "Encender la linterna"]]
 		"door": return [[[e], "Abrir o cerrar"], [["MANTÉN", e], "Despacio, sin ruido"]]

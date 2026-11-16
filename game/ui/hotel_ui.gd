@@ -1162,39 +1162,46 @@ func keycap(words: String, size := 13) -> PanelContainer:
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return cap
 
-## The control hints on the left of the picture (control_hints.gd): rows of
-## [keys, what they do], each key in its keycap and "MANTÉN" before one in
-## words. An empty card takes them away.
-var controls_card: PanelContainer
+## The control hints at the foot of the picture, in the middle (the author,
+## 16 November 2026), one beside the other and over nothing but the picture
+## (control_hints.gd): [keys, what they do], each key in its keycap and
+## "MANTÉN" before one in words. An empty card takes them away.
+var controls_card: HBoxContainer
 func show_controls(card: Array) -> void:
 	if controls_card == null:
-		controls_card = PanelContainer.new()
+		controls_card = HBoxContainer.new()
 		controls_card.name = "ControlHints"
 		controls_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		controls_card.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.62), STYLE.FAINT, 1, 14))
+		controls_card.alignment = BoxContainer.ALIGNMENT_CENTER
+		controls_card.add_theme_constant_override("separation", 36)
 		$HUD.add_child(controls_card)
-		controls_card.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-		controls_card.offset_left = 56
-		controls_card.offset_top = -10
-		controls_card.add_child(VBoxContainer.new())
-		controls_card.get_child(0).add_theme_constant_override("separation", 10)
-	var list: VBoxContainer = controls_card.get_child(0)
-	for child in list.get_children():
-		list.remove_child(child)
+		controls_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		controls_card.offset_top = -150
+		controls_card.offset_bottom = -112
+	for child in controls_card.get_children():
+		controls_card.remove_child(child)
 		child.queue_free()
 	controls_card.visible = not card.is_empty()
 	for row in card:
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 8)
-		list.add_child(line)
+		controls_card.add_child(line)
 		for name in row[0]:
-			if name == "MANTÉN": label(line, "MANTÉN", 16).add_theme_color_override("font_color", STYLE.SOFT)
+			if name == "MANTÉN": outlined(label(line, "MANTÉN", 16), STYLE.SOFT)
 			else: line.add_child(keycap(String(name), 17))
-		label(line, String(row[1]), 19).add_theme_color_override("font_color", STYLE.INK)
-	controls_card.reset_size()
+		outlined(label(line, String(row[1]), 19), STYLE.INK)
+		# Each at its own height, on one line: not stretched to the row's.
+		for piece: Control in line.get_children(): piece.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if card.is_empty(): return
 	controls_card.modulate.a = 0.0
 	create_tween().tween_property(controls_card, "modulate:a", 1.0, 0.25)
+
+## Words over the picture with nothing behind them: a dark edge keeps them
+## readable on a lit wall.
+func outlined(words: Label, color: Color) -> void:
+	words.add_theme_color_override("font_color", color)
+	words.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	words.add_theme_constant_override("outline_size", 6)
 
 ## A Steam friend picked to compare achievements with (0: nobody): their
 ## column fills in when Steam answers (on_friend_achievements).
@@ -1543,18 +1550,22 @@ func controls_panel(parent: Node) -> void:
 	panel.add_child(list)
 	label(list, "CONTROLES", 18).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(list, 2)
-	var moves := "%s %s %s %s" % [settings.key_name("forward"), settings.key_name("left"), settings.key_name("backward"), settings.key_name("right")]
-	var rows: Array = [[moves, "Moverse"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Interactuar"], [settings.key_name("flashlight"), "Linterna"], ["%s %s" % [settings.key_name("lean_left"), settings.key_name("lean_right")], "Asomarse"], ["RUEDA DEL RATÓN", "Zoom de la cámara"], [settings.key_name("sheet"), "Hoja"], ["ESC", "Pausa"]]
+	# Each key in its keycap, as the hints during play show them.
+	var k := func(action: String) -> String: return settings.key_name(action)
+	var rows: Array = [[[k.call("forward"), k.call("left"), k.call("backward"), k.call("right")], "Moverse"], [[k.call("sprint")], "Correr"], [[k.call("crouch")], "Agacharse"], [[k.call("jump")], "Saltar"], [[k.call("interact")], "Interactuar"], [[k.call("flashlight")], "Linterna"], [[k.call("lean_left"), k.call("lean_right")], "Asomarse"], [["RUEDA DEL RATÓN"], "Zoom de la cámara"], [[k.call("sheet")], "Hoja"], [["ESC"], "Pausa"]]
 	# Played on a pad, the card names its buttons, and says which ones flip.
 	if settings.using_pad and settings.pad_present():
-		var flip := func(action: String) -> String: return settings.pad_name(action) + (" (ALTERNA)" if settings.values.get("pad_%s_toggle" % action, false) else "")
-		rows = [["STICK IZQ.", "Moverse"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Interactuar"], [settings.pad_name("flashlight"), "Linterna"], [settings.pad_name("lean_left") + " " + settings.pad_name("lean_right").replace("CRUCETA ", ""), "Asomarse"], ["CRUCETA ↑ ↓", "Zoom de la cámara"], [settings.pad_name("sheet"), "Hoja"], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
+		var flip := func(action: String, words: String) -> String: return words + (" (alterna)" if settings.values.get("pad_%s_toggle" % action, false) else "")
+		rows = [[["STICK IZQ."], "Moverse"], [[settings.pad_name("sprint")], flip.call("sprint", "Correr")], [[settings.pad_name("crouch")], flip.call("crouch", "Agacharse")], [[settings.pad_name("jump")], "Saltar"], [[settings.pad_name("interact")], "Interactuar"], [[settings.pad_name("flashlight")], "Linterna"], [[settings.pad_name("lean_left") + " " + settings.pad_name("lean_right").replace("CRUCETA ", "")], "Asomarse"], [["CRUCETA ↑ ↓"], "Zoom de la cámara"], [[settings.pad_name("sheet")], "Hoja"], [[settings.button_name(JOY_BUTTON_START)], "Pausa"]]
 	for row in rows:
 		var line := HBoxContainer.new()
 		list.add_child(line)
 		line.add_theme_constant_override("separation", 12)
-		var key := label(line, row[0].to_upper(), CONTROLS_SIZE)
-		key.custom_minimum_size.x = 150
+		var keys := HBoxContainer.new()
+		keys.add_theme_constant_override("separation", 5)
+		keys.custom_minimum_size.x = 190
+		line.add_child(keys)
+		for name in row[0]: keys.add_child(keycap(String(name).to_upper(), CONTROLS_SIZE))
 		paragraph(line, row[1], CONTROLS_SIZE, 200, Color(STYLE.INK, 0.78))
 
 ## The controls card's letters and the room between its lines.
