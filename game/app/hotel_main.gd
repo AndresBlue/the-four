@@ -125,6 +125,9 @@ const INTERACTION := preload("res://game/app/interaction.gd")
 ## The control hints of the first games (control_hints.gd).
 const HINTS := preload("res://game/app/control_hints.gd")
 var hints
+## The coffee machines (coffee.gd).
+const COFFEE := preload("res://game/app/coffee.gd")
+var coffee
 var interaction
 const PRESENTATION_RIG := preload("res://game/app/presentation_rig.gd")
 var rig
@@ -278,6 +281,8 @@ func _enter_tree() -> void:
 	$Services.add_child(revival)
 	hints = HINTS.new()
 	hints.level = self
+	coffee = COFFEE.new()
+	coffee.level = self
 	interaction = INTERACTION.new()
 	interaction.name = "Interaction"
 	interaction.level = self
@@ -987,6 +992,7 @@ func populate_floor(with_director: bool) -> void:
 	# goes in a drawer with nothing else in it.
 	place_documents()
 	code.place_key()
+	coffee.place()
 	director = null
 	if with_director:
 		director = DIRECTOR.new()
@@ -1549,6 +1555,7 @@ func spawn_creature() -> void:
 	arm_creature()
 	locust.grace = float(tuning().grace)
 	add_child(locust)
+	wear_legacy()
 	if not player.noise.is_connected(on_noise): player.noise.connect(on_noise)
 	for door in hotel.doors: door.noise.connect(on_noise)
 	# Architecture regression tests opt out explicitly; normal/headless games keep AI.
@@ -1655,6 +1662,7 @@ func step_physics(delta: float) -> void:
 		perf.timed(&"game.interaction", started)
 		started = Time.get_ticks_usec()
 	sanity.tick(delta)
+	coffee.tick(delta)
 	if perf != null: perf.timed(&"game.sanity", started)
 	# Whoever is in charge counts the hold at the exit once a frame, whatever
 	# its own player happens to be doing. It used to be called from inside the
@@ -2109,7 +2117,16 @@ func apply_lens(hunter: bool, reduced: bool) -> void: rig.apply_lens(hunter, red
 func update_zoom_lens() -> void: rig.update_zoom_lens()
 func hunter_seat() -> bool: return rig.hunter_seat()
 const PRESETS := PRESENTATION_RIG.PRESETS
-func apply_settings() -> void: rig.apply_settings()
+func apply_settings() -> void:
+	rig.apply_settings()
+	wear_legacy()
+
+## The Locust of the first commit over the real one (legacy_locust.gd), when
+## its code was redeemed and it is chosen in Extras. This machine's only.
+const LEGACY := preload("res://game/enemies/locust/legacy_locust.gd")
+func wear_legacy() -> void:
+	var visual: Node3D = creature.get_node_or_null("Visual") if is_instance_valid(creature) else null
+	if visual != null: LEGACY.wear(visual, bool(settings.values.legacy_locust) and ui.unlocked("legacy"))
 func configure_hotel() -> void: rig.configure_hotel()
 var enclosure:
 	get: return rig.enclosure

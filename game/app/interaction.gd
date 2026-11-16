@@ -18,6 +18,7 @@ const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
 const PANEL := preload("res://game/world/interactables/hotel_panel.gd")
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
+const COFFEE := preload("res://game/world/interactables/coffee_machine.gd")
 ## The office usable being held (spec_f1_systems 1.2), kept until the key is
 ## let go: the aim may drift while the body is turned to it.
 var using = null
@@ -121,6 +122,8 @@ func hint_aimed(aimed) -> void:
 	elif aimed is PANEL:
 		if level.code.has_key(): hints.aimed("panel")
 	elif aimed is HIDE: hints.aimed("hide")
+	elif aimed is COFFEE:
+		if level.coffee.can_drink(aimed): hints.aimed("coffee")
 	elif not hints.shown.has("door") and is_instance_valid(focused_door()): hints.aimed("door")
 
 func close_document() -> void:
@@ -351,6 +354,13 @@ func drive_local(delta: float) -> void:
 	if car >= 0:
 		level.camcorder.focus("PULSAR")
 		if Input.is_action_just_pressed("interact"): level.match_net.call_lift(car)
+		was_held = Input.is_action_pressed("interact")
+		return
+	# A coffee machine: a cup, once each (coffee.gd).
+	var coffee_target = aimed if aimed is COFFEE else null
+	if is_instance_valid(coffee_target) and not level.player.hidden and level.coffee.can_drink(coffee_target):
+		level.camcorder.focus("CAFÉ")
+		if Input.is_action_just_pressed("interact"): level.coffee.drink(coffee_target)
 		was_held = Input.is_action_pressed("interact")
 		return
 	var television_target = aimed if aimed is TELEVISION else null

@@ -33,6 +33,8 @@ var left := 0.0
 ## The hints of the card up: what does each one ({heeds}), and the seconds
 ## until a done one goes ("wait", -1 not done) and whether it has ("gone").
 var up: Array = []
+## A line of words alone (notice()) is up: it stays with the hints off.
+var notice_up := false
 ## Seconds each tracked key has been held, and the ones let go this frame
 ## after a touch.
 var held := {}
@@ -72,7 +74,7 @@ func tick(delta: float) -> void:
 		left -= delta
 		if left <= 0.0: next()
 	if not on():
-		if left > 0.0 or not queue.is_empty(): clear()
+		if (left > 0.0 and not notice_up) or not queue.is_empty(): clear()
 		return
 	clock += delta
 	if level.match_net.local_is_locust():
@@ -163,6 +165,7 @@ func push(card: Array) -> void:
 
 func next() -> void:
 	up.clear()
+	notice_up = false
 	if queue.is_empty():
 		left = 0.0
 		level.ui.show_controls([])
@@ -175,8 +178,18 @@ func next() -> void:
 func clear() -> void:
 	queue.clear()
 	up.clear()
+	notice_up = false
 	left = 0.0
 	level.ui.show_controls([])
+
+## Words at the foot of the picture, where the hints go, for `seconds`, hints
+## on or off ("Te sientes mejor...", coffee.gd): over whatever card was up.
+func notice(words: String, seconds: float) -> void:
+	queue.clear()
+	up.clear()
+	left = seconds
+	notice_up = true
+	level.ui.show_controls([[[], words, []]])
 
 ## An action's key, or its button on a pad.
 func key(action: String) -> String:
@@ -205,6 +218,7 @@ func rows(kind: String) -> Array:
 		"keypad": return [[[e], "Usar el teclado", ["interact"]]]
 		"typing": return [] if pad else [[["0 A 9"], "Teclear el código", ["digit", "lock"]], [["RETROCESO"], "Borrar", ["backspace", "lock"]], [["ESC"], "Salir", ["lock"]]]
 		"lift": return [[[e], "Pulsar el botón", ["interact"]]]
+		"coffee": return [[[e], "Tomar un café", ["interact"]]]
 		"hunter":
 			return [
 				[[settings.trigger_name(true)] if pad else ["CLIC IZQ."], "Atacar", ["mouse_left", "locust_strike"]],

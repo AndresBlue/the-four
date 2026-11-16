@@ -96,6 +96,7 @@ const CREDITS := [
 		"«[FREE] Pilea Peperomioides Terracotta pot», de AllQuad (Sketchfab, CC BY 4.0): la pilea, simplificada.",
 		"«Hanging Pothos», de kemowolfpaw (Sketchfab, CC BY 4.0): el potus colgante, simplificado.",
 		"«Old TV», de shadowowy (Sketchfab, CC BY 4.0): las teles del hotel.",
+		"«SCP-294 \"The Coffee Machine\"», de Anquietas System (Sketchfab, CC BY 4.0): las máquinas de café, sin sus teclas sueltas ni su taza.",
 		"Televisor y cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["SONIDO DE FREESOUND", [
@@ -898,10 +899,10 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 ## A code typed beside the credits (the author, 16 November 2026), for the
 ## author and friends: it unlocks what it names, kept in the setting "codes".
 ## Known by its SHA-256, so its words are not in the game's files.
-const CODES := {"5a9e67380adf22a6d0766b17fd607c4be780a50333aebeb2471538b464148e90": "miku"}
+const CODES := {"5a9e67380adf22a6d0766b17fd607c4be780a50333aebeb2471538b464148e90": "miku", "c49fea7425fa7f8699897a97c159c6690267d9003bb78c53fafa8fc15c325d84": "legacy"}
 ## What a code unlocked, as the panel says it, and its credit (in the credits
 ## only once it is had: the author, 16 November 2026).
-const CODE_NAMES := {"miku": "MIKU"}
+const CODE_NAMES := {"miku": "MIKU", "legacy": "LEGACY LOCUST"}
 const UNLOCKED_CREDITS := {"miku": "«hatsune miku», de 雨宮レン (oscar3dmodel) (Sketchfab, CC BY 4.0). Hatsune Miku es un personaje de Crypton Future Media."}
 ## The way in from the credits: a small word in the top right corner, gone
 ## with the screen (clear()).
@@ -1823,6 +1824,10 @@ func show_settings(back: String) -> void:
 	var audio_page := page(tabs, "AUDIO")
 	for item in [["General", "master"], ["Ambiente", "ambience"], ["Música", "music"], ["Efectos", "effects"], ["Señales de peligro", "threat"]]: slider(audio_page, item[0], item[1], 0, 1, 0.05)
 	check(audio_page, "Subtítulos de sonidos", "subtitles")
+	# What the credits' codes unlocked, only once one has been (CODES).
+	if unlocked("legacy"):
+		var extras := page(tabs, "EXTRAS")
+		check(extras, "Legacy Locust", "legacy_locust")
 	display_label = paragraph(column, "", 16, 900, STYLE.AMBER)
 	var confirm_row := HBoxContainer.new()
 	confirm_row.add_theme_constant_override("separation", 12)

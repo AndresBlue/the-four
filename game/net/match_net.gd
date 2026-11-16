@@ -693,6 +693,19 @@ func use_hide(hide: Node3D, entering: bool, quiet := false) -> bool:
 		return true
 	return false
 
+## A cup of coffee (coffee.gd): the host, which keeps every mind, gives this
+## one back.
+func drink_coffee(index: int) -> void:
+	if not in_match() or net.is_host:
+		level.coffee.serve(int(level.player.slot), index)
+		return
+	request_coffee.rpc_id(1, index)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_coffee(index: int) -> void:
+	if not net.is_host: return
+	level.coffee.serve(net.seat_of_peer(multiplayer.get_remote_sender_id()), index)
+
 @rpc("any_peer", "call_remote", "reliable")
 func request_hide(index: int, entering: bool, quiet: bool) -> void:
 	if not net.is_host or index < 0 or index >= level.hotel.hides.size(): return
