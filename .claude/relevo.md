@@ -4,46 +4,31 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 **Última actualización:** 14 de noviembre de 2026 (frente visual: las doce fotos del autor, quince modelos y el acabado de la recepción). El tope del **60 % semanal** era de una tarea anterior; el autor no lo ha repetido. La semana se renovó el 14 de noviembre a las 08:00 UTC; la siguiente, el 21.
 
-### Lo primero al retomar (16 de noviembre de 2026, madrugada): la máquina de café
+### Estado al 16 de noviembre de 2026, mañana: todo lo pedido, hecho y subido
 
-**Hecho en esta sesión, todo subido** (hasta `7b16580`):
-- Al ganar el piso 1, «Bajar al piso 2» en solitario y en cooperativo; el desbloqueo por dificultad en el ajuste `floor2` (`085f4b9`).
-- Versus: lo que hacen los supervivientes suena más en la máquina del cazador y lo suyo, menos; la estática de las teles y de sus viajes se apaga con la distancia, nunca del todo (`0f5a81f`).
-- Sugerencias de controles en las primeras partidas (`game/app/control_hints.gd`, `tests/hotel/hints_test.gd`; `8f81d7d` a `03c8abf`).
-- Asomarse: 0,5 m y unos 8° (`922e26e`).
-- La tele del hotel es «Old TV» de shadowowy, CC BY (`7b16580`). La escena de entrada conserva la Trinitron.
+**Hecho en esta sesión** (versiones 1.5.0, 1.5.1 y 1.6.0, con sus etiquetas):
+- Al ganar el piso 1, «Bajar al piso 2», en solitario y en cooperativo.
+- Versus: el oído del cazador. Estática de teles y viajes que se apaga con la distancia.
+- Sugerencias de controles en las primeras partidas (`control_hints.gd`). Asomarse: 0,5 m y unos 8°.
+- La tele del hotel es «Old TV»; la escena de entrada conserva la Trinitron.
+- **Máquinas de café** (`game/app/coffee.gd`): 3, 4 o 5 según el tamaño del piso, al menos una por planta, lejos de puertas, apliques y rejillas bajas. Un café por jugador y máquina.
+- **Códigos** en la esquina de los créditos (`CODES` en `hotel_ui.gd`, solo la huella SHA-256):
+  - «miku»: la Miku como tercer personaje, con su crédito. La Exploradora se quitó y el personaje por defecto es la Detective Femenino.
+  - «legacy»: la pestaña EXTRAS con «Legacy Locust» (`legacy_locust.gd`).
+- **Dos llaves por etapa** (`code_lock.place_key`).
+- **Carteles del piso 2, escasos** (`office_landmarks.gd`): un solo cartel por planta hacia sus hitos, más el de su puerta. Sin banderola, y el directorio solo con departamentos. Hasta seis carteles más por planta hacia otros sitios de la empresa (`office_palette.WAY_PLACES`).
 
-**Pide el autor y falta: una máquina de café que devuelve la cordura.**
-- **Modelo:** `models/scp-294-the-coffee-machine.zip` (`source/scp-294.glb` y texturas). «SCP-294 "The Coffee Machine"», de Anquietas System (anquietas-sys), Sketchfab, CC BY 4.0. Su descripción dice que se basa en el artículo SCP-294 de la wiki SCP, que es CC BY-SA. En el juego no se usa el nombre ni la idea de SCP: es una máquina de café. Crédito en ASSETS.md y en `CREDITS` de `hotel_ui.gd`.
-  - Se hornea con `tools/props/build_model_props.gd`, como la tele (`assets/props/tv_b`).
-  - Las texturas toman los parámetros de importación de las de `assets/props/tv` (VRAM, mipmaps, 1024; el mapa de normales con `normal_map=1`). `godot --headless --import` las importa.
-- **Cuántas y dónde:** de 3 a 5 por piso, según su tamaño.
-  - Hotel: en sitios amplios. La sala de inicio, los vestíbulos (`LOBBY`), las salas altas (`HALL_ROOMS`, `HALL_HEIGHT`) y los salones grandes.
-  - Piso 2: en las salas de descanso (`BREAK_ROOM` de `office_palette.gd`) y lugares parecidos.
-  - Contra una pared libre, como reparte `tv_placement.gd` sus teles: determinista por semilla, sin tocar el manifiesto, porque `manifest_golden_test` vigila el hotel.
-- **Uso:**
-  - E ante ella: «Tomar un café». Sale en las sugerencias de controles como tipo propio en `hint_aimed()` de `interaction.gd`.
-  - Unos segundos después de tomarlo, abajo, donde salen las sugerencias, aparece «Te sientes mejor...». Debe salir aunque las sugerencias estén apagadas.
-  - Los efectos de la cordura se van a lo largo de un segundo y el medidor vuelve a 100.
-- **En red:** la cordura la lleva el anfitrión (`sanity.gd`: `minds`, `pack()` y `apply()` dos veces por segundo). Por eso tomarse un café es una petición al anfitrión, que sube el medidor de ese asiento en un segundo.
-- **Por decidir al hacerlo:** cuántos cafés da cada máquina. Si da cafés sin límite, la cordura deja de pesar. Lo propuesto es un café por jugador y máquina.
-- **Prueba:** una prueba corta del tipo de `hints_test`: cuántas máquinas hay por piso y que un café devuelve la cordura entera en un segundo.
+**Verificado:**
+- `verify.ps1` completo en verde.
+- `map_metrics` 48/48 y `office_metrics` 56/57 (solo el p99 del tiempo del generador, aceptado de antes) con 1000 semillas.
+- `tools/dev/extras_probe.gd` sin fallos en 16 pisos montados.
 
-**La Miku, como skin oculta** (decidido por el autor el 16 de noviembre de 2026): solo para él y sus amigos.
-- **Hecho:** en los créditos, a la derecha, un recuadro «CÓDIGO». Escribir «miku» la desbloquea y queda guardada en el ajuste `codes`. Se pregunta con `ui.unlocked("miku")`. En el juego no está la palabra, solo su SHA-256 (`CODES` en `hotel_ui.gd`).
-- **Hecho también:** en los créditos solo queda «CÓDIGO», arriba a la derecha. Abre una pantalla con el recuadro centrado y, debajo, lo que desbloqueó (`7b5c455`).
-- **Falta, decidido por el autor: quitar «Realistic Female» y que la Miku sea personaje elegible solo con el código canjeado.**
-  - La Miku es el modelo de `models/hatsune-miku.zip`, de Sketchfab (`d418e988c3de40f79e0b329886883241`, 雨宮レン / oscar3dmodel, CC BY 4.0).
-  - «Realistic Female» es la «Exploradora» (`IDS`/`NAMES` en `game/player/avatars/avatar_visual.gd`, índice 2) y es el personaje **por defecto**: ajuste `character` = 2, con `CHARACTER_REVISION` en `settings_service.gd`.
-  - La captura está construida sobre su cuerpo (`docs/EXECUTION.md`). Hay que comprobar que la captura y la cinta funcionan con los detectives y con la Miku (`capture_test`, `tools/capture/avatar_capture.gd`).
-  - **Personaje por defecto: la Detective Femenino** (lo decidió el autor el 16 de noviembre).
-  - Dónde se limita el índice del personaje: `settings_service.sanitize` ("character", 0 a 2), `net_session.gd` (`clampi(character, 0, 2)`) y la pantalla de personajes de `hotel_ui.gd` (`settings.set_value("character", index)`). La Miku sale en esa pantalla solo con `ui.unlocked("miku")`.
-  - En red, el anfitrión acepta el índice que manda cada jugador.
-  - Esqueleto: los supervivientes usan los mapas `MIXAMO` y `CHARACTER_CREATOR` de `avatar_visual.gd`, y sus animaciones se hornean con `tools/avatars/bake_survivor_clips.gd` en `assets/players/<id>/clips.res`. La Miku necesita su mapa de huesos y sus animaciones horneadas. Primero hay que ver qué esqueleto trae el modelo.
-  - Créditos: quitar la línea de Biviyt. **El crédito de la Miku aparece en la lista solo si está desbloqueada** (lo decidió el autor).
-  - `docs/ASSETS.md`: la fila de `realistic_female` pasa a retirada y entra la de la Miku.
-- **Lo que el autor sabe:** el modelo va dentro de los archivos del juego para todos; el código solo lo oculta. El personaje es de Crypton y su licencia (PCL) solo permite usos no comerciales. Encaja mientras el juego sea un proyecto fan sin venta. Si alguna vez se vende, hay que quitarlo.
-- **No se usa** la YYB Miku (`models/YYB Miku Default.zip`): prohíbe por escrito el uso comercial y la violencia.
+**Sin probar en una partida real:**
+- el oído del cazador en Versus;
+- la Miku y el Legacy Locust en movimiento;
+- el café en red.
+
+El zip de la última versión está en `exports/TheFour.zip`; no se subió a Drive.
 
 ### En curso: plan del port a Unreal (el autor, 14 de noviembre, noche)
 

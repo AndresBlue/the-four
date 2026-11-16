@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.6.0](#160--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Dos llaves de los cuadros por etapa, y las oficinas dicen menos dónde están sus salas clave y más dónde está lo demás. |
 | [1.5.1](#151--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Las máquinas de café se pueden usar, y ya no tapan los apliques ni los cuadros. |
 | [1.5.0](#150--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Máquinas de café que devuelven la cordura, sugerencias de controles en las primeras partidas, una tele nueva en el hotel, un oído más fino para The Locust en Versus y códigos en los créditos. |
 | [1.4.0](#140--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El piso 2 se traza como un edificio de oficinas real, The Lurker se rehace, y las oficinas ganan luz desde sus luminarias, polvo en suspensión y salas de hito señaladas. |
@@ -72,6 +73,22 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.6.0 — 16 de noviembre de 2026
+
+*Dos llaves de los cuadros por etapa, y las oficinas dicen menos dónde están sus salas clave y más dónde está lo demás.*
+
+Commits `a530f48d`…`v1.6.0`.
+
+### Novedades
+
+- Las llaves de los cuadros eléctricos son dos por etapa, cada una en un cajón de su planta, en vez de una por piso.
+- En las oficinas, cada planta tiene un solo cartel colgado que señala sus salas clave, además del cartel de su puerta. Ya no hay banderola sobre esas puertas, y el directorio de la llegada nombra solo los departamentos. A cambio, hasta seis carteles por planta señalan otros sitios de la empresa: aseos, sala de juntas, archivo, correo, sala de descanso y otros. Todos señalan bien.
+- Las máquinas de café son 3, 4 o 5 según el tamaño del piso.
+
+### Arreglos
+
+- La medida del paseo al montacargas de `office_metrics` usa el mínimo del edificio real (75 m).
 
 ## 1.5.1 — 16 de noviembre de 2026
 
