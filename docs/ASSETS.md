@@ -296,6 +296,7 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [calathea, planta de interior sin maceta](https://polyhaven.com/a/calathea_orbifolia_01) | `calathea_orbifolia_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [cámara de vigilancia en su carcasa](https://sketchfab.com/3d-models/cctv-camera-e69d5eb37ffb4f188e4d3c84a5d79cdc) | `camara_cctv_smoggybeard` | Smoggybeard | Sketchfab | CC BY 4.0 |
 | [cenicero de vidrio](https://sketchfab.com/3d-models/glass-ashtray-8c9deaa3f4b84e01b186eec4c1269b60) | `cenicero_vidrio_red2000` | RED2000 | Sketchfab | CC BY 4.0 |
+| [televisor antiguo con caja de madera y antena](https://sketchfab.com/3d-models/old-tv-7cef86bade2b447d841c333bcab9287c) | `hotel_tv` (`assets/props/tv_b`) | shadowowy | Sketchfab | CC BY 4.0 |
 | [terminal de pantalla verde de los 80, sin teclado](https://sketchfab.com/3d-models/b0470478089a4462afb4d5c4dd827b22) | `crt_terminal_ibm3278_sketchfab` | maxdragonn (sketchfab.com/maxdragon) | Sketchfab | CC BY 4.0 |
 | [detector de humo](https://sketchfab.com/3d-models/simple-smoke-detector-8db756d4c1564f3197f2415ec2ef7fec) | `detector_humo_sousinho` | Sousinho | Sketchfab | CC BY 4.0 |
 | [recogedor de chapa verde gastado](https://polyhaven.com/a/dustpan) | `dustpan` | Balen | Poly Haven | CC0 1.0 |
@@ -402,7 +403,8 @@ La foto original está en `source_assets/oficinas/alfombras/met_452567/`; en `as
 
 Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. El sofá, el aplique y la monstera ya tienen ficha y licencia (arriba); el resto sigue por verificar antes de cualquier distribución.
 
-- `tv/sony-trinitron-prl.zip`: televisor CRT de la escena de entrada (carcasa y pantalla separadas); desde octubre de 2026 es también el de las teles del hotel, como en el tráiler, sobre la cómoda `GothicCommode_01` de Poly Haven (CC0).
+- `models/old-tv.zip` (16 de noviembre de 2026): «Old TV» de shadowowy (CC BY), el de las teles del hotel desde ese día. Su FBX (`source/tv_tex.rar`) es una sola malla: el cristal se separó en Blender (las caras casi coplanarias alrededor de la que toca un rayo desde el frente, con UV plano de 0 a 1) y se guardó como `assets/props/tv_b/hotel_tv.fbx`, horneado a 0,72 m de ancho por `tools/props/build_model_props.gd`.
+- `tv/sony-trinitron-prl.zip`: televisor CRT de la escena de entrada (carcasa y pantalla separadas); de octubre al 16 de noviembre de 2026 fue también el de las teles del hotel, como en el tráiler, sobre la cómoda `GothicCommode_01` de Poly Haven (CC0).
 - `bedroom/bedroom-furniture-set.zip`: cama con escritorio y silla, escena de entrada.
 - `other/sofa-pbr.zip`: sofá; sustituye al sofá provisional en todo el hotel. Ficha y licencia arriba (Meerschaum Digital, CC BY).
 - `other/wall-lamp-2048px2.zip`: aplique de pared con pantalla de tela; dos junto a cada cuadro en recepción, vestíbulos, pasillos y galerías. Ficha y licencia arriba (Mark Peters, CC BY).

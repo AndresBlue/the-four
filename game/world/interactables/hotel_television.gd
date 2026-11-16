@@ -4,7 +4,7 @@ extends Area3D
 ## counted apart -- `stage` says which ones these are.
 ##
 ## The set itself is the room's own prop, built into the
-## batched geometry: the trailer's CRT on a gothic commode, its glass dark
+## batched geometry: an old wood-cased set on a gothic commode, its glass dark
 ## (prop_factory's "tv" recipe). This node is the interaction target and the
 ## parts that have to change at runtime -- the channel on the glass and the
 ## light it throws into the room -- which cannot live in a MultiMesh.
@@ -19,8 +19,8 @@ const CRT := preload("res://game/intro/tv_screen.gdshader")
 ## Where the screen sits inside the set: the front of the middle of the tube's
 ## face, on the commode, and how big that face is (prop_factory.tv_transform()
 ## and the model's screen; stages_test checks they agree).
-const SCREEN := Vector3(-0.009, 1.672, 0.396)
-const SCREEN_SIZE := Vector2(0.563, 0.422)
+const SCREEN := Vector3(-0.067, 1.455, 0.227)
+const SCREEN_SIZE := Vector2(0.513, 0.364)
 ## The channel is drawn this far out from the glass (in the model's own
 ## units): over it, never into it.
 const OVER_GLASS := 0.003

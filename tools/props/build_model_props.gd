@@ -10,6 +10,8 @@ const MATERIALS := "res://game/presentation/materials/"
 ## The bedroom set is a bed (head at -Z) with a desk and chair on its +X side.
 const JOBS := [
 	{"source": "res://assets/props/tv/old_tv.fbx", "output": "", "split": {"TV_body_low": "res://assets/props/tv/tv_body.res", "TV_screen_low": "res://assets/props/tv/tv_screen.res"}, "parts": {"TV_body_low": "tv_body.tres", "TV_screen_low": ""}, "yaw": 0.0, "axis": "long", "size": 0.62, "anchor": "centre"},
+	# The hotel's sets (Old TV, shadowowy, CC BY; its glass split off in Blender, assets/props/tv_b): 0.72 m wide.
+	{"source": "res://assets/props/tv_b/hotel_tv.fbx", "output": "", "split": {"TV_body_low": "res://assets/props/tv_b/hotel_tv_body.res", "TV_screen_low": "res://assets/props/tv_b/hotel_tv_screen.res"}, "parts": {"TV_body_low": "hotel_tv_body.tres", "TV_screen_low": ""}, "yaw": 0.0, "axis": "x", "size": 0.72, "anchor": "centre"},
 	{"source": "res://assets/props/bedroom/bedroom_set.fbx", "output": "res://assets/props/bedroom/bed.res", "parts": {"SM_Bed_01": "bed.tres"}, "yaw": 0.0, "axis": "z", "size": 2.1, "anchor": "centre"},
 	{"source": "res://assets/props/sofa/sofa.fbx", "output": "res://assets/props/sofa/sofa.res", "parts": {"Sofa": "sofa.tres"}, "yaw": 0.0, "axis": "x", "size": 2.15, "anchor": "centre"},
 	{"source": "res://assets/props/wall_lamp/wall_lamp.fbx", "output": "res://assets/props/wall_lamp/wall_lamp.res", "parts": {"Wall Lamp": ["wall_lamp_metal.tres", "wall_lamp_cloth.tres"], "Wall Lamp - Light Bulb": "wall_lamp_bulb.tres"}, "yaw": 0.0, "axis": "y", "size": 0.42, "anchor": "wall"},

@@ -96,7 +96,8 @@ const CREDITS := [
 		"«Waiting Room Chairs», de Connor Wassall (Sketchfab, CC BY 4.0): las sillas de espera, sin su jardinera.",
 		"«[FREE] Pilea Peperomioides Terracotta pot», de AllQuad (Sketchfab, CC BY 4.0): la pilea, simplificada.",
 		"«Hanging Pothos», de kemowolfpaw (Sketchfab, CC BY 4.0): el potus colgante, simplificado.",
-		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
+		"«Old TV», de shadowowy (Sketchfab, CC BY 4.0): las teles del hotel.",
+		"Televisor y cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["SONIDO DE FREESOUND", [
 		"«Bed sheets (SoundAction 104)», de alexarje (CC BY 4.0).",

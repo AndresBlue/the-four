@@ -12,16 +12,16 @@ const SOFA_YAW := 0.0
 ## Poly Haven furniture (room_dressing.gd, assets/props/hotel).
 const DRESSING := preload("res://game/world/hotel/room_dressing.gd")
 
-## The television, as the trailer has it (tools/trailer3d/web/engine/sets.js,
-## tvSet): the opening scene's CRT (assets/props/tv) on a gothic commode,
-## 0.82 m along its longest side and standing in the middle of the top.
-## hotel_television.gd lights its screen and throws its light from where this
-## puts it.
-const TV_BODY := preload("res://assets/props/tv/tv_body.res")
-const TV_SCREEN := preload("res://assets/props/tv/tv_screen.res")
+## The television: an old wood-cased set with its rabbit ears (assets/props/tv_b,
+## "Old TV" by shadowowy, CC BY; the author, 16 November 2026, in place of the
+## opening scene's CRT, which the bedroom keeps), 0.72 m wide, standing in the
+## middle of the top of a gothic commode. hotel_television.gd lights its screen
+## and throws its light from where this puts it.
+const TV_BODY := preload("res://assets/props/tv_b/hotel_tv_body.res")
+const TV_SCREEN := preload("res://assets/props/tv_b/hotel_tv_screen.res")
 const TV_STAND := "GothicCommode_01"
-## The set's model is 0.62 m deep; the commode's top is this high.
-const TV_SCALE := 0.82 / 0.62
+## Baked at its real size (build_model_props.gd); the commode's top is this high.
+const TV_SCALE := 1.0
 const TV_TOP := 1.212
 
 ## Where the set stands in its socket (front +Z, like every piece).
