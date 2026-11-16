@@ -316,13 +316,11 @@ func apply_settings() -> void:
 	apply_camera(preset, hunter)
 	# The warm tape cast would break the monochrome reading.
 	level.post_material.set_shader_parameter("tint", Vector3.ONE if hunter else Vector3(1.02, 1.0, 0.9))
-	# Her infrared is no tape: no wobble, lines or fringes over a map whose
-	# colours are its meaning; a third of the grain and a light vignette keep
-	# it a sensor's picture.
+	# Her thermal camera is no tape: no wobble, lines or fringes over a map
+	# whose colours are its meaning; its own sensor makes the grain and the
+	# vignette (lurker_view.gd, lurker_thermal_sensor.gdshader).
 	if lurker_seat():
-		for key in ["vhs", "scanlines", "chromatic"]: level.post_material.set_shader_parameter(key, 0.0)
-		level.post_material.set_shader_parameter("grain", 0.0 if reduced else level.settings.values.grain / 3.0)
-		level.post_material.set_shader_parameter("vignette", 0.0 if reduced else 0.3)
+		for key in ["vhs", "scanlines", "chromatic", "grain", "vignette"]: level.post_material.set_shader_parameter(key, 0.0)
 	if level.settings.values.reduced:
 		level.post_material.set_shader_parameter("enclosure", 0.0)
 	level.player.torch.shadow_enabled = level.settings.values.shadows

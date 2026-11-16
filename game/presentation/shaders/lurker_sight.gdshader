@@ -1,69 +1,98 @@
 shader_type spatial;
-// The Lurker's eyes in Versus (.claude/specs/lurker_versus.md 4; phase 2),
-// on a quad over her camera (game/enemies/lurker/lurker_view.gd).
+// The Lurker's eyes in Versus (.claude/specs/lurker_versus.md 4 and 4.5), on
+// a quad over her camera (game/enemies/lurker/lurker_view.gd): what a thermal
+// camera would read, where the heat is electricity.
 //
-// The colours are matplotlib's plasma map. What the scene drew is not shown,
-// only the depth it left: the rooms come out of the dark in deep blue and
-// purple from how near they are and how they face her, never from a lamp.
-// What is hot is painted over that from the floor's registers, as halos with
-// no depth test (a lamp is heat through a wall): rooms with their light,
-// fittings and machines, and the torches, the hottest of all with a flare of
-// their own. A lit room dazzles her past a few metres, noise rings out, and
-// a torch in her face floods the picture white from its side.
+// What the scene drew is not shown, only the depth it left, turned back into
+// the point of the world under each pixel. The bare surfaces read nearly even
+// and low, blotched, their corners and joints a little apart, the ceiling a
+// little over the walls and the walls over the floor. The heat comes from the
+// floor's registers (the script's list) as shapes in the world: a pixel on a
+// fitting's lens, a machine's body or a torch's head reads its heat, and its
+// heat stains the surfaces round it; a source in view leaves the soft halo a
+// hot point leaves on a sensor, one behind something a warm patch on the face
+// of what hides it. The live wires run as faint lines over the ceiling and
+// down to their switches. Then the camera's gain stretches all of it between
+// gain_low and gain_high; her own lit room burns past a few metres, and a
+// torch in her face saturates the camera.
 //
-// Halos are given in screen space by the script, two vec4 each:
-//   a = (uv.x, uv.y, radius in screen heights, heat)
-//   b = (kind, vertical stretch, ring thickness, metres from her eye)
-// Heat is a place on the map: about 0.5 magenta, 0.75 orange, 1 yellow, over
-// 1 on to white.
+// Out goes the reading, not a colour (lurker_thermal_sensor.gdshader makes the
+// recording of it): red, the reading from FOOT to RANGE; green, a cold outline.
+//
+// Sources, four vec4 each:
+//   heat_at     = (world point, heat)
+//   heat_box    = (half extents, yaw); a body's capsule (radius, half height);
+//                 an outline's (0, its height over its width)
+//   heat_screen = (uv.x, uv.y, halo radius in screen heights, metres from her eye)
+//   heat_kind   = (kind, 1 in view, reach in screen heights, 0)
 render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_disabled, fog_disabled, shadows_disabled;
 
-const float GLOW = 0.0;
+const float LAMP = 0.0;
 const float TORCH = 1.0;
 const float BODY = 2.0;
 const float COLD = 3.0;
-const float RING = 4.0;
+const float RANGE = 1.6;
+const float FOOT = -0.4;
 
 uniform sampler2D depth_map : hint_depth_texture, repeat_disable, filter_nearest;
 uniform int count = 0;
-uniform vec4 halo_a[128];
-uniform vec4 halo_b[128];
+uniform vec4 heat_at[96];
+uniform vec4 heat_box[96];
+uniform vec4 heat_screen[96];
+uniform vec4 heat_kind[96];
+// The live wires: (from, heat) and (to, 0), world.
+uniform int wire_count = 0;
+uniform vec4 wire_a[48];
+uniform vec4 wire_b[48];
+// The camera's gain: these readings go to the foot and the top of the map.
+uniform float gain_low = 0.06;
+uniform float gain_high = 0.36;
+// Her planta's floor (world y), for the walls' warmth with height.
+uniform float floor_y = 0.0;
 // 0..1: how much her own lit room blinds her past DAZZLE_NEAR.
 uniform float dazzle = 0.0;
 // The flash: how far on (0..1), the side its torch is on (screen, y up), and
-// how white it may go (half with reduced effects).
+// how far it may go (half with reduced effects).
 uniform float flash = 0.0;
 uniform vec2 flash_from = vec2(0.0);
 uniform float flash_peak = 1.0;
 uniform float now = 0.0;
 
 const float DAZZLE_NEAR = 4.0;
-// How far the dark keeps the rooms legible: about as far as she sees in it.
-const float SIGHT = 22.0;
-// Metres over which the near light of the geometry falls by e.
-const float NEAR_FALL = 5.0;
-// A halo further than the surface drawn over it by this much is seen through
-// that surface, at this share of its heat (a torch always whole).
-const float OCCLUDED_SLACK = 0.6;
-const float THROUGH = 0.55;
-
-// matplotlib's plasma, a degree-6 fit to its table (sRGB out).
-vec3 plasma(float t) {
-	t = clamp(t, 0.0, 1.0);
-	const vec3 c0 = vec3(0.05873234392399702, 0.02333670892565664, 0.5433401826748754);
-	const vec3 c1 = vec3(2.176514634195958, 0.2383834171260182, 0.7539604599784036);
-	const vec3 c2 = vec3(-2.689460476458034, -7.455851135738909, 3.110799939717086);
-	const vec3 c3 = vec3(6.130348345893603, 42.3461881477227, -28.51885465332158);
-	const vec3 c4 = vec3(-11.10743619062271, -82.66631109428045, 60.13984767418263);
-	const vec3 c5 = vec3(10.02306557647065, 71.41361770095349, -54.07218655560067);
-	const vec3 c6 = vec3(-3.658713842777788, -22.93153465461149, 18.19190778539828);
-	return clamp(c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6))))), 0.0, 1.0);
-}
+// Nothing drawn: the coldest there is.
+const float VOID = 0.04;
+// What a source warms round it (share of its heat, metres to fall by e): a
+// lamp the ceiling round it, a torch the hand and body that hold it.
+const float LAMP_STAIN = 0.3;
+const float LAMP_STAIN_FALL = 0.45;
+const float TORCH_STAIN = 0.35;
+const float TORCH_STAIN_FALL = 0.5;
+// Nothing past this (lurker_view.WARM_REACH: how far on the screen it looks).
+const float STAIN_REACH = 1.6;
+// A source in view: its halo on the sensor (share of its heat).
+const float LAMP_HALO = 0.55;
+const float TORCH_HALO = 0.85;
+// A source behind something: the patch on its face (share of its heat), and
+// the metres between over which it falls by e (a torch is a beacon).
+const float LAMP_THROUGH = 0.3;
+const float LAMP_THROUGH_FALL = 2.5;
+const float TORCH_THROUGH = 0.62;
+const float TORCH_THROUGH_FALL = 40.0;
+// A wire with current: this much over its surface, this wide.
+const float WIRE_NEAR = 0.04;
+const float WIRE_FAR = 0.13;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
 	p3 += dot(p3, p3.yzx + 33.33);
 	return fract((p3.x + p3.y) * p3.z);
+}
+
+float value_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
 void vertex() {
@@ -92,10 +121,9 @@ void fragment() {
 	bool drawn;
 	vec3 here = view_at(uv, INV_PROJECTION_MATRIX, drawn);
 	float dist = drawn ? length(here) : 1.0e5;
-	// The geometry: near and facing her, brighter; edges where the depth
-	// breaks, a little more; walls a touch over floors and ceilings.
-	float t = 0.0;
-	float lift = 0.05;
+	vec3 world = (INV_VIEW_MATRIX * vec4(here, 1.0)).xyz;
+	// The bare surface.
+	float t = VOID;
 	if (drawn) {
 		bool d1; bool d2; bool d3; bool d4;
 		vec3 right = view_at(uv + vec2(texel.x, 0.0), INV_PROJECTION_MATRIX, d1);
@@ -105,69 +133,102 @@ void fragment() {
 		vec3 normal = normalize(cross(right - here, up - here));
 		if (dot(normal, here) > 0.0) normal = -normal;
 		float facing = clamp(dot(normal, normalize(-here)), 0.0, 1.0);
-		vec3 world_normal = (INV_VIEW_MATRIX * vec4(normal, 0.0)).xyz;
-		float wall = 1.0 - abs(world_normal.y);
+		vec3 n = (INV_VIEW_MATRIX * vec4(normal, 0.0)).xyz;
 		float lap = abs(length(right) + length(left) + length(up) + length(down) - 4.0 * dist) / max(dist, 0.1);
-		float edge = smoothstep(0.03, 0.15, lap);
-		// The bottom of the map: deep blue to purple, dark; brighter only near
-		// and facing her, sunk to almost black far off.
-		float near = exp(-dist / NEAR_FALL) * (1.0 - smoothstep(SIGHT * 0.6, SIGHT, dist));
-		t = near * (0.03 + 0.09 * facing + 0.02 * wall) + 0.1 * edge * (0.25 + 0.75 * near);
-		lift = 0.08 + near * (0.24 + 0.46 * facing) + 0.25 * edge * (0.3 + 0.7 * near);
+		float edge = smoothstep(0.02, 0.12, lap);
+		// Floor, walls warmer as they rise, ceiling.
+		float rise = clamp((world.y - floor_y) / 3.0, 0.0, 1.0);
+		t = n.y > 0.6 ? 0.105 : (n.y < -0.6 ? 0.16 : 0.115 + 0.03 * rise);
+		// Blotched: on the plane the surface lies in.
+		vec2 plane = abs(n.y) > 0.6 ? world.xz : (abs(n.x) > abs(n.z) ? world.zy : world.xy);
+		t += (value_noise(plane * 1.4) - 0.5) * 0.05 + (value_noise(plane * 0.33 + 17.0) - 0.5) * 0.05 + (value_noise(plane * 6.0) - 0.5) * 0.01;
+		// Seen square on it reads a little warmer; corners and joints apart.
+		t += 0.012 * facing + 0.025 * edge;
+		// And a little cooler far off.
+		t -= 0.03 * smoothstep(5.0, 25.0, dist);
 	}
-	// Her own lit room: past a few metres it burns out to magenta.
-	float burn = dazzle * smoothstep(DAZZLE_NEAR - 1.0, DAZZLE_NEAR + 1.5, dist);
-	t = mix(t, 0.52 + 0.03 * sin(now * 7.0 + uv.y * 9.0), burn);
-	lift = mix(lift, 0.9, burn);
-	// The heat: the hottest halo over a pixel sets its colour, the rest glows.
-	float heat = 0.0;
-	float bloom = 0.0;
+	// The heat.
+	float hot = 0.0;
+	float warm = 0.0;
+	float halo = 0.0;
 	float cold = 0.0;
 	for (int i = 0; i < count; i++) {
-		vec4 a = halo_a[i];
-		vec4 b = halo_b[i];
-		vec2 p = (uv - a.xy) * vec2(aspect, 1.0) / a.z;
-		p.y /= b.y;
-		float r2 = dot(p, p);
-		if (b.x == RING) {
-			float f = max(0.0, 1.0 - abs(sqrt(r2) - 1.0) / b.z);
-			heat = max(heat, a.w * f);
+		vec4 s = heat_screen[i];
+		vec4 k = heat_kind[i];
+		vec2 p = (uv - s.xy) * vec2(aspect, 1.0);
+		float sd2 = dot(p, p);
+		if (sd2 > k.z * k.z) continue;
+		float r2 = sd2 / max(s.z * s.z, 1.0e-7);
+		if (k.x == COLD) {
+			// An outline, cold: a mind gone, seen through the walls (as tall as
+			// heat_box.y says).
+			float r = length(p / max(s.z, 1.0e-4) / vec2(1.0, max(heat_box[i].y, 0.01)));
+			cold = max(cold, max(max(0.0, 1.0 - abs(r - 0.8) / 0.3), 0.35 * max(0.0, 1.0 - r2)));
 			continue;
 		}
-		if (r2 > 16.0) continue;
-		float f = max(0.0, 1.0 - r2);
-		f *= f;
-		if (b.x == COLD) {
-			// An outline, cold: a mind gone, seen through the walls.
-			cold = max(cold, max(max(0.0, 1.0 - abs(sqrt(r2) - 0.8) / 0.3), 0.35 * f));
-			continue;
+		vec4 a = heat_at[i];
+		if (drawn) {
+			vec4 b = heat_box[i];
+			vec3 o = world - a.xyz;
+			float d;
+			if (k.x == BODY) {
+				o.y -= clamp(o.y, -b.y, b.y);
+				d = length(o) - b.x;
+			} else {
+				float c = cos(b.w);
+				float sn = sin(b.w);
+				vec3 l = abs(vec3(c * o.x - sn * o.z, o.y, sn * o.x + c * o.z)) - b.xyz;
+				d = length(max(l, 0.0)) + min(max(l.x, max(l.y, l.z)), 0.0);
+			}
+			// On it: its own heat.
+			hot = max(hot, a.w * (1.0 - smoothstep(0.0, 0.05, d)));
+			// Round it: the surfaces it warms.
+			float near = 1.0 - smoothstep(STAIN_REACH * 0.5, STAIN_REACH, d);
+			if (k.x == LAMP) warm += a.w * LAMP_STAIN * exp(-max(d, 0.0) / LAMP_STAIN_FALL) * near;
+			else if (k.x == TORCH) warm += a.w * TORCH_STAIN * exp(-max(d, 0.0) / TORCH_STAIN_FALL) * near;
 		}
-		if (b.x == TORCH) {
-			// Its own shape, not only its heat: a cross of light and a wide halo.
-			float flare = max(0.0, 1.0 - abs(p.y) * 5.0) * max(0.0, 1.0 - abs(p.x) / 4.0) + max(0.0, 1.0 - abs(p.x) * 5.0) * max(0.0, 1.0 - abs(p.y) / 2.5);
-			float wide = max(0.0, 1.0 - r2 / 9.0);
-			heat = max(heat, max(a.w * f, max(0.82 * flare, 0.6 * wide * wide)));
-			bloom += 0.25 * wide * wide;
-			continue;
+		if (k.x == BODY) continue;
+		if (k.y > 0.5) {
+			// In view: the soft halo of a hot point on the sensor.
+			halo = max(halo, a.w * (k.x == TORCH ? TORCH_HALO : LAMP_HALO) * exp(-r2 * 2.2));
+		} else {
+			// Behind something: a warm patch on its face, fainter the more lies between.
+			float gap = max(s.w - dist, 0.0);
+			float through = k.x == TORCH ? TORCH_THROUGH * exp(-gap / TORCH_THROUGH_FALL) : LAMP_THROUGH * exp(-gap / LAMP_THROUGH_FALL);
+			warm += a.w * through * exp(-r2 * 1.6);
 		}
-		// Behind what is drawn there, a lamp is heat through a wall: dimmer.
-		if (dist < b.w - OCCLUDED_SLACK) f *= THROUGH;
-		heat = max(heat, a.w * f);
-		bloom += 0.04 * a.w * f;
 	}
-	float hot = max(t, heat + bloom * 0.25);
-	vec3 colour = plasma(hot) * mix(lift, 1.0, smoothstep(0.0, 0.35, heat));
-	// Past the top of the map, white.
-	colour = mix(colour, vec3(1.0), clamp((hot - 1.0) * 4.0, 0.0, 1.0));
-	colour = mix(colour, vec3(0.62, 0.74, 1.0), cold * 0.85);
-	// The flash: white from its torch's side, then all of it.
+	// The wires with current, faint, where the surface is over them.
+	float wire = 0.0;
+	if (drawn) {
+		for (int w = 0; w < wire_count; w++) {
+			vec3 from = wire_a[w].xyz;
+			vec3 along = wire_b[w].xyz - from;
+			vec3 o = world - from;
+			float d = length(o - along * clamp(dot(o, along) / max(dot(along, along), 1.0e-6), 0.0, 1.0));
+			wire += wire_a[w].w * (1.0 - smoothstep(WIRE_NEAR, WIRE_FAR, d));
+		}
+	}
+	// The camera's gain.
+	float span = max(gain_high - gain_low, 0.01);
+	float v = (t + warm + wire - gain_low) / span;
+	// Her own lit room: past a few metres the surfaces drown in an even,
+	// shimmering wash; what is hot still shows through it, and the wires
+	// faintly.
 	vec2 q = (uv - 0.5) * vec2(aspect, 1.0);
+	float burn = dazzle * smoothstep(DAZZLE_NEAR - 1.0, DAZZLE_NEAR + 1.5, dist);
+	v = mix(v, 0.36 + 0.12 * (value_noise(q * 5.0 + vec2(now * 0.6, now * 0.4)) - 0.5), burn);
+	v = max(v + burn * wire / span, (max(hot, halo) - gain_low) / span);
+	// The flash: the torch's bloom swells from its side and burns white, the
+	// gain throws the rest to black; both give back as it passes.
 	q.y = -q.y;
-	float side = dot(q, flash_from);
-	float cover = clamp(flash * 2.2 - (0.7 - side) * (1.0 - flash) * 2.0, 0.0, 1.0);
-	colour = mix(colour, vec3(1.0, 0.96, 0.78), cover * min(flash * 1.4, 1.0) * flash_peak);
-	// A breath of sensor noise, so the flat blues do not band.
-	colour += (hash12(FRAGCOORD.xy + fract(now) * 91.0) - 0.5) * 0.012;
-	ALBEDO = pow(max(colour, vec3(0.0)), vec3(2.2));
+	float bloom = mix(0.2, 1.7, flash);
+	float cover = 1.0 - smoothstep(bloom * 0.3, bloom, length(q - flash_from * 0.6));
+	float crush = min(flash * 1.6, 1.0) * flash_peak;
+	v = v * (1.0 - 0.9 * crush) - 0.35 * crush;
+	v = mix(v, RANGE * flash_peak, cover * min(flash * 1.4, 1.0));
+	vec3 packed = vec3(clamp((v - FOOT) / (RANGE - FOOT), 0.0, 1.0), clamp(cold, 0.0, 1.0), 0.0);
+	// Into linear, so the screen holds the reading itself.
+	ALBEDO = mix(pow((packed + 0.055) / 1.055, vec3(2.4)), packed / 12.92, lessThan(packed, vec3(0.04045)));
 	ALPHA = 1.0;
 }
