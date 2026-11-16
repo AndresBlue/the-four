@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.5.1](#151--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Las máquinas de café se pueden usar, y ya no tapan los apliques ni los cuadros. |
 | [1.5.0](#150--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Máquinas de café que devuelven la cordura, sugerencias de controles en las primeras partidas, una tele nueva en el hotel, un oído más fino para The Locust en Versus y códigos en los créditos. |
 | [1.4.0](#140--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El piso 2 se traza como un edificio de oficinas real, The Lurker se rehace, y las oficinas ganan luz desde sus luminarias, polvo en suspensión y salas de hito señaladas. |
 | [1.3.0](#130--10-de-noviembre-de-2026)    | 10 de noviembre de 2026  | El piso 2, las oficinas con The Lurker, se juega de punta a punta aunque aún no está publicado; el piso 1 gana cuadros eléctricos con llave y papeles escritos a máquina.         |
@@ -71,6 +72,17 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.5.1 — 16 de noviembre de 2026
+
+*Las máquinas de café se pueden usar, y ya no tapan los apliques ni los cuadros.*
+
+Commits `18497c96`…`v1.5.1` (2).
+
+### Arreglos
+
+- Mirar una máquina de café no daba con ella: su caja sólida tapaba la que se mira, y nunca salía «CAFÉ». La prueba del café ahora apunta a la máquina de verdad.
+- Una máquina ya no se pone donde hay un aplique de pared a menos de 1,3 m, ni sobre el cuadro que el hotel cuelga entre dos.
 
 ## 1.5.0 — 16 de noviembre de 2026
 
