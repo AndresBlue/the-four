@@ -1,6 +1,10 @@
 # The Lurker en Versus: diseño y plan de implementación
 
-Nota del director, 16 de noviembre de 2026, **segunda versión, tras la crítica. Propuesta, sin construir.**
+Nota del director, 16 de noviembre de 2026, segunda versión, tras la crítica. **Aprobada por el autor el 16 de noviembre con las propuestas de las decisiones A a J** (sección 12), y con un cambio suyo que manda sobre todo lo demás:
+
+> **Sin aura.** «Es NECESARIO que deje de hacer ruidos del tipo dread aura, ya que te pone en estado de alerta [...] penaliza mucho a la bestia, revelando siempre cuándo está cerca, la idea es que menos es más, si el jugador no sabe, siempre se va a sentir perseguido. Cambiemos eso de forma global [...]. Seguirá haciendo sonidos de tubería y similares, pero haremos que la cordura disminuyendo sea tan macabra con las alucinaciones para hacer sentir que está cerca tuyo cuando no lo está.»
+
+En consecuencia: The Lurker no tiene aura en ningún modo (ni zumbido, ni ambiente apagado, ni chasquidos por la ruta, ni latido por su distancia, ni bucle de presencia), y la música no sigue su distancia oculta. Siguen los ruidos de su cuerpo donde está (tuberías, ductos, placas, golpes, polvo), las luces que tiemblan y el aviso de la espalda. Lo que hace sentirla cerca sin estarlo son las alucinaciones de la cordura. En la sección 6, «su respiración a menos de 3 m» deja de delatarla acechando.
 
 - Hechos del código: `.claude/specs/fichas/versus_locust.md`, `lurker_ia.md`, `lurker_vista.md`, `oficinas_acecho.md` (levantadas por Haiku: comprobarlas al usarlas).
 - Las objeciones de tres críticos, con sus pruebas en el código: `.claude/specs/fichas/criticas_lurker_versus.md`. Lo que cambió por ellas está marcado **[crítica]**.
@@ -95,7 +99,7 @@ Las dos reglas de la IA, tal cual, decididas por el anfitrión: **[crítica]**
 - **Acechar:** una acción la pega al sitio más cercano (a menos de 3 m). Los cercanos se marcan en su vista.
 - **Asentada** (quieta 1 s): deja de temblar la luz, oye 1,5 veces más lejos y puede **cargar** (regla 4).
 - **La carga pide la cara fuera.** Dentro del plénum, tras una placa cerrada o en la boca de una rejilla no se carga: ahí nadie puede alumbrarla. Abrir una placa cruje, suelta polvo y reinicia el asentarse.
-- **Lo que la delata acechando:** su respiración a menos de 3 m; la lámpara que sigue baja; la linterna de quien mira arriba. **Mirar arriba al entrar** pasa a ser la habilidad del superviviente.
+- **Lo que la delata acechando:** la lámpara que sigue baja; la linterna de quien mira arriba. (Su respiración ya no: sin aura.) **Mirar arriba al entrar** pasa a ser la habilidad del superviviente.
 - **Dónde rinde:** donde hay que dar la espalda. La ventanilla (5 s tecleando), una estación del tubo, el cuadro, los ventiladores, leer un papel, salir de una taquilla. Como esos sitios brillan en su vista, acaba esperando ahí.
 - **Las salas de hito no se pueden beber** (ventanilla, cuarto eléctrico, seguridad, climatización: nunca a oscuras). Allí solo cae quien va solo o a quien nadie mira. Se acepta: son el terreno de ellos.
 
@@ -173,6 +177,18 @@ Cada fase termina con su prueba de aceptación y `verify.ps1` en verde. El piso 
 1. Que el contrato justo aguante en red con dos saltos (cazadora y víctima invitadas, el anfitrión en medio).
 2. Que el manejo se sienta bien sobre un movimiento pensado para una IA.
 3. Que «acechar gana» salga de verdad con personas: ningún test lo prueba; hay que jugarlo tras la fase 3.
+
+### Estado de la fase 0 (16 de noviembre de 2026)
+
+Hecha, sin red. Se prueba con `./tools/godot.ps1 lurker-hunt` (piso 2, 3 bots, semilla 81, perfil de pruebas; `-Bots` y `-Seed` como en `hunt`).
+
+- **Cuerpo:** `lurker.gd` tiene rama `"player"` en `step_physics` (el cerebro no corre; su conductor, sí) y lo que toca al cuerpo pasa a `!= "puppet"` (`view`, `transit_phase`, `show_body`, la vigilancia de puertas de `routes`). `hunter_camera()` da su cámara.
+- **Tramo libre** (`lurker_motion.follow_free`): el stick fija rumbo y ritmo y avanza con `shell.advance` por bandejas (cruza lados abiertos, para en muros y columnas) y a lo largo de un canal. Rampas y ráfagas de siempre: vista, va a ráfagas. Su ritmo máximo es el `unseen_speed` de la dificultad.
+- **Transiciones** (`lurker_player.gd`), órdenes al planificador que corren enteras con el stick ignorado: empujar hacia una puerta abierta la pasa por el dintel (cerrada, no pasa); empujar a lo largo de un canal en su boca la mete, agarrada a la estantería a 1,8 m; `lurker_enter` entra en la rejilla o la placa más a la vista a menos de 3 m, y dentro de los ductos sale por la salida más a la vista a menos de 25 m (solo por ductos hasta ella). `lurker_drop` la descuelga hasta 1,5 m (lo que deje el rayo) y la sube.
+- **Cámara:** en su cara con el arriba del mundo, giro por ratón o stick, sin su capa 4. Si algo se mete entre su anclaje y su cara (la estantería de enfrente en un pasillo estrecho), la cámara se queda 12 cm antes. Al pasar una rejilla, una placa o un ducto: negro; quieta en la boca de una rejilla, mira desde ella.
+- **Teclas y mando:** mover WASD / stick izquierdo; mirar ratón / stick derecho; entrar y salir E / botón izquierdo (X en Xbox); descolgarse Ctrl / botón derecho (B). Declaradas sin efecto: `lurker_stalk` (Q / Y), `lurker_peek` (F / A), `lurker_release` (clic izquierdo / gatillo derecho), `lurker_drink` (clic derecho / gatillo izquierdo).
+- **Aceptación:** `tests/office/lurker_player_test.gd` (el conductor) 26/26 en las tres plantas: techo, puerta (y cerrada no pasa), canal (solo hay archivo con pasillo en la planta 2 con la semilla 81), rejilla, placa, ducto y vuelta, descolgada; sin muros atravesados ni ojo dentro de un muro. Registro y capturas en `evidence/versus/f0/`. `lurker_shell_test`, `lurker_motion_test`, `creature_contract_test`, `lurker_fairness_test`, `lurker_bots_test`, `office_bots_test` y `manifest_golden_test` en verde.
+- **Lo que no convence aún:** en Desafiante las plantas 2 y 3 están a oscuras y su cámara no ve nada (lo resuelve su vista, fase 2). Dentro de los ductos va a ciegas y elige la salida por dónde mira sin verla (el plano es de la fase 2). Arranca en 1,1 s hasta 4,5 m/s: se siente blanda. Empujar hacia una puerta sin querer la cruza, y alinearse con el dintel la frena un momento. Sobre un dintel una hoja abierta tapa media vista.
 
 ## 12. Decisiones para el autor
 

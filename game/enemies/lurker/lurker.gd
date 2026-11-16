@@ -19,6 +19,7 @@ const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
 const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
 const VOICE := preload("res://game/enemies/lurker/lurker_voice.gd")
 const CAPTURE := preload("res://game/app/capture_styles/lurker_capture.gd")
+const PLAYER := preload("res://game/enemies/lurker/lurker_player.gd")
 const SCORE := preload("res://game/app/capture_styles/lurker_score.gd")
 ## Her sound out of the plenum, through the tile under her: this much quieter
 ## and duller than in the room (spec_f3_integration 3.5).
@@ -60,6 +61,8 @@ var ducts
 var routes
 var motion
 var visual: Node3D
+## lurker_player.gd while a person drives her (set_control("player")).
+var driver
 var body_shape: CollisionShape3D
 var shape_rest := Vector3.ZERO
 ## What she is doing (2b sets it), and the clip she shows.
@@ -169,6 +172,9 @@ func mode_name() -> String: return brain.state_name() if brain != null and contr
 func eye_point() -> Vector3: return global_transform * FACE_OFFSET
 
 func face_point() -> Vector3: return eye_point()
+## Her face, not a chest over her feet: on the ceiling that is inside the
+## plenum, and seeing her there would cost a mind nothing.
+func sight_point() -> Vector3: return face_point()
 
 func gaze() -> Vector3:
 	if visual != null and visual.look_point != Vector3.INF: return visual.look_point - eye_point()
@@ -182,7 +188,7 @@ func in_transit() -> bool:
 	return bool(v.drop) or bool(v.arriving)
 
 func transit_phase() -> StringName:
-	return motion.transit_phase() if control == "ai" and motion != null else &""
+	return motion.transit_phase() if control != "puppet" and motion != null else &""
 
 func hushed() -> bool: return bool(view().drop)
 
@@ -216,7 +222,7 @@ func arrive() -> void:
 	if routes != null: routes.teardown()
 	routes = ROUTES.new()
 	routes.duct_speed = duct_speed
-	routes.setup(level, shell, ducts, control == "ai")
+	routes.setup(level, shell, ducts, control != "puppet")
 	motion = MOTION.new()
 	motion.setup(shell, routes, ducts, level)
 	motion.rng.seed = rng.seed
@@ -233,7 +239,14 @@ func arrive() -> void:
 func set_control(kind: String) -> void:
 	var was := control
 	control = kind
+	# A person drives her body from this machine (lurker_versus.md 5).
+	if kind == "player" and driver == null:
+		driver = PLAYER.new()
+		add_child(driver)
+		driver.setup(self)
 	if was != kind and is_inside_tree(): arrive()
+
+func hunter_camera() -> Camera3D: return driver.camera if driver != null else null
 
 # --- What the motion asks of the world ---------------------------------------------
 
@@ -380,7 +393,7 @@ func restore_state(data: Dictionary, rest: float) -> void:
 # --- The view: what every machine reads (8.2) ------------------------------------------
 
 func view() -> Dictionary:
-	if control == "ai" and motion != null:
+	if control != "puppet" and motion != null:
 		var phase: StringName = motion.transit_phase()
 		return {"drop": phase == &"drop", "arriving": phase == &"arriving", "leaving": phase == &"leaving", "in_duct": motion.in_duct, "hidden": motion.hidden, "duct_point": motion.duct_point, "near": motion.near_node}
 	return {"drop": net_flags & Flag.DROP != 0, "arriving": net_flags & Flag.ARRIVING != 0, "leaving": false, "in_duct": net_flags & Flag.IN_DUCT != 0, "hidden": net_flags & Flag.HIDDEN != 0, "duct_point": global_position, "near": net_near}
@@ -539,14 +552,17 @@ func _physics_process(delta: float) -> void:
 func step_physics(delta: float) -> void:
 	grace = maxf(0.0, grace - delta)
 	match control:
-		"ai":
+		"ai", "player":
 			if motion != null:
-				think(delta)
+				if control == "ai": think(delta)
+				elif driver != null: driver.drive(delta)
 				if not scene_held:
 					motion.cue = cue
-					motion.unseen = unseen_now()
+					# A person's stick sets her pace on the ceilings (lurker_player.gd):
+					# unseen she is not hurried past it; in a duct she flies as the AI does.
+					motion.unseen = unseen_now() if control == "ai" else not SIGHT.watched(level, motion.duct_point if motion.in_duct else face_point(), [get_rid()])
 					motion.watched = motion.surface() and not cue and SIGHT.watched(level, face_point(), [get_rid()])
-					motion.unseen_pace = unseen_speed
+					motion.unseen_pace = unseen_speed if control == "ai" else 0.0
 					motion.unseen_duct = unseen_duct
 					motion.tick(delta)
 					apply_motion()
@@ -580,7 +596,10 @@ func sound_step(delta: float) -> void:
 
 ## Her beats and what each does to the dread, the music and her voice
 ## (spec_lurker_rebuild 4): {aura, clicks, menace, fast, silent}. Between
-## plantas she sounds as roaming far.
+## plantas she sounds as roaming far. Her profile has no aura (lurker.tres,
+## the author's 16 November 2026), so aura, clicks and menace are read only
+## by a profile that gives her one back; fast (the theme let go once she has
+## fled) and silent (her voice) always are.
 const MOODS := {
 	&"roam_far": {"aura": 0.35, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
 	&"roam_near": {"aura": 0.6, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
@@ -691,17 +710,18 @@ func show_body() -> void:
 	if hide_now: return
 	visual.velocity = velocity
 	# Through a grille or a tile her hands stay on (spec_lurker_rebuild 3.7).
-	var on_surface: bool = (motion.clinging() if control == "ai" and motion != null else net_flags & Flag.SURFACE != 0)
+	var moved_here: bool = control != "puppet" and motion != null
+	var on_surface: bool = (motion.clinging() if moved_here else net_flags & Flag.SURFACE != 0)
 	visual.crawling = on_surface
-	visual.crouch = control == "ai" and motion != null and motion.dash_soon()
-	var tray: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.TRAY) if control == "ai" and motion != null and motion.surface() else net_flags & Flag.TRAY != 0
-	var band: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.BAND) if control == "ai" and motion != null and motion.surface() else net_flags & Flag.BAND != 0
+	visual.crouch = moved_here and motion.dash_soon()
+	var tray: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.TRAY) if moved_here and motion.surface() else net_flags & Flag.TRAY != 0
+	var band: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.BAND) if moved_here and motion.surface() else net_flags & Flag.BAND != 0
 	visual.cling = CLING_TRAY if tray else CLING_BAND if band else CLING_CHANNEL
 	# Shrunk under a short lane (M2): her body along its +Y.
-	var squash: float = motion.squash if control == "ai" and motion != null else 1.0
+	var squash: float = motion.squash if moved_here else 1.0
 	visual.scale = Vector3(1.0, squash, 1.0)
 	if body_shape != null: body_shape.position = Vector3(shape_rest.x, shape_rest.y * squash, shape_rest.z)
-	if control == "ai": pick_clip(bool(v.in_duct))
+	if moved_here: pick_clip(bool(v.in_duct))
 	if clip != shown_clip and visual.has_method("play"):
 		shown_clip = clip
 		visual.play(CLIPS[clip])

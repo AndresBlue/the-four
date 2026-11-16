@@ -193,6 +193,9 @@ func hunter_seat() -> bool:
 ## looks at the lit hotel.
 func echo_seat() -> bool:
 	if not hunter_seat(): return false
+	# The Lurker's seat sees the floor as it is until her own view comes
+	# (.claude/specs/lurker_versus.md 4, phase 2).
+	if not level.observer and is_instance_valid(level.creature) and level.creature.kind_id() == &"lurker": return false
 	return level.observer or level.rule("plain_sight") == 0
 
 ## Every value that changes with the quality setting (graphics_presets.gd).

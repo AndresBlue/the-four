@@ -31,6 +31,12 @@ const PAD_RESERVED := [JOY_BUTTON_START]
 ## creature carries no torch.)
 const PAD_TRIGGERS := {"locust_strike": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "locust_shriek": [JOY_AXIS_TRIGGER_LEFT, 1.0]}
 const TRIGGER_DEADZONE := 0.5
+## The Lurker's own (lurker_player.gd), built here and never saved, as the
+## hunter's triggers: [key or mouse button, pad button or trigger]. Into a
+## grille or out (E, the left button), let down (Ctrl, the right button); the
+## rest are for the phases to come and do nothing yet.
+const LURKER_ACTIONS := {"lurker_enter": [KEY_E, JOY_BUTTON_X], "lurker_drop": [KEY_CTRL, JOY_BUTTON_B], "lurker_stalk": [KEY_Q, JOY_BUTTON_Y], "lurker_peek": [KEY_F, JOY_BUTTON_A],
+	"lurker_release": [MOUSE_BUTTON_LEFT, [JOY_AXIS_TRIGGER_RIGHT, 1.0]], "lurker_drink": [MOUSE_BUTTON_RIGHT, [JOY_AXIS_TRIGGER_LEFT, 1.0]]}
 ## The menus' own actions and the pad buttons they answer to. Godot builds
 ## these actions itself, and in this project ui_accept came without any pad
 ## button: the cross moved the highlight and nothing could be chosen. Added
@@ -376,6 +382,25 @@ func apply_bindings() -> void:
 		InputMap.action_erase_events(action)
 		InputMap.action_set_deadzone(action, TRIGGER_DEADZONE)
 		InputMap.action_add_event(action, stick(PAD_TRIGGERS[action]))
+	for action in LURKER_ACTIONS:
+		if not InputMap.has_action(action): InputMap.add_action(action)
+		InputMap.action_erase_events(action)
+		InputMap.action_set_deadzone(action, TRIGGER_DEADZONE)
+		var pair: Array = LURKER_ACTIONS[action]
+		var device: InputEvent
+		if pair[1] is Array: device = stick(pair[1])
+		else:
+			device = InputEventJoypadButton.new()
+			device.button_index = int(pair[1])
+		InputMap.action_add_event(action, device)
+		if pair[1] is Array:
+			var click := InputEventMouseButton.new()
+			click.button_index = int(pair[0])
+			InputMap.action_add_event(action, click)
+		else:
+			var key := InputEventKey.new()
+			key.physical_keycode = int(pair[0])
+			InputMap.action_add_event(action, key)
 	# Looking is the right stick and nothing else: it is read as a direction
 	# every frame (hotel_player.pad_look), not as a press.
 	for action in LOOK_ACTIONS:

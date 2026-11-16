@@ -518,6 +518,67 @@ func climb_back(pace_ := CLIMB_SPEED) -> bool:
 	leg_started = false
 	return true
 
+# --- A player's stick (lurker_player.gd; .claude/specs/lurker_versus.md 5) ----------------
+
+## Set every tick while a person drives her: with no legs she goes where the
+## stick pushes (free_way, flat in the world, the share of `pace` its length)
+## over the trays and along an aisle, by shell.advance, which crosses open
+## sides and stops at walls and columns; her heading eases to where the camera
+## looks (free_face). Bursts and ramps as on any leg.
+var steering := false
+var free_way := Vector3.ZERO
+var free_face := Vector3.ZERO
+## The way she last went (she brakes along it), and the metres the free leg
+## moved her this tick.
+var free_last := Vector3.ZERO
+var free_moved := 0.0
+## A player's drop and climb back (drop()): the AI's HANG_RATE took over two
+## seconds for the 1.15 m. Her shown heading turns this fast to the camera.
+const DROP_RATE := 2.0
+const FREE_TURN := 8.0
+
+## A player's order: these legs from where she is, run whole, with no goal to
+## plan for again (a door shut on them turns her back and leaves her there).
+func run_legs(new_legs: Array, pace_: float) -> void:
+	clear_legs()
+	pace = pace_
+	set_legs(new_legs)
+
+## Down on a tray as far as the cue takes her (SHELL.CUE_HANG_MAX), the ray
+## permitting, or back up. False off a tray.
+func drop(down: bool) -> bool:
+	if not surface() or int(shell.patches[state.patch].kind) != SHELL.Kind.TRAY: return false
+	state.lowered = down
+	hang_goal = SHELL.CUE_HANG_MAX if down else SHELL.DEFAULT_HANG
+	return true
+
+## Out of an aisle by its mouth onto its tray: to the middle of the mouth,
+## then over the seam.
+func leave_channel(pace_: float) -> bool:
+	if not on_channel(): return false
+	var record: Dictionary = shell.patches[state.patch]
+	run_legs([{"kind": "channel", "patch": state.patch, "v_to": 0.0, "u_goal": float(record.profile.length) / 2.0}, {"kind": "out_of_channel", "patch": int(record.tray)}], pace_)
+	return true
+
+func follow_free(delta: float) -> void:
+	free_moved = 0.0
+	var push := Vector3(free_way.x, 0, free_way.z)
+	if push.length() > 0.05: free_last = push.normalized()
+	ramp(pace_now() if push.length() > 0.05 else 0.0, delta)
+	if free_face.length() > 1e-3: ease_heading(free_face, FREE_TURN, delta)
+	ease_hang(hang_goal, delta, DROP_RATE)
+	if speed < 1e-4 or free_last == Vector3.ZERO: return
+	var f: Array = shell.frame_of(state)
+	var way := Vector2(free_last.dot(f[1]), free_last.dot(f[2]))
+	# Up an aisle's shelf nothing flat pushes her on: she stays at its bend.
+	if way.length() < 0.2 or body_in_way(free_last, speed * delta):
+		speed = 0.0
+		return
+	var shown: float = state.heading
+	state.heading = atan2(way.y, way.x)
+	free_moved = shell.advance(state, speed * delta)
+	state.heading = shown
+
 # --- Queries (2b's percept, spec_f2_mind 8.3) ------------------------------------------
 
 func in_network_duct() -> bool:
@@ -713,6 +774,7 @@ func tick(delta: float) -> void:
 	least_squash = minf(least_squash, squash)
 	tick_bursts(delta)
 	if not legs.is_empty(): follow(delta)
+	elif steering and surface(): follow_free(delta)
 	elif surface():
 		ramp(0.0, delta)
 		ease_hang(hang_goal, delta)
@@ -738,7 +800,8 @@ func ray() -> void:
 	var most := SHELL.HANG_MAX
 	if clearance.is_valid(): most = float(clearance.call(anchor(), state))
 	clearance_short = maxf(0.0, SHELL.HANG_MIN - most)
-	hang_limit = clampf(most, SHELL.HANG_MIN, SHELL.HANG_MAX)
+	# Let down (drop()), as far as the cue's hang.
+	hang_limit = clampf(most, SHELL.HANG_MIN, shell.max_hang(state))
 	squash_goal = clampf((most - SHELL.HANG_MIN + BODY_DEPTH) / BODY_DEPTH, SQUASH_MIN, 1.0) if most < SHELL.HANG_MIN else 1.0
 
 ## A door shut on her way, or changed without a signal, or the lights: a
@@ -818,9 +881,9 @@ func watch_progress(delta: float) -> void:
 	stuck = "sin avance"
 	blocked.emit(stuck)
 
-func ease_hang(target: float, delta: float) -> void:
+func ease_hang(target: float, delta: float, rate := HANG_RATE) -> void:
 	if state == null: return
-	state.hang = move_toward(state.hang, minf(target, hang_limit if int(shell.patches[state.patch].kind) == SHELL.Kind.TRAY else shell.max_hang(state)), HANG_RATE * delta)
+	state.hang = move_toward(state.hang, minf(target, hang_limit if int(shell.patches[state.patch].kind) == SHELL.Kind.TRAY else shell.max_hang(state)), rate * delta)
 	shell.clamp_state(state)
 
 ## Turns the heading towards a world direction at `rate`.
@@ -859,7 +922,7 @@ func follow(delta: float) -> void:
 		"duct": follow_duct(leg, delta)
 		"turn": follow_turn(leg, delta)
 		"channel": follow_channel(leg, delta)
-		"into_channel": into_channel_now(leg)
+		"into_channel", "out_of_channel": into_channel_now(leg)
 		"leap": follow_leap(leg, delta)
 		"climb": follow_climb(delta)
 		_: next_leg()
@@ -1114,15 +1177,18 @@ func follow_turn(leg: Dictionary, delta: float) -> void:
 	basis = basis.orthonormalized().slerp(want, minf(1.0, TURN_RATE * delta))
 	if basis.is_equal_approx(want) or (basis.z - want.z).length() < 0.01: next_leg()
 
+## Over the seam into an aisle, or out of one onto its tray (a player's way
+## back, leave_channel()); where the seam will not take her, put there, logged.
 func into_channel_now(leg: Dictionary) -> void:
 	if state == null:
 		next_leg()
 		return
 	var entered = shell.switch_to(state, int(leg.patch))
 	if entered == null:
-		var mouth = shell.channel_mouth(int(leg.patch))
 		var from := anchor()
-		state = mouth
+		var target: Dictionary = shell.patches[int(leg.patch)]
+		if int(target.kind) == SHELL.Kind.CHANNEL: state = shell.channel_mouth(int(leg.patch))
+		else: state = shell.tray_state(int(target.room), from.x, from.z, clampf(float(target.y) - from.y, SHELL.HANG_MIN, SHELL.HANG_MAX))
 		log_jump(&"channel", from, anchor())
 	else: state = entered
 	next_leg()
