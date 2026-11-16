@@ -122,6 +122,9 @@ var tape
 const REVIVAL := preload("res://game/app/revival.gd")
 var revival
 const INTERACTION := preload("res://game/app/interaction.gd")
+## The control hints of the first games (control_hints.gd).
+const HINTS := preload("res://game/app/control_hints.gd")
+var hints
 var interaction
 const PRESENTATION_RIG := preload("res://game/app/presentation_rig.gd")
 var rig
@@ -273,6 +276,8 @@ func _enter_tree() -> void:
 	revival.name = "Revival"
 	revival.level = self
 	$Services.add_child(revival)
+	hints = HINTS.new()
+	hints.level = self
 	interaction = INTERACTION.new()
 	interaction.name = "Interaction"
 	interaction.level = self
@@ -971,6 +976,7 @@ func bounce_ready() -> void:
 func populate_floor(with_director: bool) -> void:
 	camera_cut()
 	spawn_locust()
+	hints.begin()
 	# A floor without the code (floor 2) still had the last one's drawers here,
 	# freed with it: its key looked in them.
 	code.containers.clear()
@@ -1643,6 +1649,7 @@ func step_physics(delta: float) -> void:
 	lifts.announce_sector(delta)
 	var started := Time.get_ticks_usec() if perf != null else 0
 	drive_local(delta)
+	hints.tick(delta)
 	if perf != null:
 		perf.timed(&"game.interaction", started)
 		started = Time.get_ticks_usec()

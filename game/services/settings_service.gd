@@ -3,7 +3,7 @@ const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const SAVE_FILE := preload("res://game/services/save_file.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 2, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "startle_soft": false, "gore": true, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "floor2": "", "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 2, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "startle_soft": false, "gore": true, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "floor2": "", "control_hints": true, "hint_games": 0, "hint_floor": 1, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q, "lean_left": KEY_1, "lean_right": KEY_3}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
 ## rebound: what is bound is what a button does. Named by where the button is
@@ -193,6 +193,9 @@ func sanitize(key: String, value: Variant) -> Variant:
 		"character": return clampi(int(value), 0, 2)
 		"quality": return clampi(int(value), 0, PRESETS.count() - 1)
 		"fps": return int(value) if int(value) in [0, 30, 60, 120, 144] else 60
+		# control_hints.gd: games played with hints on the floor they count for.
+		"hint_games": return clampi(int(value), 0, 999)
+		"hint_floor": return clampi(int(value), 1, 4)
 		"sensitivity": return clampf(value, 0.0005, 0.008)
 		"pad_look": return clampf(value, 0.6, 6.0)
 		"scale": return clampf(value, PRESETS.SCALING_MODES[PRESETS.SCALING_MODES.size() - 1], 1.0)

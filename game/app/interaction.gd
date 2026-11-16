@@ -102,7 +102,30 @@ func read_document(entry_id: String) -> void:
 	if level.world_audio.enabled: level.paper_sound.play()
 	level.discoveries.record(entry_id)
 
+## The control hint for what the camera is on (control_hints.gd).
+func hint_aimed(aimed) -> void:
+	var hints = level.hints
+	if not hints.on() or level.player.hidden: return
+	# Each ray only until its card has been shown this game.
+	if not hints.shown.has("lift") and level.lifts.car_at(level.player.global_position) >= 0: hints.aimed("lift")
+	elif aimed is LOCK:
+		if not level.code_entered: hints.aimed("keypad")
+	elif aimed is CONTAINER:
+		if not aimed.searched: hints.aimed("container")
+	elif aimed is USABLE:
+		var word: String = aimed.word(level.player.slot)
+		if not word.is_empty(): hints.aimed("usable", word, aimed.hold_time(level.player.slot) > 0.0)
+	elif aimed is TELEVISION:
+		if not aimed.on: hints.aimed("tv")
+	elif aimed is DOCUMENT or aimed is HINT_PAPER: hints.aimed("read")
+	elif aimed is PANEL:
+		if level.code.has_key(): hints.aimed("panel")
+	elif aimed is HIDE: hints.aimed("hide")
+	elif not hints.shown.has("door") and is_instance_valid(focused_door()): hints.aimed("door")
+
 func close_document() -> void:
+	# What was read went to the sheet: the key that opens it.
+	if reading(): level.hints.offer("sheet")
 	reading_document = null
 	reading_entry = ""
 	reading_hint = -1
@@ -259,16 +282,19 @@ func drive_local(delta: float) -> void:
 	level.player.hard_floor = not floor_room.is_empty() and FLOOR.palette(level.manifest).hard_floor(floor_room)
 	if reading():
 		level.camcorder.focus("")
+		level.hints.aimed("reading")
 		if Input.is_action_just_pressed("interact"): close_document()
 		was_held = true
 		return
 	if level.lock_open:
 		level.camcorder.focus("")
 		level.ui.hint.text = ""
+		level.hints.aimed("typing")
 		return
 	# What the hand is on, looked for once: a lock, a drawer, a set, a paper
 	# and a wardrobe are all found by the same ray.
 	var aimed = focused_area()
+	hint_aimed(aimed)
 	var lock_target = aimed if aimed is LOCK else null
 	if Input.is_action_just_pressed("interact") and is_instance_valid(lock_target) and not level.code_entered:
 		level.open_lock()
@@ -362,6 +388,7 @@ func drive_local(delta: float) -> void:
 		was_held = true
 	var key: String = level.settings.prompt_name("interact")
 	if level.player.hidden:
+		level.hints.aimed("inside")
 		leave_wardrobe(delta)
 		level.camcorder.focus("SALIR")
 		level.ui.hint.text = ""

@@ -1146,7 +1146,7 @@ func keycap_tabs(tabs: TabContainer) -> void:
 	bar.draw.connect(put)
 
 ## A key's name in a small box with the edge of a keycap.
-func keycap(words: String) -> PanelContainer:
+func keycap(words: String, size := 13) -> PanelContainer:
 	var cap := PanelContainer.new()
 	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := STYLE.flat(Color(1, 1, 1, 0.04), STYLE.SOFT, 1, 0.0)
@@ -1157,10 +1157,44 @@ func keycap(words: String) -> PanelContainer:
 	box.content_margin_bottom = 2
 	box.border_width_bottom = 2
 	cap.add_theme_stylebox_override("panel", box)
-	var name := label(cap, words, 13)
+	var name := label(cap, words, size)
 	name.add_theme_color_override("font_color", STYLE.INK)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return cap
+
+## The control hints on the left of the picture (control_hints.gd): rows of
+## [keys, what they do], each key in its keycap and "MANTÉN" before one in
+## words. An empty card takes them away.
+var controls_card: PanelContainer
+func show_controls(card: Array) -> void:
+	if controls_card == null:
+		controls_card = PanelContainer.new()
+		controls_card.name = "ControlHints"
+		controls_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		controls_card.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.62), STYLE.FAINT, 1, 14))
+		$HUD.add_child(controls_card)
+		controls_card.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+		controls_card.offset_left = 56
+		controls_card.offset_top = -10
+		controls_card.add_child(VBoxContainer.new())
+		controls_card.get_child(0).add_theme_constant_override("separation", 10)
+	var list: VBoxContainer = controls_card.get_child(0)
+	for child in list.get_children():
+		list.remove_child(child)
+		child.queue_free()
+	controls_card.visible = not card.is_empty()
+	for row in card:
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 8)
+		list.add_child(line)
+		for name in row[0]:
+			if name == "MANTÉN": label(line, "MANTÉN", 16).add_theme_color_override("font_color", STYLE.SOFT)
+			else: line.add_child(keycap(String(name), 17))
+		label(line, String(row[1]), 19).add_theme_color_override("font_color", STYLE.INK)
+	controls_card.reset_size()
+	if card.is_empty(): return
+	controls_card.modulate.a = 0.0
+	create_tween().tween_property(controls_card, "modulate:a", 1.0, 0.25)
 
 ## A Steam friend picked to compare achievements with (0: nobody): their
 ## column fills in when Steam answers (on_friend_achievements).
@@ -1617,6 +1651,7 @@ func show_settings(back: String) -> void:
 	check(graphics, "Sangre", "gore")
 	var controls := page(tabs, "CONTROLES")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
+	check(controls, "Sugerencias de controles", "control_hints")
 	check(controls, "Invertir mirada vertical", "invert")
 	if settings.pad_present():
 		slider(controls, "Sensibilidad del mando", "pad_look", 0.6, 6.0, 0.2)
