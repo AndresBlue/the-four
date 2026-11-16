@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.6.1](#161--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Un extra oculto mira hacia donde va. |
 | [1.6.0](#160--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Dos llaves de los cuadros por etapa, y las oficinas dicen menos dónde están sus salas clave y más dónde está lo demás. |
 | [1.5.1](#151--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Las máquinas de café se pueden usar, y ya no tapan los apliques ni los cuadros. |
 | [1.5.0](#150--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Máquinas de café que devuelven la cordura, sugerencias de controles en las primeras partidas, una tele nueva en el hotel, un oído más fino para The Locust en Versus y códigos en los créditos. |
@@ -73,6 +74,16 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.6.1 — 16 de noviembre de 2026
+
+*Un extra oculto mira hacia donde va.*
+
+Commits `67087c57`…`v1.6.1` (2).
+
+### Arreglos
+
+- Un extra oculto llevaba la cara en la nuca.
 
 ## 1.6.0 — 16 de noviembre de 2026
 
