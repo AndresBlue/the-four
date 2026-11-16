@@ -31,9 +31,17 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 **La Miku, como skin oculta** (decidido por el autor el 16 de noviembre de 2026): solo para él y sus amigos.
 - **Hecho:** en los créditos, a la derecha, un recuadro «CÓDIGO». Escribir «miku» la desbloquea y queda guardada en el ajuste `codes`. Se pregunta con `ui.unlocked("miku")`. En el juego no está la palabra, solo su SHA-256 (`CODES` en `hotel_ui.gd`).
-- **Falta: la skin.** El modelo es `models/hatsune-miku.zip`, de Sketchfab (`d418e988c3de40f79e0b329886883241`, 雨宮レン / oscar3dmodel, CC BY 4.0).
-  - Sale como personaje elegible en `show_characters` solo con el código.
-  - Tiene que ir con el esqueleto y las animaciones de los supervivientes: ver cómo se hizo «Realistic Female» en `avatar_visual.gd`, `survivor_clips.gd` y `tools/avatars/bake_survivor_clips.gd`.
+- **Hecho también:** en los créditos solo queda «CÓDIGO», arriba a la derecha. Abre una pantalla con el recuadro centrado y, debajo, lo que desbloqueó (`7b5c455`).
+- **Falta, decidido por el autor: quitar «Realistic Female» y que la Miku sea personaje elegible solo con el código canjeado.**
+  - La Miku es el modelo de `models/hatsune-miku.zip`, de Sketchfab (`d418e988c3de40f79e0b329886883241`, 雨宮レン / oscar3dmodel, CC BY 4.0).
+  - «Realistic Female» es la «Exploradora» (`IDS`/`NAMES` en `game/player/avatars/avatar_visual.gd`, índice 2) y es el personaje **por defecto**: ajuste `character` = 2, con `CHARACTER_REVISION` en `settings_service.gd`.
+  - La captura está construida sobre su cuerpo (`docs/EXECUTION.md`). Hay que comprobar que la captura y la cinta funcionan con los detectives y con la Miku (`capture_test`, `tools/capture/avatar_capture.gd`).
+  - El nuevo personaje por defecto conviene preguntarlo al autor; si no, la Detective Femenino.
+  - Dónde se limita el índice del personaje: `settings_service.sanitize` ("character", 0 a 2), `net_session.gd` (`clampi(character, 0, 2)`) y la pantalla de personajes de `hotel_ui.gd` (`settings.set_value("character", index)`). La Miku sale en esa pantalla solo con `ui.unlocked("miku")`.
+  - En red, el anfitrión acepta el índice que manda cada jugador.
+  - Esqueleto: los supervivientes usan los mapas `MIXAMO` y `CHARACTER_CREATOR` de `avatar_visual.gd`, y sus animaciones se hornean con `tools/avatars/bake_survivor_clips.gd` en `assets/players/<id>/clips.res`. La Miku necesita su mapa de huesos y sus animaciones horneadas. Primero hay que ver qué esqueleto trae el modelo.
+  - Créditos: quitar la línea de Biviyt. La CC BY de la Miku pide crédito. Para no delatar el secreto en la lista, el crédito puede ir en la pantalla del código, al canjearlo; o, si el autor lo prefiere, en la lista.
+  - `docs/ASSETS.md`: la fila de `realistic_female` pasa a retirada y entra la de la Miku.
 - **Lo que el autor sabe:** el modelo va dentro de los archivos del juego para todos; el código solo lo oculta. El personaje es de Crypton y su licencia (PCL) solo permite usos no comerciales. Encaja mientras el juego sea un proyecto fan sin venta. Si alguna vez se vende, hay que quitarlo.
 - **No se usa** la YYB Miku (`models/YYB Miku Default.zip`): prohíbe por escrito el uso comercial y la violencia.
 
