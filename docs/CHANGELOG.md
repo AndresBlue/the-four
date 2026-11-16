@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.4.0](#140--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El piso 2 se traza como un edificio de oficinas real, The Lurker se rehace, y las oficinas ganan luz desde sus luminarias, polvo en suspensión y salas de hito señaladas. |
 | [1.3.0](#130--10-de-noviembre-de-2026)    | 10 de noviembre de 2026  | El piso 2, las oficinas con The Lurker, se juega de punta a punta aunque aún no está publicado; el piso 1 gana cuadros eléctricos con llave y papeles escritos a máquina.         |
 | [1.2.0](#120--20-de-octubre-de-2026)      | 20 de octubre de 2026    | El piso va con los supervivientes, la tercera planta tiene pasillos largos sin puertas y ocho pistas sobre las páginas del código, y la salida de la primera etapa se encuentra buscando.|
 | [1.1.0](#110--19-de-octubre-de-2026)      | 19 de octubre de 2026    | Hasta cinco supervivientes (seis con The Locust en Versus), muebles que quedan abiertos tras registrarlos, música que sigue al miedo y logros.                                    |
@@ -69,6 +70,30 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.4.0 — 16 de noviembre de 2026
+
+*El piso 2 se traza como un edificio de oficinas real, The Lurker se rehace, y las oficinas ganan luz desde sus luminarias, polvo en suspensión y salas de hito señaladas.*
+
+Commits `cb8445a`…`v1.4.0` (69).
+
+### Novedades
+
+- La planta de las oficinas se genera como un edificio real: las tres plantas de una partida comparten contorno, pasillos y núcleos, con un anillo de pasillos, despachos de 3,6 m en fila, naves de oficina abierta, salones de archivo, suites de dirección y una galería de servicio. Cada planta tiene su programa: Personal, Registro y Archivo, y Dirección.
+- Los montacargas y la climatización van en núcleos interiores; la recepción, la ventanilla de Personal, el cuarto eléctrico y el puesto de seguridad se colocan por la arquitectura del edificio.
+- **Un punto de control guardado dentro de las oficinas con la planta anterior deja de valer.**
+- Hay una segunda forma de edificio, la espina, construida pero fuera del sorteo: forzada, un bot de prueba se atasca en una semilla.
+- The Lurker se rehace: cerebro nuevo, movimiento suave, sonido por compases; bebe la linterna y la sala, se agarra a techos y paredes y deja tinta; lo que era Pesadilla pasa a ser Desafiante.
+- Polvo en suspensión en las oficinas: la linterna, los focos de emergencia, los flexos y los carteles de salida dejan su haz en el aire, y hay motas que solo se ven donde las toca un foco. Del techo caen hilos y escamas de polvo cuando ella pasa.
+- Las salas de hito se distinguen de las corrientes: banderola y aplique de batería sobre la puerta, carteles de seguridad, lector con piloto y cámara en el puesto de seguridad, y una luz propia sobre lo que se usa. Cada llegada tiene un directorio con flechas y hay señales colgadas donde el camino gira.
+- La luz de las oficinas sale de sus luminarias: una sala se ilumina desde sus pantallas o regletas, con el rebote de su suelo, y ella las bebe todas a la vez.
+- El rediseño visual de las oficinas sigue: la recepción con su mostrador, su nicho y su espera; puertas, sillas y decenas de piezas pasan a ser modelos descargados; suelos encerados que reflejan las lentes.
+- Ganar el piso 1 lleva al piso 2, en solitario y en cooperativo. `Saltar.cmd` empieza en cualquier piso y sector.
+
+### Sin comprobar al cerrar la versión
+
+- La verificación completa no se corrió sobre el estado final: la última pasada entera con la planta nueva encendida dio 76 de 76 un paso antes, con la espina todavía en el sorteo.
+- El interruptor de la planta nueva y sus ramas siguen en el código.
 
 ## 1.3.0 — 10 de noviembre de 2026
 
