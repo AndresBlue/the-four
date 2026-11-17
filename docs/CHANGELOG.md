@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.8.0](#180--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker se juega en Versus desde el menú, por encima del falso techo; pierde su aura; ya no hay textos explicativos en partida, y un invitado oye por fin su aviso de la espalda. |
 | [1.7.0](#170--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El hotel tiene su propia música, que da la vuelta sobre sí misma y suena inquietante; la entrada del juego no se corta y su música llega después del PLAY. |
 | [1.6.1](#161--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Un extra oculto mira hacia donde va. |
 | [1.6.0](#160--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Dos llaves de los cuadros por etapa, y las oficinas dicen menos dónde están sus salas clave y más dónde está lo demás. |
@@ -75,6 +76,20 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.8.0 — 17 de noviembre de 2026
+
+*The Lurker se juega en Versus desde el menú, por encima del falso techo; pierde su aura; ya no hay textos explicativos en partida, y un invitado oye por fin su aviso de la espalda.*
+
+Commits `cf7328a9`…`v1.8.0` (9).
+
+### Novedades
+
+- **Versus en el piso 2:** en la sala multijugador se elige Versus y Piso 2, y quien caza lleva a The Lurker. Se mueve por encima del falso techo, rápida y oída o lenta y en silencio, y ve las salas de abajo como en rayos X, con la estética de una cámara térmica en mapa de color plasma: lo que brilla es la electricidad, y sobre todo las linternas. Ataca desde arriba a quien marca, viaja por los ductos eligiendo la salida y bebe la luz de la sala que tiene debajo. Una linterna en la cara la ciega y la hace huir sola.
+- **Sin aura:** The Lurker ya no suena por estar cerca (ni zumbido, ni latido, ni presencia) y la música deja de seguir su distancia oculta. Se la oye por lo que hace su cuerpo: tuberías, ductos, placas. A cambio, cuanto más baja la cordura, más alucinaciones la ponen encima de ti cuando no está.
+- **Beber la luz:** apaga la sala del todo en un instante y las linternas de dentro, que vuelven pulsando. En cooperativo la IA bebe también la linterna de quien acecha en una sala oscura, con frenos por dificultad.
+- **Sin textos en partida:** fuera las líneas de objetivo, las tarjetas de llegada y los avisos explicativos, en los dos pisos. Quedan los controles y la cuenta de la caza; el objetivo sigue en la pausa.
+- **Arreglo:** en cooperativo, el aviso de la espalda de The Lurker solo sonaba en la máquina del anfitrión, así que un invitado era capturado sin oírlo. Ahora le llega con su ventana y su latencia.
 
 ## 1.7.0 — 16 de noviembre de 2026
 
