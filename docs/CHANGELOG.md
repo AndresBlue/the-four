@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.10.1](#1101--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción en dos celdas, el café en los rincones y las luces de emergencia hacia el suelo. |
 | [1.10.0](#1100--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción más larga, las motas finas como un píxel, el café lejos del ascensor y The Lurker pulida en Versus. |
 | [1.9.0](#190--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker en Versus se ve de nuevo: su cuerpo real en tercera persona sobre un azul marino oscuro, la interfaz de los controles y los ductos en 3D. |
 | [1.8.1](#181--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | Vuelven el nombre del compañero al mirarlo y a quién observas cuando has muerto. |
@@ -79,6 +80,24 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.10.1 — 17 de noviembre de 2026
+
+*La recepción en dos celdas, el café en los rincones y las luces de emergencia hacia el suelo.*
+
+Commits `8dfa7f13`…`v1.10.1` (2).
+
+### Novedades
+
+- **La recepción ocupa dos celdas:** la suya y el tramo de pasillo sin salida de al lado, sin pared entre ellas (9,6 o 10,2 por 6 m). La espera queda al fondo. El montacargas de las otras plantas vuelve a medir 7,2 m.
+- **La máquina de café busca un rincón,** no tapa cuadros, carteles ni enchufes, se aparta de las bajadas del tubo neumático y deja sitio para pasar.
+- **Las luces de emergencia cuelgan boca abajo,** con los focos hacia el suelo que alumbran.
+- **Menos polvo en suspensión:** unas 3.400 motas en Alto en vez de 5.600.
+
+### Arreglos
+
+- La caja y los papeles de la mesa de clasificar ya no flotan sobre ella.
+- La fotocopiadora de reprografía se ve al entrar por la puerta (en la mitad de las salas quedaba en un rincón fuera de la vista).
 
 ## 1.10.0 — 17 de noviembre de 2026
 

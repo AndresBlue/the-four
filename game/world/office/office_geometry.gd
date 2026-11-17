@@ -1394,7 +1394,7 @@ func air(light: Light3D, energy: float) -> void:
 ## room's layer they speckled the reception's ceiling like snow.
 const DUST := preload("res://game/enemies/lurker/ceiling_dust.gd")
 const MOTES_BOX := 4.0
-const MOTES_PER_DUST := 40
+const MOTES_PER_DUST := 24
 const MOTES_MOST := 140
 const MOTE_ALPHA := Vector2(0.8, 1.0)
 const MOTE_LOOK := {"wrap": MOTES_BOX, "speck": Vector2(0.002, 0.004), "min_pixels": 2.0, "bokeh": 3.0, "focus": 0.6, "twinkle": 0.3, "scatter": 30.0}
