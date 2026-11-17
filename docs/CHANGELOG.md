@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.10.0](#1100--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción más larga, las motas finas como un píxel, el café lejos del ascensor y The Lurker pulida en Versus. |
 | [1.9.0](#190--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker en Versus se ve de nuevo: su cuerpo real en tercera persona sobre un azul marino oscuro, la interfaz de los controles y los ductos en 3D. |
 | [1.8.1](#181--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | Vuelven el nombre del compañero al mirarlo y a quién observas cuando has muerto. |
 | [1.8.0](#180--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker se juega en Versus desde el menú, por encima del falso techo; pierde su aura; ya no hay textos explicativos en partida, y un invitado oye por fin su aviso de la espalda. |
@@ -78,6 +79,27 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.10.0 — 17 de noviembre de 2026
+
+*La recepción más larga, las motas finas como un píxel, el café lejos del ascensor y The Lurker pulida en Versus.*
+
+Commits `8ab0d0e5`…`v1.10.0` (2).
+
+### Novedades
+
+- **La recepción del piso 2 mide 9,6 por 6 m** (antes 7,2 por 6), con su ascensor, su mostrador y su espera donde estaban.
+- **El polvo en suspensión es fino como un píxel y casi el triple de numeroso;** brilla solo donde llega la luz.
+- **Las salas especiales se distinguen mejor:** la ventanilla lleva su cartel en la puerta, el cartel de la planta 3 se lee sin linterna, la luz roja ya no tiñe la sala, el cuarto eléctrico tiene luz fría y por la puerta de una sala encendida sale luz al pasillo oscuro.
+- **The Lurker en Versus:** dentro de una sala la cámara deja ver a la presa, las personas se ven más grandes desde el techo y con su contorno, los ruidos se ven como una mancha tenue de calor, y la huida ya no se queda parada.
+- La planta del piso 2 sortea también la espina (una de cada tres, más o menos).
+
+### Arreglos
+
+- Ninguna máquina de café se pone delante de un ascensor (salía una delante del de la recepción).
+- La planta grande de la recepción tiene macetero; antes salía del suelo.
+- Si iluminan a The Lurker a media cuenta de su ataque, huye y no hay captura.
+- Un bot se atascaba con la hoja de una puerta que quedaba atravesada en un almacén de paso.
 
 ## 1.9.0 — 17 de noviembre de 2026
 
