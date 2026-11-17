@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.9.0](#190--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker en Versus se ve de nuevo: su cuerpo real en tercera persona sobre un azul marino oscuro, la interfaz de los controles y los ductos en 3D. |
 | [1.8.1](#181--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | Vuelven el nombre del compañero al mirarlo y a quién observas cuando has muerto. |
 | [1.8.0](#180--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker se juega en Versus desde el menú, por encima del falso techo; pierde su aura; ya no hay textos explicativos en partida, y un invitado oye por fin su aviso de la espalda. |
 | [1.7.0](#170--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El hotel tiene su propia música, que da la vuelta sobre sí misma y suena inquietante; la entrada del juego no se corta y su música llega después del PLAY. |
@@ -77,6 +78,20 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.9.0 — 17 de noviembre de 2026
+
+*The Lurker en Versus se ve de nuevo: su cuerpo real en tercera persona sobre un azul marino oscuro, la interfaz de los controles y los ductos en 3D.*
+
+Commits `1df7624d`…`v1.9.0` (2).
+
+### Novedades
+
+- **Quien lleva a The Lurker la ve siempre desde detrás y encima,** con su modelo y su tinta de verdad, sobre una imagen azul marino casi negra donde solo la luz es calor; los supervivientes son figuras oscuras y su linterna es lo que los delata.
+- **Sin símbolos que aprender:** los objetivos brillan con su forma y laten cuando se usan; la placa o la entrada de ducto que puede usar lleva su contorno y su tecla. Sus acciones van al pie con la misma letra y las mismas teclas que las sugerencias de controles.
+- **Atacar:** la presa se marca en blanco si se puede y en rojo si no, y el motivo se ve en el mundo (la mirada de alguien, la linterna que la cubre).
+- **Ductos en 3D, como las teles de The Locust:** el mundo se oscurece, los tubos se encienden en rosa y cada salida es una columna de luz; se elige mirándola y se viaja por los tubos.
+- El techo de cada planta es continuo (sin muros invisibles), y beber la luz se puede desde arriba.
 
 ## 1.8.1 — 17 de noviembre de 2026
 
