@@ -83,6 +83,9 @@ func run() -> void:
 		"lv_host": await lurker_versus_host()
 		"lv_hunter": await lurker_hunter()
 		"lv_victim": await lurker_victim(true)
+		"lm_host": await match_host()
+		"lm_hunter": await match_hunter()
+		"lm_bravo": await match_bravo()
 	var file := FileAccess.open("res://evidence/net_%s.json" % role, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"role": role, "passed": failed == 0 and not checks.is_empty(), "checks": checks}, "\t"))
 	file.close()
@@ -364,7 +367,7 @@ func late_guest() -> void:
 	if card:
 		for node in level.ui.transit.find_children("*", "Label", true, false): words += node.text + " · "
 	print("LATE card: ", words)
-	check("Su tarjeta dice el sector al que llega, el 2", card and words.contains("SECTOR 2") and not words.contains("SECTOR 3"))
+	check("Su viaje va en negro, sin nada escrito", card and words.is_empty())
 	check("Y sale en el ala 2", await wait_for(func(): return level.lifts.boarding.is_empty() and level.player.global_position.distance_to(level.hotel.arrivals[0]) < 4.0, 15.0))
 	check("Espera abierta la puerta del sector 2", await wait_for(func(): return not level.hotel.gates[1].locked, 40.0))
 	await pause_for(1.5)
@@ -1001,11 +1004,9 @@ func lurker_hunter() -> void:
 	check("Ve a la víctima", await wait_for(func(): return level.match_net.bodies.has(victim), 30.0))
 	var body = level.match_net.bodies[victim]
 	await drink_hunter(spot, body)
-	# Phase 3: no warning from 2.4 m behind any more without her charge; she
-	# lies in wait behind it and watches it first.
-	var perch := lurker_perch(spot)
-	check("Un sitio de acecho detrás de la víctima", perch >= 0)
-	if perch < 0: return
+	# The rehecho (lurker_versus.md 13.3): she watches it from the plenum
+	# behind it, charged on the host, and attacks: the crawl, the drop by the
+	# tile behind it and the release, judged by the host.
 	for round in 2:
 		check("La víctima espera de espaldas (%d)" % round, await wait_for(func(): return body.global_position.distance_to(victim_stand(spot)) < 0.6 and body.velocity.length() < 0.1, 60.0))
 		await pause_for(1.0)
@@ -1017,61 +1018,41 @@ func lurker_hunter() -> void:
 			level.match_net.lurker_release()
 			await pause_for(0.6)
 			check("Delante de la víctima, el anfitrión no empieza ningún aviso (%d)" % round, not lurker.cue)
-		check("Se asienta en su sitio de acecho, detrás (%d)" % round, await settle_at(perch, body), " / ".join(lurker.debug_lines()))
-		# Watching it settled: charged on the host (CHARGE, 2 s).
+		check("La marca desde el plénum, detrás, en verde (%d)" % round, await perch_above(spot, body, victim), "%d %s; %s" % [lurker.driver.prey, str(lurker.driver.prey_info), " / ".join(lurker.debug_lines())])
+		# Watching it from above: charged on the host (CHARGE, 2 s).
 		await pause_for(3.0)
 		var flashed: float = lurker.driver.view.flash_clock
-		# Asked twice at once: the second is too soon.
-		level.match_net.lurker_release()
-		level.match_net.lurker_release()
+		lurker.driver.asked[&"lurker_release"] = true
 		var began: bool = await wait_for(func(): return lurker.cue, 5.0)
-		check("Soltar con carga detrás de la víctima: el anfitrión empieza el aviso (%d)" % round, began)
+		check("Atacar con carga detrás de la víctima: cae por la placa y el anfitrión empieza el aviso (%d)" % round, began, "%s; %s" % [str(lurker.driver.attack), " / ".join(lurker.debug_lines())])
 		if not began: return
+		# Asked again at once: too soon, and a warning runs.
+		level.match_net.lurker_release()
 		check("Y se acaba cuando el anfitrión lo dice (%d)" % round, await wait_for(func(): return not lurker.cue, 5.0))
 		if round == 0:
 			await pause_for(0.6)
 			check("Salvada la víctima, no salta", level.execution.is_empty())
 			check("El fogonazo le llega por la red, del anfitrión", lurker.driver.view.flash_clock != flashed)
-			check("Y huye sola al techo, sin que nadie la lleve", await wait_for(func(): return lurker.motion.in_duct, 2.0), " / ".join(lurker.debug_lines()))
+			check("Y vuelve sola al plénum, sin que nadie la lleve", await wait_for(func(): return lurker.driver.up(), 2.0), " / ".join(lurker.debug_lines()))
 			# Her warning waits after a flash (FLASH_WAIT).
 			await pause_for(lurker.FLASH_WAIT)
 		else:
 			check("Vencido el plazo, el anfitrión ordena el salto", await wait_for(func(): return not level.execution.is_empty() and int(level.execution.seat) == victim, 5.0))
 	await pause_for(15.0)
 
-## A place she lies in wait (lurker_stalk.gd) of planta 1 behind where the
-## victim stands, 3 to 6.3 m from its eye with nothing between: the one
-## nearest 5 m, its index; -1 none.
-func lurker_perch(spot: Dictionary) -> int:
+## Her driver into the plenum 1.5 m behind where the victim stands, her camera
+## on it: marked and green (lurker_player.prey_info) within 5 s.
+func perch_above(spot: Dictionary, body, seat: int) -> bool:
 	var lurker = level.creature
-	var eye: Vector3 = victim_stand(spot) + Vector3(0, 1.6, 0)
-	var along: Vector3 = spot.along
-	var best := -1
-	var best_off := INF
-	for i in lurker.stalk_sites.size():
-		var site: Dictionary = lurker.stalk_sites[i]
-		var p: Vector3 = site.point
-		var flat := Vector3(p.x - eye.x, 0, p.z - eye.z)
-		if int(site.wing) != 0 or flat.length() < 3.0 or flat.length() > 6.3 or flat.normalized().dot(along) > -0.5: continue
-		if not SIGHT.clear(level, p, eye, [lurker.get_rid()]): continue
-		if absf(flat.length() - 5.0) < best_off:
-			best_off = absf(flat.length() - 5.0)
-			best = i
-	return best
-
-## Her driver to that site (lurker_stalk) from a metre off it, looking at the
-## victim, and settled there.
-func settle_at(perch: int, body) -> bool:
-	var lurker = level.creature
-	var p: Vector3 = lurker.stalk_sites[perch].point
-	var to: Vector3 = body.camera.global_position - p
-	var flat := Vector3(to.x, 0, to.z).normalized()
-	lurker.teleport(Vector3(p.x, body.global_position.y + 1.0, p.z) + flat * 0.8, NAN, &"prueba")
-	lurker.driver.yaw = atan2(-flat.x, -flat.z)
-	lurker.driver.pitch = -0.2
-	await pause_for(0.2)
-	lurker.driver.asked[&"lurker_stalk"] = true
-	return await wait_for(func(): return lurker.driver.settled(), 8.0)
+	var stand := victim_stand(spot)
+	var p: Vector3 = stand - (spot.along as Vector3) * 1.5
+	lurker.driver.trip = {}
+	lurker.driver.attack = {}
+	lurker.driver.to_plenum(p + Vector3(0, 1.0, 0), int(spot.room))
+	var to: Vector3 = body.global_position + Vector3(0, 1.1, 0) - lurker.motion.anchor()
+	lurker.driver.yaw = atan2(-to.x, -to.z)
+	lurker.driver.tilt = -0.9
+	return await wait_for(func(): return lurker.driver.prey == seat and bool(lurker.driver.prey_info.get("ok", false)), 5.0)
 
 ## The victim, on its slow line: back to her, it hears its own warning in its
 ## own ears, with its window and its latency. The first time it turns with its
@@ -1180,7 +1161,17 @@ func drink_hunter(spot: Dictionary, body) -> void:
 		check("En una sala de hito, el anfitrión no la deja beber", lurker.deep_room < 0)
 	lurker.place_over(lurker_over(spot), body.camera.global_position)
 	await pause_for(1.0)
-	level.match_net.lurker_drink()
+	# The real button (lurker_player.gd reads lurker_drink), not the order behind it.
+	lurker.driver.scripted = false
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_RIGHT
+	click.pressed = true
+	Input.parse_input_event(click)
+	await pause_for(0.2)
+	var up: InputEventMouseButton = click.duplicate()
+	up.pressed = false
+	Input.parse_input_event(up)
+	lurker.driver.scripted = true
 	var dark := await drink_seen(room, "cazadora")
 	check("Pide beber el pasillo: a oscuras también en su máquina, y la luz vuelve a la vez", absf(dark - lurker.VERSUS_DARK) <= 0.4, "%.2f s" % dark)
 	var other := drink_room(false, room)
@@ -1223,3 +1214,250 @@ func drink_victim(spot: Dictionary) -> void:
 	print("DRINK_WALL víctima luz %.3f" % Time.get_unix_time_from_system())
 	var dark := float(Time.get_ticks_msec() - from) / 1000.0
 	check("A los 6 s, como en las otras máquinas", absf(dark - lurker.VERSUS_DARK) <= 0.5, "%.2f s" % dark)
+
+# --- The whole match on floor 2 (lurker_versus.md 11, phase 5) --------------------
+# From the room's own lists: Versus, floor 2, The Lurker driven by a guest; the
+# host and Bravo are the survivors. First match: Bravo is taken on planta 1 and
+# watches through the host; the two ride on and Bravo is on its feet again on
+# planta 2; she crosses after them by the ducts on her own, planta by planta;
+# they leave down the shaft: SE TE ESCAPARON. Second, with no stage given back
+# (the room's rules): both taken on planta 1: CAZA COMPLETA.
+
+const OFFICE_KIND := preload("res://game/floors/office_floor.gd")
+const SCORE := preload("res://game/services/run_score.gd")
+const TAPE := preload("res://game/ui/tape_report.gd")
+const RULES_OF := preload("res://game/floors/match_rules.gd")
+## The global draw before the room's start button: the floor's seed is drawn
+## from it (net_session.start_match), so the floor is the same every run.
+const MATCH_DRAW := 81
+
+## The room's list called `title` (hotel_ui.choice), or null.
+func room_list(title: String) -> OptionButton:
+	for row in level.ui.column.get_children():
+		if row.is_queued_for_deletion() or not row is HBoxContainer or row.get_child_count() < 2: continue
+		if row.get_child(0) is Label and (row.get_child(0) as Label).text == title and row.get_child(1) is OptionButton: return row.get_child(1)
+	return null
+
+## Picks `words` in that list, as the host's hand does.
+func pick(title: String, words: String) -> bool:
+	var list := room_list(title)
+	if list == null: return false
+	for i in list.item_count:
+		if list.get_item_text(i) != words: continue
+		list.select(i)
+		list.item_selected.emit(i)
+		await process_frame
+		return true
+	return false
+
+## A button of the screen up (hotel_ui.buttons), pressed.
+func press(id: String) -> bool:
+	var button = level.ui.buttons.get(id)
+	if not is_instance_valid(button) or button.disabled: return false
+	button.pressed.emit()
+	return true
+
+## Some label on the screen says exactly this.
+func on_screen(words: String, node: Node = null) -> bool:
+	if node == null: node = level.ui
+	if node is Label and (node as Label).text == words and not node.is_queued_for_deletion(): return true
+	for child in node.get_children():
+		if on_screen(words, child): return true
+	return false
+
+## The planta (wing) a point is on; -1 outside every room.
+func wing_at(point: Vector3) -> int:
+	return int(FLOOR.room_at(level.manifest.rooms, point).get("wing", -1))
+
+func alive(seat: int) -> bool:
+	return level.session.participants.get(seat, level.session.Life.DEAD) != level.session.Life.DEAD
+
+## The car of `index` for every survivor standing, as its button does it
+## (lifts.ride_lifts) but from wherever they are: the errands that open its
+## door are office_coop's to prove. The last one is the shaft out.
+func ride_all(index: int) -> void:
+	var lifts = level.lifts
+	if index >= level.hotel.arrivals.size() or level.hotel.arrivals[index] == Vector3.ZERO:
+		lifts.leave_floor()
+		return
+	for body in level.survivors():
+		var seat := int(body.slot)
+		if not alive(seat): continue
+		var point: Vector3 = lifts.arrival_spot(index)
+		lifts.riding[seat] = lifts.RIDE_REST
+		lifts.apply_ride(seat, point)
+		level.match_net.ride_lift(seat, point)
+	lifts.lift_away[index] = lifts.RIDE_TIME + lifts.LIFT_RETURN
+	level.session.finish_stage()
+
+## This machine's survivor back to her in the corridor until she warns it,
+## and then still: whether it is taken.
+func wait_taken(spot: Dictionary) -> bool:
+	var lurker = level.creature
+	var player = level.player
+	var along: Vector3 = spot.along
+	var seat: int = int(player.slot)
+	var warned := {"yes": false}
+	lurker.cue_played.connect(func(cue_seat: int, _id: int, _point: Vector3): if cue_seat == seat: warned.yes = true)
+	player.torch.visible = false
+	return await wait_for(func():
+		if not warned.yes and level.execution.is_empty() and alive(seat):
+			player.global_position = victim_stand(spot) + Vector3(0, 0.05, 0)
+			player.velocity = Vector3.ZERO
+			player.rotation.y = atan2(-along.x, -along.z)
+			player.camera.rotation.x = 0.0
+		return not alive(seat), 180.0)
+
+## The room from its lists: Versus, floor 2, The Lurker to the hunter; its
+## rules screen, and the start button.
+func match_room(rules: Dictionary) -> void:
+	var net = level.net
+	level.ui.menu("lobby")
+	await process_frame
+	check("Elige Versus en la sala", await pick("Tipo de partida", "Versus") and int(net.options.mode) == net.Mode.VERSUS)
+	check("Y el piso 2: en Versus la sala ya no lo devuelve al 1", await pick("Piso", "Piso 2") and int(net.options.get("floor", 1)) == 2)
+	check("Quien la lleva se llama The Lurker en la sala", room_list("The Lurker") != null and room_list("The Locust") == null)
+	check("Elige a la cazadora", await pick("The Lurker", "Cazadora") and int(net.options.locust) == seat_named("Cazadora"))
+	level.on_action("lobby_rules")
+	await process_frame
+	var rows: Array = level.ui.rule_rows.keys()
+	check("Sus reglas traen las de The Lurker y ninguna de The Locust", level.ui.screen == "rules" and rows.has("lurker_window") and not rows.has("plain_sight") and not rows.has("onslaught") and not rows.has("tv_travel"), str(rows))
+	for id in rules:
+		var picker: OptionButton = level.ui.rule_pickers[id]
+		var at: int = (RULES_OF.entry(id).values as Array).find(int(rules[id]))
+		picker.select(at)
+		picker.item_selected.emit(at)
+	check("La sala juega con esas reglas", level.net.options.get("rules", {}) == rules, str(level.net.options.get("rules", {})))
+	level.on_action("lobby_back")
+	await process_frame
+	seed(MATCH_DRAW)
+	check("Empieza con el botón de la sala", press("lobby_start"))
+	check("Se juega Versus en las oficinas", await wait_for(playing, 150.0) and int(level.manifest.get("floor", 1)) == 2 and int(level.match_net.config.mode) == net.Mode.VERSUS)
+
+
+func match_host() -> void:
+	var net = level.net
+	check("La sala se abre", net.host("Anfitrión", 0, port) == OK)
+	check("Llegan la cazadora y Bravo", await wait_for(func(): return net.connected_seats().size() == 3, 60.0))
+	var bravo := seat_named("Bravo")
+	await match_room({})
+	var lurker = level.creature
+	check("The Lurker, una réplica de quien la lleva", lurker != null and lurker.kind_id() == &"lurker" and lurker.control == "puppet")
+	if lurker == null or lurker.kind_id() != &"lurker": return
+	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
+	var spot := lurker_corridor()
+	check("Un pasillo de la planta 1 para las capturas", not spot.is_empty())
+	if spot.is_empty(): return
+	level.hotel.set_room_power(int(spot.room), false)
+	level.player.torch.visible = false
+	check("La cazadora coge a Bravo en la planta 1", await wait_for(func(): return not alive(bravo), 180.0))
+	check("Y el piso sigue: queda el anfitrión en pie", playing() and alive(1))
+	for stage in [1, 2]:
+		await pause_for(3.0)
+		ride_all(stage - 1)
+		check("Suben a la planta %d" % (stage + 1), await wait_for(func(): return level.session.stage == stage + 1 and playing(), 30.0))
+		if stage == 1: check("Bravo vuelve en pie al cambiar de planta", await wait_for(func(): return alive(bravo), 10.0))
+		check("Y ella llega a la planta %d, también aquí" % (stage + 1), await wait_for(func():
+			var v: Dictionary = lurker.view()
+			return wing_at(lurker.global_position) == stage and not bool(v.drop) and not bool(v.arriving), 120.0), "planta %d" % wing_at(lurker.global_position))
+	await pause_for(3.0)
+	ride_all(2)
+	check("Bajan por el pozo y salen del piso", await wait_for(func(): return level.session.state == level.session.State.WON, 30.0))
+	check("SALISTE DEL PISO", await wait_for(func(): return level.ui.screen == "online_won" and on_screen("SALISTE DEL PISO"), 20.0))
+	var line: Dictionary = level.ui.summary
+	check("La cinta es de las oficinas, en Versus, con quien la llevó", int(line.get("floor", 0)) == 2 and String(line.get("mode", "")) == "versus" and int(line.get("hunter", {}).get("seat", 0)) == seat_named("Cazadora") and TAPE.creature_of(line) == "The Lurker", str(line.get("hunter", {})))
+	check("Su línea: una captura y el aviso más largo, en metros", int(line.get("deaths", 0)) == 1 and float(line.get("hunter", {}).get("longest", 0.0)) > 0.0, str(line.get("hunter", {})))
+	check("Salir con ella llevada por un jugador es A SALVO DEL CAZADOR", SCORE.earned(OFFICE_KIND.MILESTONES, line, 1).has("hunted") and not SCORE.earned(OFFICE_KIND.MILESTONES, line, seat_named("Cazadora")).has("hunter"))
+	# The second: back to the room, no stage given back, both taken.
+	await pause_for(3.0)
+	check("Vuelven a la sala", press("online_room") and await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 30.0))
+	await match_room({"restarts": 0})
+	lurker = level.creature
+	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
+	spot = lurker_corridor()
+	level.hotel.set_room_power(int(spot.room), false)
+	check("Coge a Bravo", await wait_for(func(): return not alive(bravo), 180.0))
+	# Her stay after a take (sated) is phase 3's: here she goes on.
+	lurker.brain.sated_until = -INF
+	check("Y al anfitrión, de espaldas en el mismo pasillo", await wait_taken(spot))
+	check("Sin nadie en pie ni etapas devueltas, el piso se pierde", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.session.restarts == 0, 20.0))
+	check("SEÑAL PERDIDA", await wait_for(func(): return level.ui.screen == "online_failed" and on_screen("SEÑAL PERDIDA"), 20.0))
+	await pause_for(8.0)
+
+## Bravo: taken on planta 1 of the first, it watches the host and is back on
+## planta 2; taken first in the second.
+func match_bravo() -> void:
+	var net = level.net
+	await pause_for(2.5)
+	check("Bravo se conecta", net.join("127.0.0.1", "Bravo", 2, port) == OK)
+	for round in 2:
+		check("Entra en el Versus de las oficinas (%d)" % round, await wait_for(func(): return playing() and int(level.manifest.get("floor", 1)) == 2, 240.0))
+		var lurker = level.creature
+		check("Aquí The Lurker es una réplica (%d)" % round, lurker != null and lurker.control == "puppet")
+		var spot := lurker_corridor()
+		if lurker == null or spot.is_empty(): return
+		check("La cazadora lo coge de espaldas (%d)" % round, await wait_taken(spot))
+		if round == 1:
+			check("Pierde el piso con los demás: SEÑAL PERDIDA", await wait_for(func(): return level.ui.screen == "online_failed" and on_screen("SEÑAL PERDIDA"), 60.0))
+			return
+		check("Muerto, mira por la cámara del anfitrión", await wait_for(func(): return is_instance_valid(level.revival.watch_camera) and level.revival.watch_camera.current and level.match_net.watching == 1, 20.0))
+		check("Al cambiar de planta vuelve en pie, en la planta 2", await wait_for(func(): return level.local_alive() and level.session.stage == 2 and wing_at(level.player.global_position) == 1 and level.player.camera.current, 120.0))
+		check("Sale con el anfitrión: SALISTE DEL PISO", await wait_for(func(): return level.ui.screen == "online_won" and on_screen("SALISTE DEL PISO"), 240.0))
+		check("A SALVO DEL CAZADOR también para quien cayó y volvió", SCORE.earned(OFFICE_KIND.MILESTONES, level.ui.summary, net.local_seat).has("hunted"))
+		check("De vuelta a la sala", await wait_for(func(): return level.session.state == level.session.State.MENU, 90.0))
+
+## The hunter: a guest who drives her, by a script; she crosses after them on
+## her own.
+func match_hunter() -> void:
+	var net = level.net
+	await pause_for(1.5)
+	check("La cazadora se conecta", net.join("127.0.0.1", "Cazadora", 1, port) == OK)
+	for round in 2:
+		check("Entra en el Versus de las oficinas (%d)" % round, await wait_for(func(): return playing() and int(level.manifest.get("floor", 1)) == 2, 240.0))
+		var lurker = level.creature
+		check("Lleva a The Lurker, con sus ojos (%d)" % round, lurker != null and lurker.kind_id() == &"lurker" and lurker.control == "player" and lurker.driver != null and lurker.hunter_camera().current)
+		if lurker == null or lurker.driver == null: return
+		if round == 0:
+			# What she sees as it starts: the grace counted down, and her keys.
+			await pause_for(0.5)
+			check("Al empezar, la cuenta atrás de su gracia, en cifras y sin palabras", String(level.camcorder.notice.text).is_valid_int(), String(level.camcorder.notice.text))
+			var keys: Array = level.hints.rows("lurker")
+			check("Y sus teclas, cada una con su nombre", keys.size() == 6 and keys.all(func(row): return not (row[0] as Array).has("-")), str(keys))
+		lurker.driver.scripted = true
+		lurker.grace = 0.0
+		level.camcorder.announce("")
+		var spot := lurker_corridor()
+		check("El pasillo de la planta 1 (%d)" % round, not spot.is_empty())
+		if spot.is_empty(): return
+		var bravo := seat_named("Bravo")
+		check("Coge a Bravo en la planta 1 (%d)" % round, await take_at(spot, bravo))
+		if round == 1:
+			check("Y al anfitrión", await take_at(spot, 1))
+			check("CAZA COMPLETA", await wait_for(func(): return level.ui.screen == "online_failed" and on_screen("CAZA COMPLETA"), 60.0))
+			check("La caza ganada queda en su ficha, y el hito en la cinta", await wait_for(func(): return String(level.ui.summary.get("result", "")) == "lost", 20.0) and int(level.records.career.get("hunts", 0)) == 2 and int(level.records.career.get("hunts_won", 0)) == 1 and SCORE.earned(OFFICE_KIND.MILESTONES, level.ui.summary, net.local_seat).has("hunter"), str(level.records.career))
+			return
+		for wing in [1, 2]:
+			check("Cruza sola tras ellos a la planta %d, por los ductos" % (wing + 1), await wait_for(func(): return level.session.stage == wing + 1 and wing_at(lurker.global_position) == wing and lurker.transit_phase() == &"", 150.0), " / ".join(lurker.debug_lines()))
+		check("SE TE ESCAPARON", await wait_for(func(): return level.ui.screen == "online_won" and on_screen("SE TE ESCAPARON"), 120.0))
+		check("Su línea en la cinta: The Lurker y su aviso más largo", await wait_for(func(): return float(level.ui.summary.get("hunter", {}).get("longest", 0.0)) > 0.0, 20.0) and TAPE.creature_of(level.ui.summary) == "The Lurker")
+		check("La caza perdida queda en su ficha", int(level.records.career.get("hunts", 0)) == 1 and int(level.records.career.get("hunts_won", 0)) == 0, str(level.records.career))
+		check("De vuelta a la sala", await wait_for(func(): return level.session.state == level.session.State.MENU, 90.0))
+
+## Her driver behind whoever stands in the corridor of planta 1 (`seat`):
+## watching it from the plenum, she attacks; the host judges and orders the
+## take. Again if the host said no. Whether it fell.
+func take_at(spot: Dictionary, seat: int) -> bool:
+	var lurker = level.creature
+	if not await wait_for(func(): return level.match_net.bodies.has(seat), 60.0): return false
+	var body = level.match_net.bodies[seat]
+	if not await wait_for(func(): return body.global_position.distance_to(victim_stand(spot)) < 0.6 and body.velocity.length() < 0.1, 120.0): return false
+	for attempt in 4:
+		if not alive(seat): return true
+		await pause_for(1.0)
+		if not await perch_above(spot, body, seat): continue
+		# Watching it from above: charged on the host (CHARGE, 2 s).
+		await pause_for(3.0)
+		lurker.driver.asked[&"lurker_release"] = true
+		if not await wait_for(func(): return lurker.cue, 5.0): continue
+		if await wait_for(func(): return not alive(seat), 15.0): return true
+	return not alive(seat)

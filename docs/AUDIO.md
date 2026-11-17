@@ -231,7 +231,7 @@ Encender una tele suena a **tele**: la estática entera del canal muerto del apa
 
 ## El teclado del código
 
-El teclado suena a teclado: un clic por tecla, un zumbido grave doble para «NO ES» y «FALTAN TELEVISORES» y dos tonos subiendo para el código bueno, sintetizados como los pitidos del menú (`osd_style.tones()`, `hotel_ui.keypad()`). Los oye solo quien teclea y no son ruido para la criatura. Hasta septiembre de 2026 un código erróneo sonaba al crujido de una puerta y el bueno al pestillo del último coche: parecía que se estaba probando una puerta sin que nada se moviera.
+El teclado suena a teclado: un clic por tecla, un zumbido grave doble para un código que no es (sin nada escrito desde el 16 de noviembre de 2026) y para «FALTAN TELEVISORES» y dos tonos subiendo para el código bueno, sintetizados como los pitidos del menú (`osd_style.tones()`, `hotel_ui.keypad()`). Los oye solo quien teclea y no son ruido para la criatura. Hasta septiembre de 2026 un código erróneo sonaba al crujido de una puerta y el bueno al pestillo del último coche: parecía que se estaba probando una puerta sin que nada se moviera.
 
 ## El ascensor
 

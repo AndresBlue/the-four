@@ -53,7 +53,6 @@ func run() -> void:
 	# given back, so what was spilt stays to be looked at.
 	await level.start_floor(int(options.get("seed", 81)), false, [1], "desafiante")
 	level.ui.hide_transit()
-	level.lifts.brief_wait = 0.0
 	level.settings.values.character = int(options.get("character", 2))
 	level.settings.values.reduced = options.has("reduced")
 	level.apply_settings()

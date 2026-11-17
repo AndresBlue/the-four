@@ -84,6 +84,14 @@ func words_under(node: Node) -> String:
 		stack.append_array(next.get_children())
 	return found
 
+## What is written over the picture while the floor is played: everything the
+## interface draws except the menus, which are above the tape.
+func play_words() -> String:
+	var found := ""
+	for child in level.ui.get_children():
+		if child != level.ui.outside: found += words_under(child)
+	return found
+
 ## How many surfaces of the hotel are still giving off light of their own:
 ## the domes and the shades and the battens (materials of this floor), the
 ## exit signs (a shader) and the wall lamps (the glow is inside the model, so
@@ -210,6 +218,7 @@ func run() -> void:
 	var blinded := 0.0
 	var held_ticks := 0
 	var card := ""
+	var card_seen := false
 	var doors_seen := false
 	# The ride is as long as its recordings: the doors, the car going down,
 	# the bell and the doors down there (lifts.RIDE_TIME, 8.5 s).
@@ -218,23 +227,23 @@ func run() -> void:
 		# Seen shutting before the picture goes.
 		if level.lifts.ride_static() == 0.0 and float(level.lifts.door_state.get(0, 1.0)) < 0.5 and not level.lifts.boarding.is_empty(): doors_seen = true
 		if level.player.held: held_ticks += 1
-		# The cut itself: what the tape puts up on the black while the car
-		# moves, which is the one moment the next stage can be read.
-		if is_instance_valid(level.ui.transit) and card.is_empty():
-			for node in level.ui.transit.get_child(0).get_children():
-				if node is Label: card += node.text + " · "
+		# The cut itself: black while the car moves, with nothing written on it
+		# (the author, 16 November 2026).
+		if is_instance_valid(level.ui.transit):
+			card_seen = true
+			card += words_under(level.ui.transit)
 		if i > 2 and level.lifts.boarding.is_empty(): break
 		await physics_frame
 	check("El viaje sujeta al jugador y le quita la imagen", held_ticks > 0 and blinded > 0.8)
-	check("Y el corte dice a qué sector se va y qué pide, sin repetir la etapa", card.contains("SECTOR 2") and not card.contains("ETAPA") and card.contains(level.lifts.stage_errand(2)))
+	check("Y el corte va en negro, sin nada escrito", card_seen and card.is_empty())
 	check("Al abrirse las puertas la tarjeta ya no está", not is_instance_valid(level.ui.transit))
 	check("Las puertas del coche se ven cerrarse antes de que se vaya la imagen", doors_seen)
 	check("Y abajo se abren las del coche al que llegan", float(level.lifts.arrival_state.get(0, 0.0)) > 0.5)
 	check("El viaje dura lo que su sonido: puertas, bajada, campana y puertas", level.lifts.RIDE_TIME >= 8.0 and level.lifts.RIDE_OPEN > level.lifts.RIDE_BELL)
-	# Out of the car, the notice of the sector: what it wants, said whole, for
-	# six seconds, and gone the way an analogue set goes off.
+	# Out of the car, nothing about the sector is written over the picture:
+	# the pause screen keeps it.
 	await frames(4)
-	check("Al salir del ascensor aparece el objetivo del sector", is_instance_valid(level.ui.brief) and words_under(level.ui.brief).contains(level.lifts.stage_brief(2)) and words_under(level.ui.brief).contains("SECTOR 2"))
+	check("Al salir del ascensor no se escribe el objetivo del sector", not play_words().contains(level.lifts.stage_brief(2)) and not play_words().contains("SECTOR 2"))
 	var arrival: Dictionary = level.manifest.rooms[int(level.manifest.gates[0].arrive)]
 	# It comes out in the wing the lift serves. Where exactly is the session's
 	# business: closing a stage puts everybody on their feet at the way in.
@@ -277,9 +286,9 @@ func run() -> void:
 	check("Y el coche vuelve a irse con él", level.lifts.lift_gone(0))
 	level.locust.global_position = den
 	check("La puerta de la tercera ala sigue cerrada", level.hotel.gates[1].locked)
-	# The notice of the sector goes by itself, about six seconds after it came.
-	await frames(int((level.ui.BRIEF_HOLD + 0.6) * 60))
-	check("Y se va solo a los seis segundos", not is_instance_valid(level.ui.brief))
+	# Nor six seconds on, when the notice there was went (the same wait as then).
+	await frames(int((6.0 + 0.6) * 60))
+	check("Ni a los seis segundos", not play_words().contains(level.lifts.stage_brief(2)) and not play_words().contains("SECTOR 2"))
 	# The pause screen keeps it, with how the sector is going.
 	level.refresh_briefing()
 	check("La pausa guarda el objetivo del sector", level.ui.briefing.sector == "SECTOR 2" and level.ui.briefing.objective == level.lifts.stage_brief(2))
@@ -495,7 +504,7 @@ func run() -> void:
 		await frames(2)
 	check("Registrar los cuatro da el código entero", level.found_digits.size() == DIG.COUNT and not level.code_so_far().contains("–"))
 	check("Quien registra se lleva la nota", hidden.all(func(piece): return not is_instance_valid(piece.note)))
-	check("Y los números quedan escritos en la cinta", level.camcorder.code_note.text.contains(level.code_so_far()))
+	check("Y los números no se escriben sobre la imagen: quedan en la hoja y el teclado", not (words_under(level.camcorder) + play_words()).contains("CÓDIGO") and level.noted_code() == level.code_so_far())
 	check("Un mueble registrado no se vuelve a registrar", hidden[0].searched and not hidden[0].set_searched(true))
 	# Gone through, each is left open for anybody to see, the creature's clicks
 	# too: a drawer or a door out of the piece, drawn in its parts, or one of its

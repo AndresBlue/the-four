@@ -35,8 +35,6 @@ const PALETTE := preload("res://game/floors/palettes/hotel_palette.gd")
 ## (hotel_main.spawn_creature()), so what only reads the rules does not load it.
 const CREATURE := "res://game/enemies/locust/locust.tscn"
 const CREATURE_KEY := &"locust"
-## Who is after you, said in red over the first notice anybody gets (lifts.gd).
-const FIRST_LEAD := "The Locust va a por ti…"
 ## The set of papers its hints are drawn from: the hotel's is the only one
 ## (game/world/generation/hint_placement.gd) and has no constant of its own.
 const PAPERS := "hotel"
@@ -70,8 +68,8 @@ const MILESTONES := [
 	{"id": "hunter", "title": "CAZA COMPLETA", "note": "Como The Locust, no dejar salir a nadie.", "rule": ["hunter_won"]},
 ]
 
-## Stage by stage, from the first: {objectives, errand (the card, in the fewest
-## words that fit on it), brief (the notice, said whole)}.
+## Stage by stage, from the first: {objectives, errand (in the fewest words,
+## the tape report's), brief (said whole, the pause screen's)}.
 const STAGES := [
 	{"objectives": [], "errand": "ENCUENTRA LA SALIDA", "brief": "Encuentra la salida del sector."},
 	{"objectives": ["televisions"], "errand": "ENCIENDE LOS TELEVISORES", "brief": "Enciende los televisores y busca la salida."},
@@ -93,8 +91,8 @@ static func count() -> int: return STAGES.size()
 static func stage(number: int) -> Dictionary:
 	return STAGES[clampi(number, 1, STAGES.size()) - 1]
 
-## What the card, the notice and the pause call a stage (lifts.gd,
-## hotel_main.gd): the hotel's are sectors.
+## What the pause screen calls a stage (hotel_main.gd): the hotel's are
+## sectors.
 static func title_of(number: int) -> String:
 	return "SECTOR %d" % number
 

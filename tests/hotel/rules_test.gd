@@ -163,8 +163,10 @@ func run() -> void:
 	level.ui.menu("lobby")
 	level.on_action("lobby_rules")
 	await process_frame
-	check("Las reglas de la sala, en una sola lista: una fila cada una, con su lista", level.ui.screen == "rules" and level.ui.rule_rows.size() == hotel_ids.size() and level.ui.rule_pickers.size() == hotel_ids.size())
-	check("En el hotel, la pantalla trae las de siempre en su orden", level.ui.rule_rows.keys() == hotel_ids and level.ui.rule_pickers.keys() == hotel_ids)
+	# Against the machine a hunter's rule does nothing, and is not shown.
+	var coop_ids: Array = RULES.shown(&"locust", 1, false).map(func(rule): return String(rule.id))
+	check("Las reglas de la sala, en una sola lista: una fila cada una, con su lista", level.ui.screen == "rules" and level.ui.rule_rows.size() == coop_ids.size() and level.ui.rule_pickers.size() == coop_ids.size())
+	check("En el hotel, la pantalla trae las de siempre en su orden, sin la del cazador en cooperativo", level.ui.rule_rows.keys() == coop_ids and coop_ids == hotel_ids.filter(func(id): return id != "plain_sight"))
 	# Resting on a rule brings up what it does, under the list.
 	level.ui.rule_rows["sanity"].mouse_entered.emit()
 	check("Posarse en una regla trae lo que hace", String(level.ui.rule_detail.words.text) == String(RULES.RULES.filter(func(rule): return rule.id == "sanity")[0].note))
@@ -175,6 +177,32 @@ func run() -> void:
 	level.on_action("rules_reset")
 	await process_frame
 	check("Y «Default» las devuelve todas", level.net.options.rules.is_empty() and level.ui.screen == "rules")
+	# Versus on floor 2 (lurker_versus.md 11, phase 5): the room keeps the
+	# floor, the hunter is The Lurker, her rules show and The Locust's do not.
+	var net = level.net
+	net.set_option("mode", net.Mode.VERSUS)
+	level.ui.menu("rules")
+	await process_frame
+	check("En Versus la sala sigue en el hotel, con The Locust y sus reglas", int(net.options.floor) == 1 and net.hunter_title() == "The Locust" and level.ui.rule_rows.keys() == hotel_ids)
+	net.set_option("floor", 2)
+	check("Y elige el piso 2: quien caza es The Lurker", int(net.options.floor) == 2 and net.hunter_title() == "The Lurker")
+	level.ui.menu("rules")
+	await process_frame
+	var hers: Array = level.ui.rule_rows.keys()
+	check("Sus reglas en Versus del piso 2: la ventana del aviso, ninguna de The Locust", hers == RULES.shown(&"lurker", 2).map(func(rule): return String(rule.id)) and hers.has("lurker_window") and not hers.has("plain_sight") and not hers.has("onslaught"))
+	net.set_option("mode", net.Mode.COOP)
+	level.ui.menu("rules")
+	await process_frame
+	check("En cooperativo del piso 2 la ventana del aviso no sale", not level.ui.rule_rows.has("lurker_window") and int(net.options.floor) == 2 and RULES.shown(&"lurker", 2, false).all(func(rule): return not rule.get("versus", false)))
+	net.set_option("floor", 1)
+	# Her milestones and her line on the tape, as the hotel's.
+	var office = load("res://game/floors/office_floor.gd")
+	var score = load("res://game/services/run_score.gd")
+	var tape = load("res://game/ui/tape_report.gd")
+	var caught := {"floor": 2, "result": "lost", "mode": "versus", "players": 2, "hunter": {"seat": 3, "name": "C", "longest": 5.2}, "team": [{"seat": 1, "escaped": false}, {"seat": 2, "escaped": false}]}
+	var out := {"floor": 2, "result": "won", "mode": "versus", "players": 2, "escaped": 1, "hunter": {"seat": 3, "name": "C"}, "team": [{"seat": 1, "escaped": true}, {"seat": 2, "escaped": false}]}
+	check("En las oficinas, CAZA COMPLETA para quien la llevó y A SALVO DEL CAZADOR para quien sale", score.earned(office.MILESTONES, caught, 3).has("hunter") and not score.earned(office.MILESTONES, caught, 1).has("hunter") and score.earned(office.MILESTONES, out, 1).has("hunted") and not score.earned(office.MILESTONES, out, 3).has("hunter"))
+	check("La cinta nombra a la criatura de su piso", tape.creature_of(caught) == "The Lurker" and tape.creature_of({"floor": 1}) == "The Locust" and tape.moment(caught, {"k": "death", "s": 1})[0].begins_with("The Lurker atrapó"))
 	level.net.shutdown("")
 	var file := FileAccess.open("res://evidence/rules_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))

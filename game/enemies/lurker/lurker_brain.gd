@@ -400,6 +400,9 @@ const PREDICT := 2.0
 const NOISE_TRACK := 6.0
 
 func remember(p) -> void:
+	# Gone from the match (no body for her senses, nothing of them in mind): no
+	# longer hers, whatever she reckoned of them. Never mid-warning nor taking.
+	if prey >= 0 and p.victim == null and not p.bodies.has(prey) and not state in [State.CUE, State.TAKE]: prey = -1
 	if prey < 0:
 		track = {}
 		return

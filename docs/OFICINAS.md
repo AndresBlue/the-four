@@ -200,7 +200,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - no hay refugios que encontrar;
 - no se cuentan objetos;
 - no hay código;
-- al llegar a cada planta, la tarjeta es la del montacargas de La Oficina: el nivel, el departamento y el encargo en dos o tres palabras («NIVEL 1» / «PERSONAL» / «PIDE TU FICHA»).
+- al llegar a cada planta no hay tarjeta: el viaje va en negro y al volver la imagen no se escribe nada (el autor, 16 de noviembre de 2026); el encargo lo dice la pausa.
 
 ### Planta 1. Personal: el correo
 
@@ -330,7 +330,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - **Elige presa** entre quienes percibe (nunca alguien en una sala protegida, escondido, en su descanso o junto a su última captura):
   - por cuánto está solo (35 %), a oscuras (25 %), rezagado del centro del grupo (20 %) y ocupado (20 %: leyendo, usando algo o quieto 2 s); los empates, a suertes;
   - mientras acecha, cambia a otra si puntúa claramente más;
-  - **la guarda por memoria**, no por vista: dónde la vio u oyó por última vez, hacia dónde iba y a qué paso. Pasados 12 s sin señal la pierde, y la busca donde la vio por última vez (nunca donde está de verdad).
+  - **la guarda por memoria**, no por vista: dónde la vio u oyó por última vez, hacia dónde iba y a qué paso. Pasados 12 s sin señal la pierde, y la busca donde la vio por última vez (nunca donde está de verdad). A quien deja la partida (un invitado que se va) lo olvida en el acto, y deja de ser su presa.
   - El director solo le da zonas, como a The Locust (salvo el encuentro forzado, abajo).
 
 ### Estados
@@ -363,9 +363,9 @@ El estado **Quieta** ya no se usa: solo lo ponen a mano las herramientas.
   - Es su señal más clara y la que la hace visible por donde pasa.
   - Este drenaje no deja la sala a oscuras para las reglas.
 - **Se bebe la sala entera** (`lurker.drink()`, lurker_versus.md 8 y 10):
-  - **Su mente** (de Equilibrada para arriba; `lurker.snuff_step()`): si acecha a alguien que está en una sala con luz el tiempo de su dificultad seguido (12 s en Equilibrada, 4 en Desafiante, 2,5 en Pesadilla), primero el **preaviso**: las lámparas de esa sala bajan temblando al 30 % y suena el siseo de los tubos (`drink_warn`, con su subtítulo). Si su presa sigue en la sala, la bebe; si sale, lo deja.
+  - **Su mente** (de Equilibrada para arriba; `lurker.snuff_step()`): tras ir a por la misma presa (acechándola, en silencio o acercándose) el tiempo de su dificultad seguido (`snuff_time`), se bebe la sala en la que está esa presa si es una sala con luz **o una a oscuras en la que lleva la linterna encendida** (la sala ya está oscura: lo que se bebe es la linterna). Primero el **preaviso**: las lámparas de esa sala bajan temblando al 30 % (a oscuras no hay lámparas que bajar) y suena el siseo de los tubos (`drink_warn`, con su subtítulo). Si su presa sigue en la sala (y, a oscuras, con la linterna encendida), la bebe; si sale o la apaga, lo deja.
   - Nunca contra una presa con la linterna ya bebida o apagada, ni en los 10 s siguientes a un susto suyo, ni con un aviso en marcha, ni antes de su espera entre bebidas (`drink_every`).
-  - **Quien la lleva en Versus** la pide (`match_net.lurker_drink()`) y el anfitrión la juzga (`lurker.judge_drink()`): la sala en la que tiene la cara, fuera de un ducto oculto, sin aviso en marcha, sin otra sala suya a oscuras y 25 s desde la anterior. Sin preaviso. Si se enciende la luz de la sala en la que está, huye como la IA (`lit_out`).
+  - **Quien la lleva en Versus** la pide (`match_net.lurker_drink()`) y el anfitrión la juzga (`lurker.judge_drink()`): la sala en la que tiene la cara, fuera de un ducto oculto, sin aviso en marcha, sin otra sala suya a oscuras y 25 s desde la anterior. Sin preaviso. La pide con su botón (`lurker_drink`: clic derecho o gatillo izquierdo). Si se enciende la luz de la sala en la que está, huye como la IA, por el mismo camino que la huida de la mirada con luz (`lurker.scare_off()`, sin fogonazo).
   - **La bebida**: su chillido (`drink_0.wav`, el de espantarse más lento y con el golpe del cuadro debajo; no asusta la cordura ni la música), la sala a oscuras del todo en 0,2 s y para las reglas (`hotel.lit()`) durante `drink_dark` (6 s en Versus); la devuelve la máquina a cargo en un segundo y no vuelve a beberse la misma en 45 s. Las linternas de quien está dentro se apagan con el interruptor y un clic, sin quedar bebidas (`lurker.outed`), y vuelven a la tercera pulsación, nunca antes de 1 s (las cuenta la máquina a cargo). Su primer aviso, no antes de `drink_cue`; en cooperativo, un intento por apagón y va a por su presa en cuanto bebe.
   - Solo salas que pueden estar a oscuras (`may_snuff()`): ni hitos (ventanilla, cuarto eléctrico, seguridad, climatización), ni vestíbulos, ni refugios, ni protegidas ni prohibidas. No toca la emergencia ni las lámparas de hito: solo baja las lámparas propias de la sala. Que la devuelva no la espanta, como sí lo hace que alguien encienda la luz.
 - **En una sala con luz no coge** a quien la tiene a la vista, pero puede cruzarla por el techo, deprisa, si nadie mira hacia arriba. Sus emboscadas, nunca bajo un techo con luz.
@@ -439,7 +439,7 @@ Sus claves están en `game/floors/difficulty.gd` (`CREATURE_PROFILES`), encima d
 | Deja en paz a quien estaba cerca de una captura (`sated`) | 60 s | 40 s | 20 s | 12 s |
 | Sin alcanzar a nadie, el director la lleva a la sala de alguien a los (`forced_after`) | Nunca | 70 s | 30 s | 20 s |
 | Distancia a la que bebe una lámpara (`drain_reach`) | 3 m | 3 m | 4 m | 4,5 m |
-| Se bebe la sala de su presa a los (`snuff_time`) | Nunca | 12 s | 4 s | 2,5 s |
+| Se bebe la sala de su presa (con luz, o a oscuras con su linterna encendida) tras ir a por ella (`snuff_time`) | Nunca | 5 s | 3 s | 2 s |
 | Linterna que la espanta, bebida durante (`torch_drunk`) | Nunca | 3 s | 10 s | 14 s |
 | Probabilidad de que una linterna bebida se apague del todo (`torch_kill`) | 0 % | 25 % | 60 % | 80 % |
 | Preaviso antes de beberse la sala (`drink_warn`) | Nunca bebe | 1 s | 0,8 s | 0,6 s |
@@ -519,20 +519,26 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 
 ## 7. Versus: ser The Lurker
 
-- **Su vista**:
-  - **la oscuridad es su luz**: ve lo oscuro en grises granulosos;
-  - lo encendido **la quema**: blanco, sin detalle, con un sonido que molesta;
-  - la linterna de un superviviente es un fogonazo que la ciega si la mira.
-  - Ve a quien sus sentidos le dan (`sees()`), como el eco de The Locust.
-- **Se mueve por cualquier superficie** (suelo, pared, techo, saltando de una a otra) y **entra en los ductos** por las rejillas. Dentro, un plano esquemático de la red y salidas marcadas.
+El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
+
+- **Cómo se entra:** en la sala multijugador, el anfitrión elige «Versus» en «Tipo de partida» y «Piso 2» en «Piso». Quien la lleva se elige como en el hotel, un jugador o «Al azar», en la lista que en el piso 2 se llama «The Lurker». De dos a seis jugadores: ella y hasta cinco supervivientes.
+- **Su perfil:** Versus no tiene dificultad. Ventana del aviso de 1,2 s más la latencia de quien lo oye (como mucho 0,5 s), cambiable en las reglas de la sala («Ventana del aviso», grupo THE LURKER, que solo sale en Versus del piso 2); la planta 1, con la oscuridad de Equilibrada; la linterna que la ciega queda bebida 4 s y nunca se apaga para siempre.
+- **Al empezar:** la cuenta atrás de su gracia, en cifras, y, en las primeras partidas, la tarjeta con sus teclas y su nombre. En el juego no hay más palabras que los nombres de las teclas: lo que puede hacer y por qué no lo dicen signos. Nada explica la regla de oro.
+- **Dónde vive:** en el plénum, por encima del falso techo de su planta, como un plano continuo. La paran el contorno del edificio, los núcleos y los muros cortafuegos entre departamentos (el cambio de sector de las salas); los tabiques de las salas y las puertas, no. Se mueve libre, con aceleración viva y deslizando contra lo que la para. Dos ritmos: 4,5 m/s, que se oye abajo (crujen las placas y cae polvo en la sala que cruza), y 1,5 m/s manteniendo Mayúsculas, en silencio. Sobre una galería de servicio, sin falso techo, va por la losa, a la vista.
+- **Su vista desde arriba:** la cámara va detrás y encima de ella, inclinada hacia abajo (de 1,6 a 5 m con la rueda o Z); el falso techo se ve como si no estuviera: su cuadrícula tenue, los muros de abajo como contornos, los cortafuegos que la paran algo más claros, el suelo casi negro y una sala encendida en morado medio, los ductos como líneas finas y las luminarias como puntos bajos. Las personas a menos de 20 m, como figuras tibias; sus linternas, lo más brillante; más lejos, solo las linternas encendidas (hasta 30 m) y quien está a cordura 0. Encima, en blanco: los objetivos con un contorno y un rombo que late cuando alguien los usa, la placa por la que bajaría, las rejillas de los ductos y su cuerpo.
+- **Su vista abajo:** al bajar, la cámara pasa a sus ojos: la grabación de cámara térmica con la paleta plasma, oscura (azul casi negro) y con contraste; una sala encendida la deslumbra más allá de 4 m en morado medio, no en rosa. Los ruidos se ven como anillos.
+- **Bajar y subir:** Espacio la descuelga por la placa de debajo a la sala y la sube otra vez. Abajo la pueden ver y alumbrar.
+- **La presa y el ataque:** la persona más centrada en su vista lleva un marcador: verde y un triángulo si puede atacar; rojo y un rombo tachado si no, con el motivo como signo: un ojo (alguien mira donde caería), un sol (una linterna o la luz), un arco que se vacía (en espera) o el marcador pequeño dentro de un anillo roto (lejos). Vigilándola desde arriba 2 s sin que mire hacia ella se llena su carga. Atacar (clic izquierdo) la lleva por el plénum a la placa detrás de la presa, cae y pide el aviso de la espalda al anfitrión, que lo juzga como siempre: hasta unos 3 m de la presa, o 7 m con la carga. Solo coge por la espalda y con el aviso; correr, girarse con la linterna o mirarla con luz salva.
+- **Los ductos:** junto a una rejilla, E la mete en la red y abre el plano de ductos con las salidas a las que llega; la más hacia donde mira, resaltada, como The Locust elige una tele; E otra vez pide el viaje al anfitrión y Espacio la devuelve. El viaje va a 9 m/s por la red (nunca menos de 1 s), con la línea del recorrido avanzando en el plano; se la oye por los ductos. Sale al plénum de la sala de la salida. Otro viaje, a los 4 s. Es como se cruza de un departamento a otro.
+- **El fogonazo y la huida:** una linterna sin beber en la cara la ciega: la imagen se satura y vuelve en unos 2,5 s, huye sola por la salida más cercana y no puede atacar ni beber en 6 s. Huyendo, la imagen se cierra por los bordes y la cámara sube sola sobre ella, ya en el plénum.
 - **Habilidades:**
-  - **Beber la luz**: apaga una sala ~6 s; espera ~25 s.
-  - **Asomarse**: un susto que baja la cordura de quien la ve.
-  - **Coger**: solo desde detrás de alguien. Lanza el aviso de la espalda y la presa tiene su ventana, la misma que con la IA. Ninguna regla cambia por llevarla una persona.
-- **Con los sistemas de cada planta:**
-  - en la 2, no toca el cuadro, pero bebe la luz de las zonas encendidas;
-  - en la 3, los ventiladores también la echan de los ductos cuando la lleva una persona, y el ruido le quita el oído.
-- Gana y pierde como ahora: CAZA COMPLETA o SE TE ESCAPARON.
+  - **Beber la luz:** abajo, en la sala en la que está. La sala a oscuras 6 s y las linternas de dentro apagadas, que vuelven a la tercera pulsación y nunca antes de 1 s. 25 s entre dos y 45 s por sala; nunca salas de hito, vestíbulos ni refugios. Desde el plénum el anfitrión no la deja.
+  - **Asomarse:** abajo. Baja la cordura de quien la ve, una vez cada 10 s por persona. Sin sonido de aviso.
+  - **El parpadeo:** las lámparas cercanas tiemblan y el haz de una linterna cercana titila mientras se mueve.
+- **Sus acciones en pantalla:** al pie, cada una con su signo, su tecla y su estado (lista, apagada o con su arco de espera): atacar, bajar o subir, sigilo, ductos, beber y asomarse.
+- **Teclas:** moverse con WASD o el stick izquierdo; mirar con el ratón o el stick derecho; atacar, clic izquierdo (gatillo derecho); bajar y subir, Espacio (A); sigilo, mantener Mayúsculas (LB); ductos, E (X); beber, clic derecho (gatillo izquierdo); asomarse, F (Y); acercar y alejar la cámara, la rueda o Z (RB).
+- **Las tres plantas:** al cerrarse una etapa, los supervivientes bajan en el montacargas y ella cruza sola por los ductos a la planta siguiente, como la IA, en cuanto no queda nadie vivo en la suya; no coge el montacargas, y mientras cruza ve el plano de los ductos con un anillo que se llena; al llegar sube sola al plénum. Lo mueve la máquina de quien la lleva. Quien cae mira por la cámara de un compañero y vuelve en pie al cambiar de planta, como en cooperativo. En la planta 3 los ventiladores la echan de los ductos; de la planta 3 se sale por el pozo.
+- **Gana y pierde como en el hotel:** CAZA COMPLETA si no quedan supervivientes suficientes; SE TE ESCAPARON si bajan por el pozo. Su línea en la cinta: «THE LURKER, N capturas, aviso más largo X m». Sus hitos son los del hotel con su nombre, «A SALVO DEL CAZADOR» y «CAZA COMPLETA», y no se ven hasta que el piso 2 se publique.
 
 ---
 

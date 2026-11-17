@@ -215,7 +215,6 @@ func run() -> void:
 ## The card a floor opens on is not what is looked at here.
 func skip_card() -> void:
 	level.ui.hide_transit()
-	level.lifts.brief_wait = 0.0
 
 # --- A sheet ------------------------------------------------------------------------
 

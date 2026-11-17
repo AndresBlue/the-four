@@ -57,6 +57,6 @@ func run() -> void:
 	# Gone through: the paper leaves with whoever took it.
 	level.apply_search(level.containers.find(piece), true)
 	await shot("taken")
-	# And the number stays written on the tape.
-	print("CODE_NOTE_TAPE ", level.camcorder.code_note.text)
+	# And the number is on the sheet and the keypad, not on the tape.
+	print("CODE_NOTE_KEPT ", level.noted_code())
 	quit()

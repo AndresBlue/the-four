@@ -36,10 +36,6 @@ func show_channels(points: Array, tilt: float, target: int) -> void:
 	channel_tilt = tilt
 	channel_target = target
 	canvas.queue_redraw()
-## The numbers of the code already in hand, kept on the tape so nobody has to
-## hold four digits in their head across a wing. Empty until the first one
-## turns up, and it goes with the floor.
-var code_note: Label
 var start_seconds := 0
 var date_text := ""
 ## The recording lamp's blink, a second long: lit for LAMP_LIT of it. The dot
@@ -111,13 +107,6 @@ func _ready() -> void:
 	clock.offset_right = 520
 	clock.offset_bottom = -52
 	add_child(clock)
-	code_note = STYLE.text("", 26)
-	code_note.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	code_note.offset_left = 48
-	code_note.offset_top = -160
-	code_note.offset_right = 520
-	code_note.offset_bottom = -120
-	add_child(code_note)
 	focus_label = STYLE.text("", 20)
 	focus_label.set_anchors_preset(Control.PRESET_CENTER)
 	focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -155,7 +144,6 @@ func start_tape(run_seed: int) -> void:
 	for title in waits: waits[title] = 0.0
 	lift_share = 0.0
 	focus_word = ""
-	code_note.text = ""
 
 func set_cooldowns(shriek: float, trace: float) -> void:
 	waits["CHILLIDO"] = clampf(shriek, 0.0, 1.0)
@@ -186,10 +174,6 @@ func announce(words: String) -> void:
 func focus(word: String) -> void:
 	focus_word = word
 
-## The code as far as it is known ("4–7––"); empty takes the line away.
-func write_code(text: String) -> void:
-	code_note.text = "" if text.is_empty() else "CÓDIGO  " + text
-
 ## Whether the recording lamp is lit at this moment of its blink.
 func lamp_lit() -> bool:
 	return blink < LAMP_LIT
@@ -200,7 +184,6 @@ func show_tape(elapsed: float, delta: float) -> void:
 	rec.visible = tape
 	dot.visible = tape and lamp_lit()
 	clock.visible = tape
-	code_note.visible = tape and not code_note.text.is_empty()
 	notice.visible = not notice.text.is_empty()
 	if hunter or signal_lost: focus_word = ""
 	clock.text = clock_text(elapsed)

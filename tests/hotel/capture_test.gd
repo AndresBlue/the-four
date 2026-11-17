@@ -67,7 +67,6 @@ func fresh_floor() -> void:
 	level.drawn_for = 2
 	await level.start_floor(SEED, false, [1], "apacible")
 	level.ui.hide_transit()
-	level.lifts.brief_wait = 0.0
 	if is_instance_valid(level.director):
 		level.director.queue_free()
 		level.director = null

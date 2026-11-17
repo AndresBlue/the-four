@@ -309,8 +309,8 @@ SP", 30)
 	# What is outside the game -- the menus, the loading and end screens, the
 	# boot with its headphones notice and its PLAY -- is drawn above the tape
 	# and is not filmed by it. What happens inside the floor (the OSD, the
-	# objective, the sector card, the sheet, the keypad, a document being
-	# read) stays under it, recorded like the picture.
+	# black of a ride, the sheet, the keypad, a document being read) stays
+	# under it, recorded like the picture.
 	outside = CanvasLayer.new()
 	outside.name = "Outside"
 	outside.layer = OUTSIDE_LAYER
@@ -1059,17 +1059,17 @@ func lobby_screen() -> void:
 			choice(column, "Dificultad", names, DIFFICULTY.rank(net.options.get("difficulty")), func(index):
 				net.set_option("difficulty", DIFFICULTY.ORDER[index])
 				settings.set_value("difficulty", DIFFICULTY.ORDER[index]), LOBBY_CHOICE)
-			# Which floor, among those built (the ones not released yet too,
-			# to try them with somebody).
-			var floors: Array = FLOORS.numbers()
-			choice(column, "Piso", floors.map(func(n): return "Piso %d" % int(n)), maxi(0, floors.find(int(net.options.get("floor", 1)))), func(index): net.set_option("floor", int(floors[index])), LOBBY_CHOICE)
+		# Which floor, among those built (the ones not released yet too, to try
+		# them with somebody); in versus too, the hunter is the floor's creature.
+		var floors: Array = FLOORS.numbers()
+		choice(column, "Piso", floors.map(func(n): return "Piso %d" % int(n)), maxi(0, floors.find(int(net.options.get("floor", 1)))), func(index): net.set_option("floor", int(floors[index])), LOBBY_CHOICE)
 		if mode == NET.Mode.VERSUS:
 			var names: Array = ["Al azar"]
 			var ids: Array = [NET.RANDOM]
 			for seat in net.connected_seats():
 				names.append(net.player_name(seat))
 				ids.append(seat)
-			choice(column, "The Locust", names, maxi(0, ids.find(int(net.options.locust))), func(index): net.set_option("locust", ids[index]), LOBBY_CHOICE)
+			choice(column, net.hunter_title(), names, maxi(0, ids.find(int(net.options.locust))), func(index): net.set_option("locust", ids[index]), LOBBY_CHOICE)
 		if not net.match_net.saved_checkpoint().is_empty():
 			var resume := CheckButton.new()
 			resume.text = "Retomar el piso guardado"
@@ -1081,9 +1081,9 @@ func lobby_screen() -> void:
 		label(column, NET.MODE_NAMES[mode], 20)
 		if mode == NET.Mode.COOP:
 			label(column, "Dificultad: %s" % DIFFICULTY.title(net.options.get("difficulty")), 20)
-			label(column, "Piso %d" % int(net.options.get("floor", 1)), 20)
+		label(column, "Piso %d" % int(net.options.get("floor", 1)), 20)
 		if mode == NET.Mode.VERSUS:
-			label(column, "The Locust: %s" % ("al azar" if int(net.options.locust) == NET.RANDOM else net.player_name(int(net.options.locust))), 20)
+			label(column, "%s: %s" % [net.hunter_title(), "al azar" if int(net.options.locust) == NET.RANDOM else net.player_name(int(net.options.locust))], 20)
 	spacer(column, 18)
 	if hosting:
 		var problem: String = net.start_problem()
@@ -1512,7 +1512,8 @@ func show_document(item: Dictionary) -> void:
 	label(text, "[%s] GUARDAR" % key, 16).add_theme_color_override("font_color", STYLE.FAINT)
 
 ## The keypad of the last door: four places, what has been typed so far, a
-## word when it refuses or gives way, and the numbers already written down --
+## word when the right code cannot open it yet (what is missing: no tone or
+## light says that), and the numbers already written down --
 ## standing at the keypad is exactly where nobody should have to remember them.
 func show_lock(entered: String, places: int, word: String, known := "", dial := -1) -> void:
 	hide_lock()
@@ -1555,7 +1556,7 @@ func show_lock(entered: String, places: int, word: String, known := "", dial := 
 	if foot_words.is_empty(): foot_words = "CRUCETA: ELIGE   %s: MARCA   %s: BORRA   %s: SALIR" % [settings.button_name(JOY_BUTTON_A), settings.button_name(JOY_BUTTON_X), settings.button_name(JOY_BUTTON_B)] if padded else "TECLEA EL CÓDIGO   [ESC] SALIR"
 	var foot := label(column, foot_words, 18)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	foot.add_theme_color_override("font_color", STYLE.ALERT if word == "NO ES" else STYLE.SOFT)
+	foot.add_theme_color_override("font_color", STYLE.SOFT)
 
 func hide_lock() -> void:
 	if is_instance_valid(lock_panel): lock_panel.queue_free()
@@ -2169,13 +2170,13 @@ func hide_skip() -> void:
 	skip_label.text = ""
 
 ## The cut between one wing and the next. The car takes the picture with it,
-## and on that black the tape puts up where this is and what the stage wants.
-## It is the only pause a floor has: the one moment an errand can be read
-## instead of glimpsed over a shoulder while something walks towards you.
+## and the tape runs on black until the doors open somewhere else. Nothing is
+## written on it (the author, 16 November 2026): what a stage wants is in the
+## pause screen and in the floor itself.
 var transit: Control
 var transit_tween: Tween
 
-func show_transit(title: String, errand: String, seconds: float) -> void:
+func show_transit(seconds: float) -> void:
 	hide_transit()
 	transit = ColorRect.new()
 	transit.name = "Transit"
@@ -2184,24 +2185,8 @@ func show_transit(title: String, errand: String, seconds: float) -> void:
 	transit.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	transit.modulate.a = 0.0
 	add_child(transit)
-	var column := VBoxContainer.new()
-	column.set_anchors_preset(Control.PRESET_FULL_RECT)
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_theme_constant_override("separation", 20)
-	transit.add_child(column)
-	var head := STYLE.text(title, 54)
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(head)
-	var rule := ColorRect.new()
-	rule.color = STYLE.FAINT
-	rule.custom_minimum_size = Vector2(280, 2)
-	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	column.add_child(rule)
-	var line := STYLE.text(errand, 26, STYLE.AMBER)
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(line)
 	# Up after the picture has gone, and down before it comes back, so the
-	# card is the whole of what there is to look at while it is up.
+	# black is the whole of what there is to look at while it is up.
 	var span := maxf(1.2, seconds)
 	transit_tween = create_tween()
 	transit_tween.tween_interval(span * 0.12)
@@ -2210,109 +2195,10 @@ func show_transit(title: String, errand: String, seconds: float) -> void:
 	transit_tween.tween_property(transit, "modulate:a", 0.0, span * 0.16)
 	transit_tween.tween_callback(hide_transit)
 
-## The notice of a sector, once the card is gone and the picture is back: what
-## this one wants, small in the top left corner under the OSD line, for six
-## seconds. It comes in out of the snow and goes back into it the way a weak
-## analogue signal goes -- the lines roll like water, the picture smears and the
-## static eats it -- which is why it is drawn into its own little picture first:
-## the shader works on that picture as a whole, not letter by letter.
-const BRIEF_HOLD := 6.0
-## Seconds the first floor's warning is up on its own before its objective.
-const BRIEF_LEAD := 2.2
-const BRIEF_IN := 0.45
-const BRIEF_OUT := 1.5
-const BRIEF_SIZE := Vector2i(560, 170)
-const WASH := preload("res://game/ui/shaders/signal_wash.gdshader")
-var brief: Control
-var brief_tween: Tween
-## What the pause screen keeps of it: the sector, what it asks for, and how it
-## is going, set by the level before the screen is built.
+## What the pause screen keeps of the sector in hand: its name, what it asks
+## for, and how it is going, set by the level before the screen is built. The
+## only place a stage's errand is written while a floor is played.
 var briefing := {"sector": "", "objective": "", "progress": []}
-
-## `lead`: a line said first, before the objective comes up under it (the
-## very first floor somebody plays); `hold`: how long it all stays.
-func show_brief(sector: String, words: String, lead := "", hold := BRIEF_HOLD) -> void:
-	hide_brief()
-	brief = Control.new()
-	brief.name = "Brief"
-	brief.set_anchors_preset(Control.PRESET_FULL_RECT)
-	brief.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(brief)
-	# Under the sheet: whoever opens it is looking at the sheet, and a notice
-	# on top of the page would be written over what they are drawing.
-	if is_instance_valid(sheet): move_child(brief, sheet.get_index())
-	var picture := SubViewport.new()
-	picture.size = BRIEF_SIZE
-	picture.transparent_bg = true
-	picture.disable_3d = true
-	picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	brief.add_child(picture)
-	# A smudge of shade behind the words, soft all round and darkest behind
-	# them, so they read over a lit wall as well as over a dark corridor.
-	var smudge := Gradient.new()
-	smudge.set_color(0, Color(0, 0, 0, 0.66))
-	smudge.set_color(1, Color(0, 0, 0, 0))
-	var soft := GradientTexture2D.new()
-	soft.gradient = smudge
-	soft.fill = GradientTexture2D.FILL_RADIAL
-	soft.fill_from = Vector2(0.28, 0.5)
-	soft.fill_to = Vector2(0.98, 0.5)
-	var shade := TextureRect.new()
-	shade.texture = soft
-	shade.size = Vector2(BRIEF_SIZE)
-	shade.stretch_mode = TextureRect.STRETCH_SCALE
-	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.add_child(shade)
-	# Room is left round the words so the swell has somewhere to roll to.
-	var column := VBoxContainer.new()
-	column.position = Vector2(18, 16)
-	column.size = Vector2(BRIEF_SIZE.x - 36, BRIEF_SIZE.y - 32)
-	column.add_theme_constant_override("separation", 4)
-	picture.add_child(column)
-	var head := STYLE.text("OBJETIVO, %s" % sector, 18, STYLE.AMBER)
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	column.add_child(head)
-	if not lead.is_empty():
-		var warning := STYLE.text(lead, 26, STYLE.ALERT)
-		warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		column.add_child(warning)
-	var line := STYLE.text(words, 24)
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	line.custom_minimum_size.x = BRIEF_SIZE.x - 36
-	column.add_child(line)
-	# After the warning has been read, the objective comes up under it.
-	if not lead.is_empty():
-		line.modulate.a = 0.0
-		var after := line.create_tween()
-		after.tween_interval(BRIEF_LEAD)
-		after.tween_property(line, "modulate:a", 1.0, 0.6)
-	var screen := TextureRect.new()
-	screen.texture = picture.get_texture()
-	screen.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	# The words start where the OSD's own line starts.
-	screen.offset_left = 30
-	screen.offset_right = 30 + BRIEF_SIZE.x
-	screen.offset_top = 112
-	screen.offset_bottom = 112 + BRIEF_SIZE.y
-	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var look := ShaderMaterial.new()
-	look.shader = WASH
-	look.set_shader_parameter("wash", 1.0)
-	screen.material = look
-	brief.add_child(screen)
-	var wash := func(amount: float): look.set_shader_parameter("wash", amount)
-	brief_tween = create_tween()
-	brief_tween.tween_method(wash, 1.0, 0.0, BRIEF_IN).set_ease(Tween.EASE_OUT)
-	brief_tween.tween_interval(hold - BRIEF_IN - BRIEF_OUT)
-	brief_tween.tween_method(wash, 0.0, 1.0, BRIEF_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	brief_tween.tween_callback(hide_brief)
-
-func hide_brief() -> void:
-	if is_instance_valid(brief_tween): brief_tween.kill()
-	brief_tween = null
-	if is_instance_valid(brief): brief.queue_free()
-	brief = null
 
 func set_briefing(sector: String, objective: String, progress: Array) -> void:
 	briefing = {"sector": sector, "objective": objective, "progress": progress}

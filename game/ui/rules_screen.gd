@@ -13,6 +13,7 @@ extends RefCounted
 const STYLE := preload("res://game/ui/osd_style.gd")
 const RULES := preload("res://game/floors/match_rules.gd")
 const FLOORS := preload("res://game/floors/floor_index.gd")
+const NET := preload("res://game/net/net_session.gd")
 const REPORT := preload("res://game/ui/tape_report.gd")
 const WASH := preload("res://game/ui/shaders/signal_wash.gdshader")
 const SIZE := Vector2(1040, 0)
@@ -26,7 +27,8 @@ const DETAIL_IN := 0.9
 static func build(ui, parent: Node) -> void:
 	var hosting: bool = ui.net.is_host
 	# The rules of the floor the room is set to play: another creature's are
-	# not shown (match_rules.applies).
+	# not shown (match_rules.applies), nor a hunter's in a room against the
+	# machine.
 	var floor_kind: GDScript = FLOORS.kind(int(ui.net.options.get("floor", 1)))
 	var now: Dictionary = RULES.settled(ui.net.options.get("rules", {}), floor_kind.CREATURE_KEY, int(floor_kind.NUMBER))
 	ui.rule_pickers = {}
@@ -34,7 +36,7 @@ static func build(ui, parent: Node) -> void:
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 2)
 	parent.add_child(list)
-	for rule in RULES.shown(floor_kind.CREATURE_KEY, int(floor_kind.NUMBER)):
+	for rule in RULES.shown(floor_kind.CREATURE_KEY, int(floor_kind.NUMBER), int(ui.net.options.mode) == NET.Mode.VERSUS):
 		var id := String(rule.id)
 		var values: Array = rule.values
 		var differs: bool = int(now[id]) != int(rule.default)

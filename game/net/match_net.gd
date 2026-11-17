@@ -833,6 +833,18 @@ func request_drink() -> void:
 	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
 	if is_instance_valid(level.creature): level.creature.judge_drink()
 
+## Versus (lurker_versus.md 13): who drives her goes along the ducts to way
+## out `e`. The host judges it (lurker.judge_duct()) and answers the driver.
+func lurker_duct(e: int) -> void:
+	if in_charge():
+		if is_instance_valid(level.creature): level.creature.judge_duct(e)
+	elif local_is_locust(): request_duct.rpc_id(1, e)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_duct(e: int) -> void:
+	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
+	if is_instance_valid(level.creature): level.creature.judge_duct(e)
+
 ## A moment of hers the host tells (lurker.tell_all()) also to the guest that
 ## drives her, whose copy is no puppet and takes nothing from
 ## creature_event_rpc.
@@ -856,7 +868,8 @@ func cue_take(point: Vector3, leap: bool) -> void:
 	if local_is_locust() and is_instance_valid(level.creature): level.creature.take_leap(point, leap)
 
 ## The host sent her off (lurker.scare_off(); lurker_versus.md 4.3): blinded
-## (`flash`, by `seat`'s torch, drunk `seconds`) or looked at, from `from`.
+## (`flash`, by `seat`'s torch, drunk `seconds`), or looked at or lit out of
+## her room (lurker.lit_out()), from `from`.
 ## The machine that drives her bolts her in (lurker.scared_here()).
 func lurker_scared(flash: bool, from: Vector3, seat: int, seconds: float) -> void:
 	var creature = level.creature

@@ -1,8 +1,6 @@
 extends SceneTree
-## What a held key looks like, and what a first game opens with: the ring
-## round the aiming dot half way through a drawer, the opening scene's words
-## and ring while it is being skipped, and the first floor's warning with its
-## objective under it.
+## What a held key looks like: the ring round the aiming dot half way through
+## a drawer, and the opening scene's words and ring while it is being skipped.
 ##
 ##   godot --path . --script tools/capture/hold_capture.gd -- --test-profile
 ## Writes evidence/hold_<moment>.png.
@@ -27,13 +25,10 @@ func run() -> void:
 	root.add_child(level)
 	for i in 30: await process_frame
 	level.ui.finish_intro()
-	level.settings.values.first_game_done = false
 	await level.start_floor(81, false, [1], "equilibrada")
 	level.locust.set_physics_process(false)
 	level.locust.global_position = Vector3(0, -80, 0)
-	level.lifts.brief_wait = 0.0
 	for i in 200: await process_frame
-	await shot("primer_objetivo")
 	await holding("hold", 0.6, 30)
 	await shot("anillo")
 	level.ui.show_skip(level.settings.prompt_name("interact"))

@@ -35,8 +35,10 @@ const TRIGGER_DEADZONE := 0.5
 ## hunter's triggers: [key or mouse button, pad button or trigger]. Into a
 ## grille or out (E, the left button), let down (Ctrl, the right button); the
 ## rest are for the phases to come and do nothing yet.
-const LURKER_ACTIONS := {"lurker_enter": [KEY_E, JOY_BUTTON_X], "lurker_drop": [KEY_CTRL, JOY_BUTTON_B], "lurker_stalk": [KEY_Q, JOY_BUTTON_Y], "lurker_peek": [KEY_F, JOY_BUTTON_A],
-	"lurker_release": [MOUSE_BUTTON_LEFT, [JOY_AXIS_TRIGGER_RIGHT, 1.0]], "lurker_drink": [MOUSE_BUTTON_RIGHT, [JOY_AXIS_TRIGGER_LEFT, 1.0]]}
+## (lurker_versus.md 13: down and up on the space bar and A, held Shift or LB
+## to crawl in silence, Z or RB to bring the camera nearer; the wheel too.)
+const LURKER_ACTIONS := {"lurker_enter": [KEY_E, JOY_BUTTON_X], "lurker_drop": [KEY_SPACE, JOY_BUTTON_A], "lurker_sneak": [KEY_SHIFT, JOY_BUTTON_LEFT_SHOULDER], "lurker_peek": [KEY_F, JOY_BUTTON_Y],
+	"lurker_zoom": [KEY_Z, JOY_BUTTON_RIGHT_SHOULDER], "lurker_release": [MOUSE_BUTTON_LEFT, [JOY_AXIS_TRIGGER_RIGHT, 1.0]], "lurker_drink": [MOUSE_BUTTON_RIGHT, [JOY_AXIS_TRIGGER_LEFT, 1.0]]}
 ## The menus' own actions and the pad buttons they answer to. Godot builds
 ## these actions itself, and in this project ui_accept came without any pad
 ## button: the cross moved the highlight and nothing could be chosen. Added

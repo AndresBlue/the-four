@@ -159,10 +159,11 @@ func read_hint(id: int, blank := false) -> void:
 	level.ui.show_hint(hint, level.code.hint_walls())
 	if level.world_audio.enabled: level.paper_sound.play()
 
-## What an electrical panel offers: locked to whoever has no key; to whoever
-## has it, opening it, and once open, the lights, while the blackout lasts.
+## What an electrical panel offers: nothing to whoever has no key (the brackets
+## only frame what can be done); to whoever has it, opening it, and once open,
+## the lights, while the blackout lasts.
 func panel_word(panel) -> String:
-	if not level.code.has_key(): return "CERRADO"
+	if not level.code.has_key(): return ""
 	if not panel.opened: return "ABRIR"
 	return "DAR LA LUZ" if level.code.can_power() else ""
 
@@ -184,16 +185,6 @@ func focused_document():
 func focused_hint():
 	var area = focused_area()
 	return area if area is HINT_PAPER else null
-
-## Online: the name of the teammate straight ahead, within a few metres.
-func focused_teammate() -> String:
-	if level.match_net.bodies.is_empty(): return ""
-	var from: Vector3 = level.player.camera.global_position
-	var query := PhysicsRayQueryParameters3D.create(from, from - level.player.camera.global_basis.z * 8.0, 1 | 4 | 8)
-	query.exclude = [level.player.get_rid()]
-	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(query)
-	if hit.is_empty() or not "player_name" in hit.collider: return ""
-	return hit.collider.player_name.to_upper()
 
 ## Doors are reached from a little further away than wardrobes. It was 3.2 m,
 ## and a door was opened or shut from across a room (playtest, October 2026).
@@ -408,8 +399,9 @@ func drive_local(delta: float) -> void:
 	var target = focused_door()
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
-	# Camcorder-style focus brackets replace the old control prompts.
-	level.camcorder.focus(usable.word(level.player.slot) if is_instance_valid(usable) else "TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) or is_instance_valid(hint_target) else panel_word(panel_target) if is_instance_valid(panel_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
+	# Camcorder-style focus brackets replace the old control prompts. Only
+	# what the key would do is named: a full wardrobe and a teammate get none.
+	level.camcorder.focus(usable.word(level.player.slot) if is_instance_valid(usable) else "TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) or is_instance_valid(hint_target) else panel_word(panel_target) if is_instance_valid(panel_target) else ("ESCONDERSE" if hiding_target.has_room() else "") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else "")
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0

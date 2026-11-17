@@ -3,8 +3,9 @@ extends RefCounted
 ## more on a bigger one, spread over its plantas, in its wide rooms (where it
 ## starts, the halls and lobbies, the big salons; on floor 2 its break rooms
 ## first), each with its back against a stretch of wall. A cup for each
-## survivor at each machine: a few seconds after it, "Te sientes mejor..." at
-## the foot of the picture, and the mind comes back whole over a second. The
+## survivor at each machine: a few seconds after it the mind comes back whole
+## over a second, and the picture says so (nothing is written since 16
+## November 2026: the author wants no explaining while a floor is played). The
 ## machine that runs the floor keeps every mind (sanity.gd), so the cup is
 ## asked of it (match_net.drink_coffee()).
 ##
@@ -15,8 +16,6 @@ const MACHINE := preload("res://game/world/interactables/coffee_machine.gd")
 ## Seconds from the cup to feeling it, and that it takes the mind to come back.
 const BREW := 2.5
 const EASE := 1.0
-const FEEL := "Te sientes mejor..."
-const FEEL_FOR := 3.5
 ## What it sounds like making it: for now the copier's hum, cut short.
 const SOUND := "res://assets/audio/sfx/office/copier.wav"
 ## Its back this far from the wall's line, and free this much to each side;
@@ -174,7 +173,6 @@ func tick(delta: float) -> void:
 	if brewing >= 0.0:
 		brewing -= delta
 		if brewing < 0.0:
-			level.hints.notice(FEEL, FEEL_FOR)
 			easing = 0.0
 			eased_from = level.player.sanity
 	if easing >= 0.0:

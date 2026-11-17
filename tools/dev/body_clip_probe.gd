@@ -207,7 +207,6 @@ func run() -> void:
 	if options.has("columns"): OFFICE.columns_test = true
 	await level.start_floor(int(options.get("seed", 81)), false, [1], "apacible")
 	level.ui.hide_transit()
-	level.lifts.brief_wait = 0.0
 	level.settings.values.character = int(options.get("character", 2))
 	level.apply_settings()
 	if is_instance_valid(level.director):

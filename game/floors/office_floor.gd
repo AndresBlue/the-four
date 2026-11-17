@@ -24,8 +24,6 @@ const GENERATOR_VERSION := PALETTE.VERSION
 ## (game/enemies/lurker/, docs/LURKER.md).
 const CREATURE := "res://game/enemies/lurker/lurker_creature.tscn"
 const CREATURE_KEY := &"lurker"
-## Who is after you, said in red over the first notice anybody gets (lifts.gd).
-const FIRST_LEAD := "The Lurker acecha entre las sombras, no dejes que te atrape"
 ## No papers until step 1h.
 const PAPERS := ""
 
@@ -48,10 +46,12 @@ const MILESTONES := [
 	{"id": "mvp", "title": "EMPLEADO DEL MES", "note": "Ser quien más aportó en un equipo que sale.", "rule": ["mvp"]},
 	{"id": "first", "title": "EXPEDIENTE LIMPIO", "note": "Salir con nota A o mejor.", "rule": ["grade", "A"]},
 	{"id": "master", "title": "EXPEDIENTE EJEMPLAR", "note": "Salir con nota S.", "rule": ["grade", "S"]},
+	{"id": "hunted", "title": "A SALVO DEL CAZADOR", "note": "Salir con un jugador haciendo de The Lurker.", "rule": ["versus_out"]},
+	{"id": "hunter", "title": "CAZA COMPLETA", "note": "Como The Lurker, no dejar salir a nadie.", "rule": ["hunter_won"]},
 ]
 
 ## Stage by stage, from the first: {objectives, level and department (what
-## the planta is), errand (the card), brief (the notice)}.
+## the planta is), errand (the tape report's), brief (the pause screen's)}.
 const STAGES := [
 	{"objectives": ["files"], "level": "NIVEL 1", "department": "PERSONAL", "errand": "PIDE TU FICHA", "brief": "Pide tu ficha en la ventanilla de Personal, recógela en su estación y pásala por el lector del montacargas."},
 	{"objectives": ["power"], "level": "NIVEL 2", "department": "REGISTRO Y ARCHIVO", "errand": "ARRANCA EL MONTACARGAS", "brief": "Da la corriente desde el cuadro, sube la palanca roja del montacargas y baja cuando acabe el reloj."},
@@ -71,8 +71,8 @@ static func count() -> int: return STAGES.size()
 static func stage(number: int) -> Dictionary:
 	return STAGES[clampi(number, 1, STAGES.size()) - 1]
 
-## What the card, the notice and the pause call a stage (lifts.gd,
-## hotel_main.gd): the offices' are levels.
+## What the pause screen calls a stage (hotel_main.gd): the offices' are
+## levels.
 static func title_of(number: int) -> String:
 	return "NIVEL %d" % number
 

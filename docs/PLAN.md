@@ -448,9 +448,9 @@ herramientas para mirarlo están en la guía de desarrollo.
   oscuras: los ojos de la Exploradora, el pelo fundido, el relieve del
   detective y el brillo de la piel. Solo se han visto con luz de estudio
   (`tools/capture/avatar_capture.gd`).
-- [ ] **Lo que se escribe en pantalla, ya jugando:** el objetivo de cada sector
-  arriba a la izquierda y cómo se deshace, la tarjeta de sector (también en
-  cada reintento, que añade 2,6 s de negro) y la pausa con su progreso.
+- [ ] **Sin textos en la partida** (16 de noviembre de 2026): si sin la tarjeta
+  de sector ni el objetivo arriba a la izquierda se sabe qué hacer, el negro
+  del viaje y de cada reintento (2,6 s) y la pausa con su progreso.
 - [ ] **Las puertas que ya no se niegan:** cerrarlas estando en el marco,
   volver a abrirlas desde dentro, y si poder atravesar una puerta que uno se
   cerró encima se nota como trampa.

@@ -1,26 +1,26 @@
 extends SceneTree
-## Phase 3 of The Lurker in Versus (.claude/specs/lurker_versus.md 3, 4.3, 6
-## and 7): her driver (lurker_player.gd, scripted) lies in wait over a door
-## head of planta 1 and is judged as the host judges her, against a survivor
-## the script moves (the local player, its own physics off). Her versus
-## profile and its dark. At 6 m, without her charge, no warning; settled and
-## watching it 2 s, yes. It runs off: saved. It turns with its torch in her
-## warning: saved, she is blinded (her flash, its torch drunk, her wait) and
-## bolts in by herself; a torch held on her face out of a warning does the
-## same; a look in the light sends her off with no flash. Her peek frightens
-## it once in 10 s. It keeps its back to her: taken at her due time, never
-## without its warning. evidence/versus/f3/acecho.json and acecho.txt.
+## The Lurker in Versus, the attack from the plenum (.claude/specs/lurker_versus.md
+## 13.3, which remade phase 3): her driver (lurker_player.gd, scripted) is
+## judged as the host judges her, against a survivor the script moves (the
+## local player, its own physics off), in a room of planta 1 put dark. Her
+## versus profile. From over the ceiling she marks it; too far off its marker
+## is red for "far"; near, green, and her charge fills in 2 s watching it
+## (here and on the judge). The attack crawls to the tile behind it, drops and
+## begins her warning; whoever runs is saved, and her marker waits. Down by a
+## tile 5 m behind it, with her charge a warning, without it none. It turns
+## with its torch in her warning: saved, she is blinded and bolts back up into
+## the plenum by herself, the picture closing in; a torch on her face out of a
+## warning does the same; a look in the light sends her off with no flash.
+## Her peek, down, frightens it once in 10 s. It keeps its back to her: taken
+## at her due time, never without its warning.
+## evidence/versus/rehecho/ataque.json and ataque.txt.
 ##   godot --headless --fixed-fps 60 --path . --script res://tests/office/lurker_stalk_test.gd -- --automation --test-profile --silent [--seed=81]
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
-const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
 const SIGHT := preload("res://game/enemies/creature_sight.gd")
 const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
 const DT := 1.0 / 60.0
-const OUT := "res://evidence/versus/f3/"
-## The survivor this far from her face; and the run line this much longer.
-const FAR := 6.0
-const RUN_ROOM := 10.0
+const OUT := "res://evidence/versus/rehecho/"
 var checks: Array = []
 var failed := 0
 var lines: Array = []
@@ -28,6 +28,7 @@ var level
 var lurker
 var driver
 var survivor
+## The room: {room, centre, way (its look), py}.
 var spot := {}
 
 func _initialize() -> void: run.call_deferred()
@@ -48,7 +49,6 @@ func run() -> void:
 	root.add_child(level)
 	await process_frame
 	level.creature_scene = "lurker"
-	# Hunting bots from this machine (--bots-hunt): her versus, built so.
 	level.solo_locust = true
 	await level.start_floor(seed_value, false, [1], "desafiante", 2)
 	lurker = level.creature
@@ -61,24 +61,18 @@ func run() -> void:
 	survivor.held = true
 	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
 	var tuned: Dictionary = level.tuning()
-	check("Su perfil de Versus: ventana 1,2 s, linterna bebida 4 s, nunca apagada para siempre; la planta 1 como en Equilibrada", is_equal_approx(float(tuned.back_window), 1.2) and is_equal_approx(float(lurker.torch_drunk), 4.0) and float(lurker.torch_kill) == 0.0 and String(level.hotel.difficulty_id) == "equilibrada", "%s, %s, %s, %s" % [tuned.back_window, lurker.torch_drunk, lurker.torch_kill, level.hotel.difficulty_id])
-	var kinds := {}
-	for site in lurker.stalk_sites: kinds[String(site.kind)] = int(kinds.get(String(site.kind), 0)) + 1
-	check("Sitios de acecho del manifiesto: dinteles, esquinas, bocas de pasillo y taquillas", kinds.has("door") and kinds.has("corner"), str(kinds))
-	check("Ninguno junto a una lámpara de su sala", lurker.stalk_sites.all(func(s): return (lurker.shell.lamps_of.get(int(s.room), PackedVector2Array()) as PackedVector2Array).is_empty() or Array(lurker.shell.lamps_of[int(s.room)]).all(func(l): return Vector2((s.point as Vector3).x, (s.point as Vector3).z).distance_to(l) >= SHELL.LAMP_CLEAR - 1e-4)))
-	var again: Array = lurker.STALK.sites(lurker.shell)
-	check("Los mismos en cada máquina: deterministas", again.size() == lurker.stalk_sites.size() and again.map(func(s): return s.point) == lurker.stalk_sites.map(func(s): return s.point))
+	check("Su perfil de Versus: ventana 1,2 s, linterna bebida 4 s, nunca apagada para siempre", is_equal_approx(float(tuned.back_window), 1.2) and is_equal_approx(float(lurker.torch_drunk), 4.0) and float(lurker.torch_kill) == 0.0, "%s, %s, %s" % [tuned.back_window, lurker.torch_drunk, lurker.torch_kill])
 	spot = find_spot()
-	check("Un dintel de la planta 1 con vista larga", not spot.is_empty())
+	check("Una oficina de la planta 1 con placas, que puede estar a oscuras, de al menos 7 m", not spot.is_empty())
 	if not spot.is_empty():
-		lines.append("dintel: sala %d, sitio %d, %s" % [int(spot.room), int(spot.site), str(spot.way)])
+		lines.append("sala %d, centro %s, mira %s" % [int(spot.room), str(spot.centre), str(spot.way)])
 		await cases()
 	var tally: Dictionary = lurker.tally()
 	var audit: Array = WARNING.audit(lurker.capture_log())
 	check("Nunca coge sin aviso: cada captura con el suyo, y el registro pasa la auditoría", int(tally.unpaired) == 0 and audit.is_empty(), "%s %s" % [str(tally), str(audit)])
-	var file := FileAccess.open(OUT + "acecho.json", FileAccess.WRITE)
+	var file := FileAccess.open(OUT + "ataque.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"seed": seed_value, "checks": checks, "ledger": lurker.capture_log()}, "\t"))
-	var text := FileAccess.open(OUT + "acecho.txt", FileAccess.WRITE)
+	var text := FileAccess.open(OUT + "ataque.txt", FileAccess.WRITE)
 	if text != null:
 		for line in lines: text.store_line(line)
 	print("LURKER_STALK_TEST_RESULT ", checks.size() - failed, "/", checks.size())
@@ -86,68 +80,25 @@ func run() -> void:
 
 # --- The place --------------------------------------------------------------------
 
-## A lintel of planta 1 over a room that may be dark, with a way from it FAR
-## along which, and RUN_ROOM further, the floor is in rooms that are not
-## protected, and nothing stands between: {site, room, way}.
+## A room of planta 1 with tiles, a false ceiling of hers, that may be dark,
+## not protected, at least 7 m along one way: the survivor stands a little
+## short of its middle looking along that way.
 func find_spot() -> Dictionary:
 	var off: Array = level.off_limits_rooms()
-	for i in lurker.stalk_sites.size():
-		var site: Dictionary = lurker.stalk_sites[i]
-		var room := int(site.room)
-		if String(site.kind) != "door" or int(site.wing) != 0 or off.has(room) or not OFFICE.may_be_dark(level.manifest.rooms[room]): continue
-		# The one lurker_stalk takes from under it: no other site this near.
-		if lurker.stalk_sites.any(func(o): return o != site and int(o.wing) == 0 and Vector2((o.point as Vector3).x - (site.point as Vector3).x, (o.point as Vector3).z - (site.point as Vector3).z).length() < 2.0): continue
-		var py := float(level.manifest.rooms[room].get("py", 0.0))
-		var at: Vector3 = site.point
-		for k in 16:
-			var way := Vector3(cos(k * TAU / 16.0), 0, sin(k * TAU / 16.0))
-			var good := true
-			var metres := 1.0
-			while metres <= FAR + RUN_ROOM and good:
-				var p := Vector3(at.x, py + 1.0, at.z) + way * metres
-				var found := FLOOR.room_at(level.manifest.rooms, p)
-				good = not found.is_empty() and not off.has(int(found.id)) and not level.point_protected(p) and (metres > FAR or int(found.id) == room)
-				metres += 0.5
-			if good and SIGHT.clear(level, at, Vector3(at.x, py + 1.6, at.z) + way * FAR, [lurker.get_rid()]):
-				return {"site": i, "room": room, "way": way, "py": py}
-	return {}
-
-## Her back on the ceiling a metre into the room from the lintel, looking at
-## the survivor's spot; then to the lintel (lurker_stalk) and settled there.
-func to_site() -> bool:
-	var site: Dictionary = lurker.stalk_sites[int(spot.site)]
-	var at: Vector3 = site.point
-	lurker.teleport(Vector3(at.x, float(spot.py) + 1.0, at.z) + (spot.way as Vector3) * 0.8, NAN, &"prueba")
-	look_along(spot.way)
-	for i in 3: await physics_frame
-	driver.asked[&"lurker_stalk"] = true
-	return await until(func() -> bool: return driver.settled(), 8.0)
-
-func look_along(way: Vector3, pitch := -0.15) -> void:
-	driver.yaw = atan2(-way.x, -way.z)
-	driver.pitch = pitch
-
-## The survivor FAR from her face along the way, its back to her, its torch as said.
-func stand(metres := FAR, torch := false) -> void:
-	var face: Vector3 = lurker.face_point()
-	var way: Vector3 = spot.way
-	var eye_height: float = survivor.camera.global_position.y - survivor.global_position.y
-	var h := metres
-	for i in 3:
-		survivor.global_position = Vector3(face.x, float(spot.py), face.z) + way * h
-		var eye := Vector3(survivor.global_position.x, float(spot.py) + eye_height, survivor.global_position.z)
-		h += metres - face.distance_to(eye)
-	survivor.global_position = Vector3(face.x, float(spot.py), face.z) + way * h
-	survivor.rotation.y = atan2(-way.x, -way.z)
-	survivor.camera.rotation.x = 0.0
-	survivor.velocity = Vector3.ZERO
-	survivor.torch.visible = torch
-
-## The survivor's view turned on to her face; `off` degrees aside.
-func turn_to_her(off := 0.0) -> void:
-	var to: Vector3 = lurker.face_point() - survivor.camera.global_position
-	survivor.rotation.y = atan2(-to.x, -to.z) + deg_to_rad(off)
-	survivor.camera.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+	var best := {}
+	var longest := 7.0
+	for id in lurker.ducts.room_tiles:
+		var room: Dictionary = level.manifest.rooms[int(id)]
+		if int(room.wing) != 0 or off.has(int(id)) or not lurker.shell.tray_of.has(int(id)) or not OFFICE.false_ceiling(room) or not OFFICE.may_be_dark(room): continue
+		var size := FLOOR.size_of(room)
+		var centre := FLOOR.position_of(room)
+		if level.point_protected(centre + Vector3(0, 1, 0)): continue
+		var length := maxf(size.x, size.y)
+		if length < longest: continue
+		longest = length
+		var way := Vector3(1, 0, 0) if size.x >= size.y else Vector3(0, 0, 1)
+		best = {"room": int(id), "centre": centre, "way": way, "py": float(room.py), "length": length}
+	return best
 
 func wait(seconds: float) -> void:
 	for i in int(seconds / DT): await physics_frame
@@ -158,55 +109,94 @@ func until(done: Callable, seconds: float) -> bool:
 		await physics_frame
 	return done.call()
 
+## The survivor `ahead` metres along the way from the room's middle, its back
+## to where she comes from (it looks along the way), its torch as said.
+func stand(ahead := 1.0, torch := false) -> void:
+	var way: Vector3 = spot.way
+	survivor.global_position = Vector3((spot.centre as Vector3).x, float(spot.py), (spot.centre as Vector3).z) + way * ahead
+	survivor.rotation.y = atan2(-way.x, -way.z)
+	survivor.camera.rotation.x = 0.0
+	survivor.velocity = Vector3.ZERO
+	survivor.torch.visible = torch
+
+func turn_to_her(off := 0.0) -> void:
+	var to: Vector3 = lurker.face_point() - survivor.camera.global_position
+	survivor.rotation.y = atan2(-to.x, -to.z) + deg_to_rad(off)
+	survivor.camera.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+
+## In the plenum `back` metres behind the survivor (against its look), her
+## camera on it.
+func over(back: float) -> void:
+	var feet: Vector3 = survivor.global_position
+	var p: Vector3 = feet - (spot.way as Vector3) * back
+	driver.trip = {}
+	driver.attack = {}
+	driver.to_plenum(Vector3(p.x, float(spot.py) + 1.0, p.z), int(spot.room))
+	aim()
+	await wait(0.25)
+
+## Her camera turned on the survivor's chest.
+func aim() -> void:
+	var to: Vector3 = survivor.global_position + Vector3(0, 1.1, 0) - lurker.motion.anchor()
+	driver.yaw = atan2(-to.x, -to.z)
+	driver.tilt = -0.9
+
 ## Whatever came before forgotten: no wait, no immunity, nobody warned lately.
 func fresh() -> void:
-	stand()
 	lurker.stunned_until = -INF
 	lurker.immune_until = -INF
 	lurker.fled_until = -INF
 	lurker.warned = {}
 	lurker.release_at = -INF
 	lurker.drunk = {}
+	driver.attacked = {}
+	driver.flashed_until = -INF
+	driver.view.immune_until = -INF
 	survivor.torch_dim = 1.0
 
 func last() -> Dictionary: return lurker.warning.ledger[lurker.warning.ledger.size() - 1] if not lurker.warning.ledger.is_empty() else {}
 
-func release() -> void:
+func info() -> Dictionary: return driver.prey_info
+
+## Attack with her key, aiming at it as she goes; whether a warning began.
+func attack() -> bool:
 	driver.asked[&"lurker_release"] = true
 	await physics_frame
 	await physics_frame
+	if driver.attack.is_empty(): return lurker.cue
+	var trail: Array = []
+	var done: bool = await until(func() -> bool:
+		var m = lurker.motion
+		var now := "%s %s%s%s%s" % [String(driver.attack.get("phase", "-")), "P" if m.plenum else "", "S" if m.surface() else "", "D" if m.in_duct else "", ("L" + String(m.legs[0].kind)) if not m.legs.is_empty() else ""]
+		if trail.is_empty() or trail.back() != now: trail.append(now)
+		return lurker.cue or driver.attack.is_empty(), 4.0)
+	lines.append("ataque: " + " > ".join(trail) + "; " + why_not())
+	return done and lurker.cue
 
 # --- The cases ------------------------------------------------------------------------
 
 func cases() -> void:
-	var room := int(spot.room)
-	level.hotel.set_room_power(room, false)
-	var settled: bool = await to_site()
-	check("Acechar la lleva al dintel y se asienta (quieta 1 s)", settled and driver.on_band() and lurker.settled() and (lurker.flags() & lurker.Flag.SETTLED) != 0, " / ".join(lurker.debug_lines()))
-	if not settled: return
-	# Asentada oye 1,5 veces más lejos: un ruido de 9 m de alcance, a 11 m.
-	var face: Vector3 = lurker.face_point()
-	var noise := Vector3(face.x, float(spot.py) + 0.1, face.z) + (spot.way as Vector3) * 11.0
-	var heard: bool = bool(lurker.senses.hear_route(noise, 9.0 / 2.6).audible)
-	driver.settle_clock = 0.0
-	var unsettled: bool = bool(lurker.senses.hear_route(noise, 9.0 / 2.6).audible)
-	driver.settle_clock = driver.SETTLE
-	check("Asentada oye 1,5 veces más lejos: lo de 9 m le llega a 11 m, y sin asentarse no", heard and not unsettled)
-
-	# --- Sin carga, a 6 m no hay aviso.
+	var seat := int(survivor.slot)
+	level.hotel.set_room_power(int(spot.room), false)
 	stand()
+	# --- Far: over another room, more than her crawl from any tile behind it.
+	await over(PLAYER_CRAWL() + 3.0)
+	aim()
 	await wait(0.3)
-	var refused: int = lurker.releases_refused
-	await release()
-	check("Sin carga no puede avisar a 6 m", not lurker.cue and lurker.releases_refused == refused + 1 and lurker.charged.is_empty(), "%.2f m" % lurker.face_point().distance_to(survivor.camera.global_position))
-
-	# --- Carga: 2 s viéndola sin que la vean.
-	check("Asentada y viéndola de espaldas 2 s, se carga", await until(func() -> bool: return lurker.charged.has(int(survivor.slot)), 3.0), str(lurker.watching))
-	await wait(0.6)
-	await release()
-	var began: bool = lurker.cue and String(last().get("outcome", "")) == "active"
-	check("Con carga, sí: el aviso empieza a 6 m", began, str(last()))
-	# --- Quien corre se salva.
+	var far_info := info().duplicate()
+	check("Desde el plénum la marca (la más centrada en su vista) y, lejos, en rojo por la distancia", driver.prey == seat and not bool(far_info.get("ok", true)) and String(far_info.get("why", "")) == "far", "%d %s" % [driver.prey, str(far_info)])
+	# --- Near: green, and her charge fills in 2 s, here and on the judge.
+	await over(1.5)
+	await wait(0.3)
+	var near_info := info().duplicate()
+	check("Cerca, detrás, en verde", bool(near_info.get("ok", false)) and not (near_info.get("drop", {}) as Dictionary).is_empty(), str(near_info))
+	var charged: bool = await until(func() -> bool: return driver.charged() and lurker.charged.has(seat), 3.0)
+	check("Vigilándola desde arriba sin que la mire, la carga se llena en 2 s (aquí y en el juez)", charged, "%.2f %s" % [driver.charge, str(lurker.watching)])
+	# --- The attack: the crawl to the tile behind it, the drop, the warning.
+	var before := str(info())
+	var began: bool = await attack()
+	var entry := last()
+	check("Atacar: va a la placa detrás de la presa, cae y empieza el aviso", began and String(entry.get("outcome", "")) == "active" and lurker.motion.surface() and driver.mode == "eyes", "%s %s; antes %s; %s; %s" % [began, str(entry), before, why_not(), " / ".join(lurker.debug_lines())])
 	if began:
 		var run_way: Vector3 = spot.way
 		var ended: bool = await until(func() -> bool:
@@ -215,93 +205,138 @@ func cases() -> void:
 			return String(last().outcome) != "active", 3.0)
 		survivor.velocity = Vector3.ZERO
 		check("A quien corre no lo alcanza: salvado corriendo", ended and String(last().outcome) == "saved" and String(last().reason) == "corriendo" and level.execution.is_empty(), str(last()))
-
-	# --- El que se gira con la linterna la ciega, y ella huye sola.
-	fresh()
-	await wait(0.6)
-	settled = await to_site()
-	# Its torch on already, away from her: a torch just switched on is cold (4.2).
-	stand(FAR, true)
-	var charged: bool = await until(func() -> bool: return lurker.charged.has(int(survivor.slot)), 3.5)
-	await release()
-	var flashes: float = driver.view.flash_clock
-	if charged and lurker.cue:
-		await wait(0.3)
-		turn_to_her()
-		var gone: bool = await until(func() -> bool: return lurker.motion.in_duct, 1.0)
-		check("Se gira con la linterna: salvado por ella", String(last().outcome) == "saved" and String(last().reason) == "linterna", str(last()))
-		check("Y la ciega: fogonazo en su vista, su linterna bebida 4 s, aviso y bebida en espera", driver.view.flash_clock != flashes and lurker.stunned() and lurker.drunk.has(int(survivor.slot)), "%s %s %s" % [driver.view.flash_clock, lurker.stunned(), lurker.drunk])
-		check("Ella huye sola al techo en menos de 0,5 s, sin que nadie la lleve", gone and driver.stalk_at < 0, " / ".join(lurker.debug_lines()))
-		# En espera, soltar no sirve aunque cumpla todo lo demás.
-		survivor.torch.visible = false
-		lurker.drunk = {}
-		await to_site()
 		stand()
-		await until(func() -> bool: return lurker.charged.has(int(survivor.slot)), 3.5)
-		refused = lurker.releases_refused
-		await release()
-		check("En los 6 s tras el fogonazo no hay aviso", lurker.stunned() and not lurker.cue and lurker.releases_refused == refused + 1)
-	else:
-		check("Cargada otra vez para el fogonazo", false, "%s %s" % [charged, lurker.cue])
-
-	# --- Fuera de un aviso: la linterna en la cara 0,15 s la ciega.
+		await over(1.5)
+		await wait(0.3)
+		check("Y la misma presa, en espera: rojo, con su arco", String(info().get("why", "")) == "wait" and float(info().get("wait", 0.0)) > 0.0, str(info()))
+	# --- With her charge a warning from a tile 5 m behind; without it, none.
 	fresh()
-	await wait(0.6)
-	await to_site()
-	stand(FAR, true)
-	await wait(0.6)
+	stand(2.5)
+	# A tile some 5 m behind it from which nothing stands between her face and its eye.
+	var back := 5.0
+	for metres in [5.0, 4.5, 5.5, 4.0, 6.0]:
+		var way: Dictionary = driver.tile_way(survivor.global_position - (spot.way as Vector3) * float(metres) + Vector3(0, 3.0, 0))
+		if not way.is_empty() and SIGHT.clear(level, (way.point as Vector3) - Vector3(0, 0.5, 0), survivor.camera.global_position, [lurker.get_rid(), survivor.get_rid()]):
+			back = float(metres)
+			break
+	await over(back)
+	await until(func() -> bool: return lurker.charged.has(seat), 3.0)
+	var five: Dictionary = driver.tile_way(lurker.motion.point)
+	var with_charge := false
+	if not five.is_empty():
+		driver.go_down(five)
+		await until(func() -> bool: return lurker.motion.surface() and lurker.motion.legs.is_empty(), 2.0)
+		driver.look_at_point(survivor.camera.global_position)
+		# Her camera eased down to her eyes: her look is its look.
+		await wait(0.5)
+		var reasons := why_not()
+		level.match_net.lurker_release()
+		with_charge = lurker.cue
+		lines.append("a %.2f m, carga %s: %s; %s" % [lurker.face_point().distance_to(survivor.camera.global_position), str(lurker.charged), str(last()), reasons])
+		if with_charge: await until(func() -> bool:
+			survivor.global_position += (spot.way as Vector3) * 6.0 * DT
+			return String(last().outcome) != "active", 3.0)
+	fresh()
+	stand(2.5)
+	await over(back)
+	lurker.charged.clear()
+	lurker.watching.clear()
+	driver.prey = -1
+	driver.go_down(driver.tile_way(lurker.motion.point))
+	await until(func() -> bool: return lurker.motion.surface() and lurker.motion.legs.is_empty(), 2.0)
+	await wait(lurker.CHARGE_KEEP + 0.2)
+	driver.look_at_point(survivor.camera.global_position)
+	await wait(0.5)
+	var refused: int = lurker.releases_refused
+	level.match_net.lurker_release()
+	check("Con carga avisa desde una placa a unos 5 m; sin ella, no", with_charge and not lurker.cue and lurker.releases_refused == refused + 1, "%s %s; %s" % [with_charge, lurker.cue, str(lines.back())])
+	# --- It turns with its torch in her warning: saved, she is blinded and bolts up.
+	fresh()
+	stand(1.0, true)
+	await wait(0.7)
+	await over(1.5)
+	var flashes: float = driver.view.flash_clock
+	if await attack():
+		await wait(0.25)
+		turn_to_her()
+		var gone: bool = await until(func() -> bool: return driver.up(), 1.5)
+		check("Se gira con la linterna: salvado por ella", String(last().outcome) == "saved" and String(last().reason) == "linterna", str(last()))
+		check("Y la ciega: fogonazo en su vista, su linterna bebida 4 s, en espera", driver.view.flash_clock != flashes and lurker.stunned() and lurker.drunk.has(seat), "%s %s %s" % [driver.view.flash_clock, lurker.stunned(), lurker.drunk])
+		check("Ella vuelve sola al plénum, con la imagen que se cierra y la cámara sobre ella", gone and driver.clock - driver.fled_at < driver.FLED_FOR + 1.5 and driver.mode == "above", "%s %.2f %s; %s" % [gone, driver.clock - driver.fled_at, driver.mode, " / ".join(lurker.debug_lines())])
+		stand()
+		await over(1.5)
+		await wait(0.3)
+		check("En espera tras el fogonazo: su marcador lo dice (rojo, su arco)", String(info().get("why", "")) == "wait", str(info()))
+	else: check("El aviso para el fogonazo", false, str(last()))
+	# --- Out of a warning: the torch on her face 0.15 s blinds her; she bolts up.
+	# (Past the 4 s the last flash drank that torch for.)
+	fresh()
+	await wait(4.5)
+	survivor.torch.visible = false
+	stand()
+	await over(1.5)
+	driver.go_down()
+	await until(func() -> bool: return lurker.motion.surface() and lurker.motion.legs.is_empty(), 2.0)
+	survivor.torch.visible = true
+	await wait(0.7)
 	flashes = driver.view.flash_clock
-	var before := " / ".join(lurker.debug_lines())
 	turn_to_her()
-	var seen_by: Dictionary = SIGHT.regarders(level, lurker.face_point(), [lurker.get_rid()])
-	lines.append("linterna fuera de aviso: %s, fría %s, bebida %s; antes %s" % [str(seen_by), SIGHT.torch_cold(survivor), lurker.senses.drank(survivor), before])
 	var blinded: bool = await until(func() -> bool: return driver.view.flash_clock != flashes, 1.0)
-	var gone: bool = await until(func() -> bool: return lurker.motion.in_duct, 1.0)
-	check("Sin aviso, la linterna sin beber en la cara la ciega y huye", blinded and gone and lurker.stunned(), "%s %s %s haz %.2f; %s" % [blinded, gone, lurker.stunned(), lurker.beam_time, " / ".join(lurker.debug_lines())])
-
-	# --- Mirada en una sala con luz: huida corta, sin blanco ni espera.
+	var up_again: bool = await until(func() -> bool: return driver.up(), 1.5)
+	check("Abajo, sin aviso, la linterna en la cara la ciega y vuelve al plénum", blinded and up_again and lurker.stunned(), "%s %s %s; %s" % [blinded, up_again, lurker.stunned(), " / ".join(lurker.debug_lines())])
+	# --- A look in a lit room: off, with no flash and no wait.
 	fresh()
 	survivor.torch.visible = false
 	await wait(1.2)
-	await to_site()
-	level.hotel.set_room_power(room, true)
-	stand(4.0)
-	await wait(0.2)
+	stand()
+	await over(1.5)
+	driver.go_down()
+	await until(func() -> bool: return lurker.motion.surface() and lurker.motion.legs.is_empty(), 2.0)
+	level.hotel.set_room_power(int(spot.room), true)
+	await wait(0.3)
 	flashes = driver.view.flash_clock
 	turn_to_her()
-	var fled: bool = await until(func() -> bool: return lurker.motion.in_duct, 1.0)
-	check("Mirada con luz: huye al techo, sin fogonazo ni espera", fled and driver.view.flash_clock == flashes and not lurker.stunned(), " / ".join(lurker.debug_lines()))
-
-	# --- Asomarse: baja la cordura, una vez cada 10 s por persona. (Pasado el
-	# descanso de la cordura entre dos sustos: sanity.SANITY_SIGHT_REST.)
+	var fled: bool = await until(func() -> bool: return driver.up(), 1.5)
+	check("Mirada con luz: vuelve al plénum, sin fogonazo ni espera", fled and driver.view.flash_clock == flashes and not lurker.stunned(), " / ".join(lurker.debug_lines()))
+	# --- Her peek, down: frightens once in 10 s, no warning sound.
 	fresh()
 	await wait(5.5)
-	await to_site()
-	stand(4.0)
+	stand()
+	await over(1.5)
+	driver.go_down()
+	await until(func() -> bool: return lurker.motion.surface() and lurker.motion.legs.is_empty(), 2.0)
 	turn_to_her(48.0)
 	var sane: float = survivor.sanity
 	lurker.peeked = {}
 	driver.asked[&"lurker_peek"] = true
 	await wait(0.1)
-	var first: float = float(lurker.peeked.get(int(survivor.slot), -1.0))
+	var first: float = float(lurker.peeked.get(seat, -1.0))
 	driver.asked[&"lurker_peek"] = true
 	await wait(0.1)
-	check("Asomarse al borde de su vista le baja la cordura", first >= 0.0 and survivor.sanity < sane - 5.0, "%.1f -> %.1f, %.2f; %s" % [sane, survivor.sanity, first, " / ".join(lurker.debug_lines())])
-	check("Y no otra vez antes de 10 s, ni con el sonido del aviso", first >= 0.0 and float(lurker.peeked.get(int(survivor.slot), -1.0)) == first and lurker.warning.active.is_empty())
-
-	# --- De espaldas y quieto: lo coge al vencer el plazo, con su aviso.
+	check("Asomarse, abajo, al borde de su vista le baja la cordura, una vez en 10 s y sin el sonido del aviso", first >= 0.0 and survivor.sanity < sane - 5.0 and float(lurker.peeked.get(seat, -1.0)) == first and lurker.warning.active.is_empty(), "%.1f -> %.1f, %.2f" % [sane, survivor.sanity, first])
+	# --- Its back to her: taken at her due time, with its warning.
 	fresh()
-	level.hotel.set_room_power(room, false)
+	level.hotel.set_room_power(int(spot.room), false)
 	await wait(1.2)
-	await to_site()
 	stand()
-	await until(func() -> bool: return lurker.charged.has(int(survivor.slot)), 3.5)
-	await release()
-	if not lurker.cue:
-		check("Coge a quien da la espalda tras acechar", false, "no empezó: %s" % str(last()))
+	await over(1.5)
+	await wait(0.3)
+	if not await attack():
+		check("Coge a quien da la espalda", false, "no empezó: %s %s" % [str(last()), str(info())])
 		return
-	var entry: Dictionary = last()
-	var taken: bool = await until(func() -> bool: return String(entry.outcome) != "active", 3.0)
-	check("Coge a quien da la espalda tras acechar, al vencer el plazo", taken and String(entry.outcome) == "taken" and float(entry.take_at) >= float(entry.due) - WARNING.EPS and not level.execution.is_empty(), str(entry))
-	check("Con su ventana: 1,2 s", is_equal_approx(float(entry.window), 1.2), str(entry.window))
-	check("El informe tiene su aviso más largo: unos 6 m", absf(float(lurker.longest_take) - FAR) < 0.3, "%.2f" % lurker.longest_take)
+	var taken_entry: Dictionary = last()
+	var taken: bool = await until(func() -> bool: return String(taken_entry.outcome) != "active", 3.0)
+	check("Coge a quien da la espalda, al vencer el plazo, con su ventana de 1,2 s", taken and String(taken_entry.outcome) == "taken" and float(taken_entry.take_at) >= float(taken_entry.due) - WARNING.EPS and not level.execution.is_empty() and is_equal_approx(float(taken_entry.window), 1.2), str(taken_entry))
+
+func PLAYER_CRAWL() -> float: return float(driver.CRAWL_REACH)
+
+## What the judge would ask of a warning on the survivor now (lurker.judge_release()).
+func why_not() -> String:
+	var p = lurker.senses.perceive(0.0, lurker.brain.clock, -1)
+	var v = lurker.senses.seen_of(survivor, p, lurker.brain.clock)
+	var eye: Vector3 = lurker.senses.eye_point()
+	var target: Vector3 = survivor.camera.global_position
+	var exclude := [lurker.get_rid(), survivor.get_rid()]
+	var angle: float = rad_to_deg(lurker.gaze().angle_to(target - eye)) if eye != Vector3.INF else -1.0
+	var rays := "%s/%s" % [SIGHT.clear(level, eye, target, exclude), SIGHT.clear(level, eye, target - Vector3(0, 0.6, 0), exclude)] if eye != Vector3.INF else "-"
+	return "ángulo %.0f, rayos %s, ve %s, justo %s, en ducto %s, detrás %s, la miran %s, linterna %s, luz %s, puede %s, después %s, aturdida %s, a %.2f m, superficie %s" % [angle, rays, lurker.senses.sees(survivor), v.fair, p.in_duct, v.behind, str(p.regarded_by), str(p.torch_by), v.lit, lurker.warning.can_start(lurker.brain.clock), lurker.brain.clock >= lurker.brain.cue_after, lurker.stunned(), float(v.distance), lurker.motion.surface()]

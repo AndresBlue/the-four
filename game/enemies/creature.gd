@@ -374,6 +374,10 @@ func judge_release() -> bool: return false
 ## room it is in (match_net.lurker_drink); whether it drank.
 func judge_drink() -> bool: return false
 
+## On the machine in charge: the player driving it goes along its ducts to
+## way out `e` (match_net.lurker_duct); whether it may.
+func judge_duct(_e: int) -> bool: return false
+
 ## On the machine that drives it: the take the machine in charge judged due,
 ## a leap at `point` or a hold (match_net.order_take).
 func take_leap(_point: Vector3, _leap: bool) -> void: pass

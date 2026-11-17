@@ -134,7 +134,6 @@ func place_containers() -> void:
 		containers[index].plant_note()
 	place_hints(hiding, int(asking[0]) if not asking.is_empty() else 0)
 	place_panels()
-	level.camcorder.write_code("")
 	# The parts of the pieces that open, loaded now and kept while the floor
 	# lasts: not read off the disk on the first search.
 	opening_meshes.clear()
@@ -428,11 +427,11 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 		if seat == level.player.slot and not level.match_net.local_is_locust():
 			own_hint(piece.hint)
 			if not quiet and not level.bot_match: level.interaction.read_hint(piece.hint)
-	# A key goes to whoever finds it, and it is theirs alone.
+	# A key goes to whoever finds it, and it is theirs alone. Nothing is
+	# written: the key hanging from it is gone, and the panels offer to open.
 	if piece.key:
 		key_holders[containers.find(piece)] = seat
 		piece.take_key()
-		if seat == level.player.slot and not quiet and not level.bot_match: level.ui.flash("LLAVE DEL CUADRO ELÉCTRICO", 3.0)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit
 		found_by[piece.slot] = seat
@@ -440,11 +439,9 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 		var number := int(room.get("number", 0))
 		found_where[piece.slot] = ("HABITACIÓN %d" % number) if number > 0 else FLOOR.palette(level.manifest).label(room).to_upper()
 		if not level.net.is_client() and not quiet: level.ledger.note_search(seat, int(piece.slot), String(found_where[piece.slot]))
-		# The paper leaves with whoever took it, and what it said stays written
-		# on the tape until the floor is over.
+		# The paper leaves with whoever took it: what it said is on their
+		# sheet and on the keypad (noted_code()), not over the picture.
 		piece.take_note()
-		if not level.match_net.local_is_locust() and seat == level.player.slot:
-			level.camcorder.write_code(noted_code())
 	elif not level.net.is_client() and not quiet: level.ledger.note_search(seat, 0, "")
 
 ## The slips this player took, in the order the code reads: which place, the
@@ -498,15 +495,15 @@ func type_code(character: String) -> void:
 		return
 	# Only the keypad is heard: a try is not a door. It used to creak like one
 	# on every wrong code, and latch on the right one, with nothing moving.
+	# Its tones and the places emptying say right or wrong: nothing is written.
 	if verdict == "right":
 		level.ui.keypad("right")
 		level.match_net.use_code()
-		level.ui.show_lock(typed, DIGITS.COUNT, "ABIERTA", noted_code(), lock_digit)
 		close_lock()
 	else:
 		typed = ""
 		level.ui.keypad("wrong")
-		level.ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code(), lock_digit)
+		level.ui.show_lock("", DIGITS.COUNT, "", noted_code(), lock_digit)
 
 ## What the keypad makes of a code: "right", "sets" (right, but the stage's
 ## sets are still dark, so the door would not move), "notes" (right, but the

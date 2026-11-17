@@ -359,8 +359,15 @@ func perceive(delta: float, clock: float, prey_seat: int):
 			s.seen = true
 			s.seen_at = clock
 			memory[seat] = s
+	# Gone from the match (a guest who left, a teammate taken off): out of her
+	# senses at once, not kept as last seen until forgotten.
+	var here := {}
+	for one in survivors:
+		if is_instance_valid(one) and "slot" in one: here[int(one.slot)] = true
+	for seat in looked.keys():
+		if not here.has(seat): looked.erase(seat)
 	for seat in memory.keys():
-		if clock - float(memory[seat].seen_at) > forget: memory.erase(seat)
+		if not here.has(seat) or clock - float(memory[seat].seen_at) > forget: memory.erase(seat)
 	var middle := Vector3.ZERO
 	for seat in memory: middle += memory[seat].point
 	if not memory.is_empty(): middle /= float(memory.size())

@@ -58,6 +58,10 @@ static func name_of(line: Dictionary, seat: int) -> String:
 	if int(line.get("hunter", {}).get("seat", -1)) == seat: return String(line.hunter.get("name", "")).to_upper()
 	return "ALGUIEN"
 
+## The creature of the floor the tape is of: "The Locust", "The Lurker".
+static func creature_of(line: Dictionary) -> String:
+	return "The %s" % String(FLOORS.kind(int(line.get("floor", 1))).CREATURE_KEY).capitalize()
+
 ## A figure that counts itself up, the way a counter does when a tape is rewound.
 static func count_up(figure: Label, target: float, write: Callable, delay := 0.0) -> void:
 	figure.text = write.call(0.0)
@@ -225,7 +229,7 @@ static func team(ui, page: VBoxContainer, line: Dictionary) -> void:
 		var row := row_in(page)
 		STYLE.cell(row, "", MARK, 17)
 		STYLE.cell(row, String(hunter.get("name", "")).to_upper(), 196, 18, STYLE.ALERT)
-		var said := "%s, %d captura%s" % ["THE LURKER" if int(line.get("floor", 1)) == 2 else "THE LOCUST", int(line.get("deaths", 0)), "" if int(line.get("deaths", 0)) == 1 else "s"]
+		var said := "%s, %d captura%s" % [creature_of(line).to_upper(), int(line.get("deaths", 0)), "" if int(line.get("deaths", 0)) == 1 else "s"]
 		# Hers: her longest warning that took somebody (lurker_versus.md 11).
 		if float(hunter.get("longest", 0.0)) > 0.0: said += ", aviso más largo %s m" % String.num(float(hunter.longest), 1).replace(".", ",")
 		STYLE.cell(row, said, 420, 16, STYLE.ALERT)
@@ -327,7 +331,7 @@ static func moment(line: Dictionary, event: Dictionary) -> Array:
 		"lift": return ["%s llamó al ascensor" % who, STYLE.SOFT]
 		"escape": return ["%s se le escapó a la criatura tras %d s de persecución" % [who, many], STYLE.INK]
 		"burnt": return ["%s se quedó sin cordura" % who, STYLE.SOFT]
-		"death": return ["The Locust atrapó a %s" % who, STYLE.ALERT]
+		"death": return ["%s atrapó a %s" % [creature_of(line), who], STYLE.ALERT]
 		"collapse": return ["El sector se derrumbó: todos en pie y a empezarlo otra vez", STYLE.ALERT]
 		"sector": return ["SECTOR %d CERRADO" % many, STYLE.AMBER]
 		"out": return ["LA CINTA SALIÓ DEL HOTEL", STYLE.AMBER]

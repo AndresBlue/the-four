@@ -59,6 +59,7 @@ uniform float flash_peak = 1.0;
 uniform float now = 0.0;
 
 const float DAZZLE_NEAR = 4.0;
+const float DAZZLE_LEVEL = 0.22;
 // Nothing drawn: the coldest there is.
 const float VOID = 0.04;
 // What a source warms round it (share of its heat, metres to fall by e): a
@@ -136,9 +137,10 @@ void fragment() {
 		vec3 n = (INV_VIEW_MATRIX * vec4(normal, 0.0)).xyz;
 		float lap = abs(length(right) + length(left) + length(up) + length(down) - 4.0 * dist) / max(dist, 0.1);
 		float edge = smoothstep(0.02, 0.12, lap);
-		// Floor, walls warmer as they rise, ceiling.
+		// Floor, walls warmer as they rise, ceiling: low, a blue nearly black
+		// (lurker_versus.md 13.2, after the author found it too bright).
 		float rise = clamp((world.y - floor_y) / 3.0, 0.0, 1.0);
-		t = n.y > 0.6 ? 0.105 : (n.y < -0.6 ? 0.16 : 0.115 + 0.03 * rise);
+		t = n.y > 0.6 ? -0.03 : (n.y < -0.6 ? 0.03 : -0.01 + 0.03 * rise);
 		// Blotched: on the plane the surface lies in.
 		vec2 plane = abs(n.y) > 0.6 ? world.xz : (abs(n.x) > abs(n.z) ? world.zy : world.xy);
 		t += (value_noise(plane * 1.4) - 0.5) * 0.05 + (value_noise(plane * 0.33 + 17.0) - 0.5) * 0.05 + (value_noise(plane * 6.0) - 0.5) * 0.01;
@@ -217,7 +219,8 @@ void fragment() {
 	// faintly.
 	vec2 q = (uv - 0.5) * vec2(aspect, 1.0);
 	float burn = dazzle * smoothstep(DAZZLE_NEAR - 1.0, DAZZLE_NEAR + 1.5, dist);
-	v = mix(v, 0.36 + 0.12 * (value_noise(q * 5.0 + vec2(now * 0.6, now * 0.4)) - 0.5), burn);
+	// A middling purple, not the pink wash it was (13.2).
+	v = mix(v, DAZZLE_LEVEL + 0.06 * (value_noise(q * 5.0 + vec2(now * 0.6, now * 0.4)) - 0.5), burn);
 	v = max(v + burn * wire / span, (max(hot, halo) - gain_low) / span);
 	// The flash: the torch's bloom swells from its side and burns white, the
 	// gain throws the rest to black; both give back as it passes.

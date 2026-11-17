@@ -1,8 +1,8 @@
 extends SceneTree
 ## The cut between one wing and the next, as it is played: the survivor steps
-## into the car, the picture goes, the card says which wing this is and what
-## the stage asks for, and the picture comes back somewhere else. Frames by the
-## clock of the ride itself.
+## into the car, the picture goes to black, and it comes back somewhere else.
+## Nothing is written on the black or after it (the author, 16 November 2026).
+## Frames by the clock of the ride itself.
 ##   godot --path . --script tools/capture/transit_capture.gd -- --silent
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
@@ -12,15 +12,11 @@ func _initialize() -> void: run.call_deferred()
 func shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://evidence/transit_%s.png" % name)
-	var brief = level.ui.brief
-	print("SHOT %s · %.2f s de viaje · aviso %s" % [name, float(level.lifts.boarding.get("time", -1.0)),
-		("lavado %.2f" % float(brief.get_child(1).material.get_shader_parameter("wash"))) if is_instance_valid(brief) else "no"])
+	print("SHOT %s · %.2f s de viaje" % [name, float(level.lifts.boarding.get("time", -1.0))])
 
 func frames(count: int) -> void:
 	for i in count: await process_frame
 
-## By the clock, not by frames: the notice's own tween runs on seconds, and a
-## capture draws as many frames a second as the machine gives it.
 func seconds(span: float) -> void:
 	var until := Time.get_ticks_msec() + int(span * 1000.0)
 	while Time.get_ticks_msec() < until: await process_frame
@@ -42,25 +38,15 @@ func run() -> void:
 	level.player.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
 	await frames(2)
 	level.match_net.call_lift(0)
-	# The ride is 3.2 s: the picture goes over the first third of a second, the
-	# card is up for most of the middle, and it clears at the end.
-	var beats := {"board": 6, "dark": 24, "card": 60, "hold": 60, "clearing": 36, "out": 24}
+	# The ride (lifts.RIDE_TIME): the doors shut, the picture goes, the black
+	# holds through the middle, and it clears as the doors open down there.
+	var beats := {"board": 1.0, "dark": 1.2, "card": 2.0, "hold": 2.0, "clearing": 1.6, "out": 1.0}
 	for beat in beats:
-		await frames(int(beats[beat]))
+		await seconds(float(beats[beat]))
 		await shot(beat)
-	# Out of the car: the notice of the sector, and the set going off at the
-	# end of it.
+	# Out of the car, and where what the sector asks for is kept: the pause.
 	await seconds(1.0)
-	await shot("brief")
-	# Going the way a weak signal goes: the last second and a half the lines
-	# roll, the picture smears and the snow takes it, a third of the way and
-	# two thirds of the way in.
-	var out_at: float = level.ui.BRIEF_HOLD - level.ui.BRIEF_OUT
-	await seconds(out_at + level.ui.BRIEF_OUT * 0.4 - 1.0)
-	await shot("brief_wash")
-	await seconds(level.ui.BRIEF_OUT * 0.3)
-	await shot("brief_gone")
-	# And where it is kept afterwards: the pause screen.
+	await shot("arrived")
 	level.session.pause()
 	await frames(20)
 	await shot("pause")

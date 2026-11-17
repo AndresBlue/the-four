@@ -1017,13 +1017,10 @@ func populate_floor(with_director: bool) -> void:
 		theme.stream = rig.floor_theme(session.floor_number)
 		theme.play()
 		ventilation.play()
-	# A floor opens on the same card as every sector after it, and the notice
-	# of what this one wants follows once the card is gone. Not over the
-	# observer: watching is not filming, and the card covered every floor R put up.
+	# A floor opens on the same black as every ride after it. Not over the
+	# observer: watching is not filming, and the black covered every floor R put up.
 	if not automation and not observer and not match_net.local_is_locust():
-		ui.show_transit(kind.title_of(session.stage), lifts.stage_errand(session.stage), lifts.OPENING_CARD)
-	lifts.pending_brief = session.stage
-	lifts.brief_wait = lifts.OPENING_CARD if not automation else 0.0
+		ui.show_transit(lifts.OPENING_CARD)
 
 # --- Online floors ---------------------------------------------------------------
 
@@ -1247,16 +1244,11 @@ func on_state() -> void:
 			ui.menu("pause")
 		session.State.LOADING: ui.menu("loading")
 		session.State.TRANSITION:
-			# Between stages the floor goes on: a held beat and a notice, not
-			# the end-of-floor screen. Only the last stage brings that.
+			# Between stages the floor goes on, not the end-of-floor screen.
+			# Only the last stage brings that.
 			if session.more_stages():
 				ui.close_menus()
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				# Only for whoever is not left behind in the old wing: a
-				# survivor still there hears about the next sector when their
-				# own car takes them to it (lifts.apply_ride).
-				var here := int(FLOOR.room_at(manifest.rooms, player.global_position).get("wing", -1))
-				if not local_alive() or here != session.stage - 1: lifts.pending_brief = session.stage + 1
 			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
@@ -1610,8 +1602,7 @@ func catch_up_progress(progress: Dictionary) -> void:
 	if stage != session.stage:
 		session.stage = stage
 		if not automation and not match_net.local_is_locust():
-			ui.show_transit(kind.title_of(stage), lifts.stage_errand(stage), lifts.OPENING_CARD)
-		lifts.pending_brief = stage
+			ui.show_transit(lifts.OPENING_CARD)
 
 func _physics_process(delta: float) -> void:
 	var started := Time.get_ticks_usec() if perf != null else 0
@@ -1659,9 +1650,6 @@ func step_physics(delta: float) -> void:
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	lifts.count_away(delta)
 	if rule("plan") == 1: floor_map.tick(delta)
-	# The notice of the sector waits for the card to be gone and for the lift
-	# to have opened its doors: it is what the picture comes back to.
-	lifts.announce_sector(delta)
 	var started := Time.get_ticks_usec() if perf != null else 0
 	drive_local(delta)
 	hints.tick(delta)

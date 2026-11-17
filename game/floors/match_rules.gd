@@ -64,10 +64,12 @@ static func applies(rule: Dictionary, creature: StringName = &"", floor_number: 
 	return true
 
 ## The rules there are on a floor, in their order (the rules screen's list).
-static func shown(creature: StringName = &"", floor_number: int = 0) -> Array:
+## `versus` false: a room against the machine, where a rule marked `versus`
+## does nothing and is not shown; true or unsaid, every one that applies.
+static func shown(creature: StringName = &"", floor_number: int = 0, versus := true) -> Array:
 	var out: Array = []
 	for rule in RULES:
-		if applies(rule, creature, floor_number): out.append(rule)
+		if applies(rule, creature, floor_number) and (versus or not rule.get("versus", false)): out.append(rule)
 	return out
 
 ## Every rule at the value nobody chose.

@@ -7,6 +7,7 @@ extends RefCounted
 ## "control_hints", the games counted in "hint_games" for the floor in
 ## "hint_floor": reaching floor 2 turns them on for its own five).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const SETTINGS := preload("res://game/services/settings_service.gd")
 const HINT_GAMES := 5
 ## A dark room entered with the torch off says F, in this many rooms a game.
 const DARK_ROOMS := 5
@@ -78,7 +79,7 @@ func tick(delta: float) -> void:
 		return
 	clock += delta
 	if level.match_net.local_is_locust():
-		if clock > 1.5: offer("hunter")
+		if clock > 1.5: offer("hunter" if level.kind.CREATURE_KEY == &"locust" else "lurker")
 		return
 	if not level.local_alive(): return
 	if clock > SHEET_AFTER: offer("sheet")
@@ -195,6 +196,11 @@ func notice(words: String, seconds: float) -> void:
 func key(action: String) -> String:
 	return level.settings.prompt_name(action).to_upper()
 
+## Her keys are fixed, not bound (settings_service.LURKER_ACTIONS): named from there.
+func lurker_key(action: String) -> String:
+	var pair: Array = SETTINGS.LURKER_ACTIONS[action]
+	return (level.settings.button_name(int(pair[1])) if on_pad() else OS.get_keycode_string(int(pair[0]))).to_upper()
+
 func on_pad() -> bool:
 	return level.settings.using_pad and level.settings.pad_present()
 
@@ -227,5 +233,16 @@ func rows(kind: String) -> Array:
 				# On a pad the trace is the torch button (locust_player.gd).
 				[[key("flashlight") if pad else key("locust_trace")], "Rastro hasta una tele encendida", ["flashlight" if pad else "locust_trace"]],
 				[[e], "Abrir puertas y armarios, pasar por una tele", ["interact"]],
+			]
+		# Her keys (settings_service.LURKER_ACTIONS), what each is called and nothing more
+		# (lurker_versus.md 13.4: in play only their signs and keys say it).
+		"lurker":
+			return [
+				[[settings.trigger_name(true)] if pad else ["CLIC IZQ."], "Atacar", ["mouse_left", "lurker_release"]],
+				[[lurker_key("lurker_drop")], "Bajar y subir", ["lurker_drop"]],
+				[["MANTÉN", lurker_key("lurker_sneak")], "Sin ruido", ["lurker_sneak"]],
+				[[lurker_key("lurker_enter")], "Ductos", ["lurker_enter"]],
+				[[settings.trigger_name(false)] if pad else ["CLIC DER."], "Beber la luz", ["mouse_right", "lurker_drink"]],
+				[[lurker_key("lurker_peek")], "Asomarse", ["lurker_peek"]],
 			]
 	return []

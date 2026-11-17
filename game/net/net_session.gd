@@ -373,9 +373,12 @@ func set_option(key: String, value: Variant) -> void:
 	elif key == "floor": value = int(value) if FLOORS.built(int(value)) else 1
 	options[key] = value
 	if key == "mode" and value == Mode.COOP: options.locust = RANDOM
-	# Versus is the hotel's only, until floor 2 has its own (phase 4).
-	if key == "mode" and value == Mode.VERSUS: options.floor = 1
 	broadcast_lobby()
+
+## Who the hunter plays on the floor the room is set to: "The Locust" on the
+## hotel, "The Lurker" on the offices (the floor's CREATURE_KEY).
+func hunter_title() -> String:
+	return "The %s" % String(FLOORS.kind(int(options.get("floor", 1))).CREATURE_KEY).capitalize()
 
 ## A player picks another character in the room.
 func set_character(character: int) -> void:
@@ -399,7 +402,7 @@ func start_problem() -> String:
 	if count > MAX_PLAYERS: return "Demasiados jugadores."
 	if count > seats_for(int(options.mode)): return "%s es de %d a %d jugadores." % [MODE_NAMES[int(options.mode)], MIN_PLAYERS, seats_for(int(options.mode))]
 	if options.mode == Mode.VERSUS and options.locust != RANDOM and not connected_seats().has(int(options.locust)):
-		return "El jugador elegido como The Locust ya no está."
+		return "El jugador elegido como %s ya no está." % hunter_title()
 	return ""
 
 ## How many can play a mode: five survivors, and The Locust in versus.

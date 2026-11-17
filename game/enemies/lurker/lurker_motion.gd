@@ -225,6 +225,7 @@ func place_at(at: Vector3, heading_world: Vector3, reason: StringName, hang := S
 	in_duct = false
 	hidden = false
 	on_floor = false
+	plenum = false
 	mouth_exit = -1
 	state = shell.state_at(at, hang)
 	if state != null and heading_world.length() > 1e-6: shell.set_heading(state, heading_world)
@@ -236,6 +237,7 @@ func place_at(at: Vector3, heading_world: Vector3, reason: StringName, hang := S
 func place_in_duct(node: int) -> void:
 	var from: Vector3 = anchor() if state != null or in_duct or on_floor else ducts.nodes[node]
 	clear_legs()
+	plenum = false
 	state = null
 	in_duct = true
 	hidden = true
@@ -541,6 +543,41 @@ const FREE_TURN := 8.0
 const FREE_ACCEL := 14.0
 const FREE_BRAKE := 18.0
 
+## Versus after the author's first game (lurker_versus.md 13.1): over the false
+## ceiling, in the plenum, as one plan; her driver moves her point there
+## itself (lurker_player.plenum_step()). Hidden as in a duct, at the plenum
+## node of the room under her (her sound comes out by its tiles).
+var plenum := false
+## Her driver's trip along the ducts (13, the author's vents): this pace, not
+## the AI's duct speed; 0 for none.
+var trip_speed := 0.0
+
+## Into the plenum at `at`: a logged jump.
+func place_in_plenum(at: Vector3, near: int) -> void:
+	var from := anchor() if state != null or in_duct or on_floor else at
+	clear_legs()
+	transit = {}
+	state = null
+	in_duct = true
+	hidden = true
+	on_floor = false
+	plenum = true
+	mouth_exit = -1
+	speed = 0.0
+	crawl(at, near, basis.z)
+	last_anchor = Vector3.INF
+	log_jump(&"plenum", from, at)
+
+## Where her driver has her in the plenum this tick, facing `heading`.
+func crawl(at: Vector3, near: int, heading: Vector3) -> void:
+	point = at
+	duct_point = at
+	near_node = near
+	var flat := Vector3(heading.x, 0, heading.z)
+	if flat.length() > 1e-4:
+		duct_dir = flat.normalized()
+		basis = Basis(Vector3.UP.cross(duct_dir).normalized(), Vector3.UP, duct_dir)
+
 ## A player's order: these legs from where she is, run whole, with no goal to
 ## plan for again (a door shut on them turns her back and leaves her there).
 func run_legs(new_legs: Array, pace_: float) -> void:
@@ -743,6 +780,7 @@ func begin_drop() -> void:
 	var to_node: int = ducts.trunk_nearest(from, target_wing)
 	clear_legs()
 	transit = {"phase": &"drop", "wing": target_wing, "left": RIDE_TIME, "node": to_node}
+	plenum = false
 	state = null
 	in_duct = true
 	hidden = true
@@ -805,7 +843,8 @@ func fans() -> void:
 	var shut: bool = air != null and air.has_method("ducts_closed") and bool(air.ducts_closed())
 	for w in 3: ducts.closed_wings[w] = 1 if w == 2 and shut else 0
 	if not in_duct: ejecting = false
-	elif not cue and not ejecting and transit.is_empty() and ducts.closed_wings[wing()] != 0 and not committed(): eject()
+	# The fans shut the ducts, not the plenum a person crawls (lurker_versus.md 13.1).
+	elif not cue and not ejecting and not plenum and transit.is_empty() and ducts.closed_wings[wing()] != 0 and not committed(): eject()
 
 ## The ray down (7.3 step 3): how low she may hang, and her body shrunk
 ## where even the least hang leaves too little room (M2).
@@ -1181,6 +1220,7 @@ func follow_duct(leg: Dictionary, delta: float) -> void:
 	if flat.length() > 1e-6: duct_dir = flat.normalized()
 	var run: float = routes.segment_speed(kind)
 	if unseen and not visible: run = maxf(run, unseen_duct)
+	if trip_speed > 0.0: run = trip_speed
 	if paused: run = 0.0
 	if visible and bodies_ahead.is_valid() and float(bodies_ahead.call(duct_point, duct_dir, DUCT_GAP + 1.0)) < DUCT_GAP:
 		run = 0.0

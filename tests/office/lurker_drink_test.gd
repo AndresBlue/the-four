@@ -8,7 +8,10 @@ extends SceneTree
 ## drink in the three difficulties that drink it, with its brakes (the lamps
 ## down and a hiss first, no warning before drink_cue, one attempt), and the
 ## contract after it (docs/OFICINAS.md 1): the torch lit again, a teammate's
-## torch and running still save; doing nothing does not. Apacible never drinks.
+## torch and running still save; doing nothing does not. Stalking somebody
+## whose torch is on in a room already dark, she drinks it too (their torch
+## out); with it off there, nothing. A teammate who leaves is out of her senses
+## and her mind at once. Apacible never drinks.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const SIGHT := preload("res://game/enemies/creature_sight.gd")
@@ -56,6 +59,7 @@ func run() -> void:
 		landmarks()
 		for id in ["equilibrada", "desafiante", "pesadilla"]:
 			await mind_drink(id)
+			await dark_drink(id)
 			await contract(id)
 		await apacible()
 		check("Una sola tentativa por apagón", spent.all(func(n): return int(n) <= 1), str(spent))
@@ -287,6 +291,41 @@ func mind_drink(id: String) -> void:
 	if not drank.is_empty(): spent.append(in_dark(drank))
 	await frames(30)
 
+## The corridor dark and the player in it stalked (lurker_versus.md 10, the
+## director's 16 November): with its torch off there is nothing to drink;
+## switched on, after the hiss she drinks it all the same, the torch out, not drunk.
+func dark_drink(id: String) -> void:
+	await set_up(false)
+	var room := int(corridor.room)
+	var along: Vector3 = corridor.along
+	level.hotel.set_room_power(room, false)
+	var kept: float = lurker.snuff_time
+	lurker.snuff_time = 1.0
+	var made: int = lurker.drinks.size()
+	lurker.thinking = true
+	lurker.brain.force(&"stalk", {"seat": seat()})
+	var warned_off := false
+	var warned := false
+	for i in int(11.0 / DT):
+		await physics_frame
+		lurker.brain.stalk_left = 999.0
+		lurker.brain.peek_at = -1.0
+		# No warning of hers before the drink (alone in the dark, she would close in at once).
+		lurker.brain.cue_after = INF
+		# Off its first 3 s; then on.
+		if i == int(3.0 / DT): level.player.torch.visible = true
+		if lurker.warn_room == room:
+			if level.player.torch.visible: warned = true
+			else: warned_off = true
+		if lurker.drinks.size() > made: break
+		level.player.velocity = along * 0.5
+	lurker.snuff_time = kept
+	lurker.thinking = false
+	level.player.velocity = Vector3.ZERO
+	var drank: Dictionary = lurker.drinks[made] if lurker.drinks.size() > made else {}
+	check("%s: a oscuras, con la linterna apagada no hay nada que beber; encendida, tras el siseo, se bebe la sala y la linterna" % id.capitalize(), not warned_off and warned and not drank.is_empty() and int(drank.room) == room and not bool(drank.get("lit", true)) and Array(drank.seats).has(seat()) and lurker.outed.has(seat()) and not lurker.drunk.has(seat()) and not level.player.torch.visible, "%s %s %s %s" % [warned_off, warned, str(drank), lurker.brain.state_name()])
+	await frames(30)
+
 ## After her drink of the corridor, on her one attempt: the torch lit again
 ## by pressing (and turned to her), a teammate's torch from outside it, and
 ## running away each save.
@@ -295,6 +334,7 @@ func contract(id: String) -> void:
 	var room := int(corridor.room)
 	var along: Vector3 = corridor.along
 	var bad: Array = []
+	var gone: Array = []
 	for how in ["reencendida", "compañero", "corriendo"]:
 		await set_up(true)
 		lurker.thinking = true
@@ -348,15 +388,23 @@ func contract(id: String) -> void:
 			bad.append([how, entry])
 		spent.append(in_dark(drank))
 		if other != null:
+			# Hers when it goes: once gone, out of her senses and her mind at once.
+			lurker.brain.force(&"stalk", {"seat": 2})
+			var p = lurker.SENSES.Percept.new()
+			p.face = lurker.face_point()
+			var seen = lurker.senses.seen_of(other, p, lurker.brain.clock)
+			seen.seen_at = lurker.brain.clock
+			lurker.senses.memory[2] = seen
+			lurker.senses.looked[2] = true
 			level.match_net.bodies.erase(2)
 			level.session.participants.erase(2)
-			# Gone: her senses forget it (they keep a body that left as last seen).
-			lurker.senses.memory.erase(2)
-			lurker.senses.looked.erase(2)
 			other.queue_free()
+			await frames(3)
+			gone.append([lurker.senses.memory.has(2), lurker.senses.looked.has(2), lurker.brain.prey])
 		level.player.velocity = Vector3.ZERO
 		await frames(10)
 	check("%s: tras beber, siguen salvando la linterna reencendida, la de un compañero y correr" % id.capitalize(), bad.is_empty(), str(bad))
+	check("%s: un compañero que se va deja de estar en sus sentidos y de ser su presa en cuanto se va" % id.capitalize(), gone.size() == 1 and not bool(gone[0][0]) and not bool(gone[0][1]) and int(gone[0][2]) != 2, str(gone))
 
 func apacible() -> void:
 	level.set_difficulty("apacible")
