@@ -225,7 +225,10 @@ func listener_camera() -> Camera3D:
 	return current if current != null else level.player.camera
 
 func listener_position() -> Vector3:
-	return listener_camera().global_position
+	# An ear apart from the camera when one is current (The Lurker's: her camera
+	# looks down from over the planta she hears in, lurker_player.gd).
+	var ear: AudioListener3D = level.get_viewport().get_audio_listener_3d() if level.is_inside_tree() else null
+	return ear.global_position if ear != null else listener_camera().global_position
 
 func door_cue(opening: bool, slow: bool, point: Vector3, emitter: RID, forceful := false) -> void:
 	var distance := listener_position().distance_to(point)

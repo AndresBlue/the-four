@@ -1,13 +1,15 @@
 extends SceneTree
-## The Lurker in Versus, remade after the author's first game
-## (.claude/specs/lurker_versus.md 13): her body driven by a person, here by a
-## script that writes her driver's stick, look and buttons (lurker_player.gd,
-## scripted). On floor 2: she starts in the plenum, over her camera; on
-## planta 1 she crawls it from end to end of her department, room by room, at
-## her pace and back crawling slowly (silent, by her flags), never stuck,
-## never over a fire wall nor a core, never into the ducts' plan by herself;
-## pushed into a fire wall at a slant she slides along it. On each planta:
-## down by a tile into the room, her camera at her eyes, and back up; into the
+## The Lurker in Versus, remade after the author's first two games
+## (.claude/specs/lurker_versus.md 13 and 13.9): her body driven by a person,
+## here by a script that writes her driver's stick, look and buttons
+## (lurker_player.gd, scripted). On floor 2: she starts in the plenum, her
+## camera over her; on planta 1 she crawls it from end to end of a department,
+## room by room, at her pace and back crawling slowly (silent, by her flags),
+## never stuck, never over a core nor out of the building, never into the
+## ducts by herself; from one department into the next over the ceiling (no
+## fire walls there); pushed into a core or the building's edge at a slant she
+## slides along it. On each planta: down by a tile into the room, her camera
+## behind her and off her, and back up; into the
 ## ducts by a grille, the way out most where she looks picked, along them at
 ## her trip's pace (and no sooner than 1 s), up into the plenum where it comes
 ## out, and another trip refused within its wait; in again and back out where
@@ -57,7 +59,7 @@ func run() -> void:
 	level.player.global_position = Vector3(0, -60, 0)
 	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
 	await wait(0.3)
-	check("Lleva su cuerpo un conductor y empieza en el plénum, con la cámara sobre ella", lurker.control == "player" and lurker.motion.plenum and driver.mode == "above" and not driver.dark, "%s %s %s" % [lurker.motion.plenum, driver.mode, driver.dark])
+	check("Lleva su cuerpo un conductor y empieza en el plénum, con la cámara sobre ella", lurker.control == "player" and lurker.motion.plenum and driver.mode == "above", "%s %s" % [lurker.motion.plenum, driver.mode])
 	await crawl_case()
 	for planta in 3:
 		lines.append("--- planta %d" % (planta + 1))
@@ -165,7 +167,6 @@ func crawl_along(way: Array, sneak: bool, seconds: float) -> Dictionary:
 	driver.axis = Vector2(0, -1)
 	var k := 0
 	var last := at()
-	var sector := int(level.manifest.rooms[int(way[0])].sector)
 	var still := 0.0
 	for i in int(seconds / DT):
 		var goal := middle_of(int(way[k]))
@@ -187,9 +188,9 @@ func crawl_along(way: Array, sneak: bool, seconds: float) -> Dictionary:
 		seen.stuck = maxf(float(seen.stuck), still)
 		last = now
 		var room := FLOOR.room_at(level.manifest.rooms, Vector3(now.x, FLOOR.planta_y(FLOOR.planta_of(now.y - 0.5)) + 1.0, now.z))
-		if room.is_empty() or int(room.sector) != sector or not shell.tray_of.has(int(room.id)):
+		if room.is_empty() or not shell.tray_of.has(int(room.id)):
 			if seen.crossed.size() < 3: seen.crossed.append(int(room.get("id", -1)))
-		if driver.mode == "dark": seen.plan += 1
+		if driver.mode == "ducts": seen.plan += 1
 		if not lurker.motion.plenum: seen.dropped = true
 		if sneak and lurker.flags() & lurker.Flag.SNEAK == 0 and seen.seconds > 0.1: seen.sneak_flag = false
 	driver.axis = Vector2.ZERO
@@ -211,13 +212,37 @@ func crawl_case() -> void:
 		return
 	await up_over(int(way[0]), middle_of(int(way[0])))
 	var there: Dictionary = await crawl_along(way, false, 120.0)
-	check("P1 plénum de punta a punta (%d salas) a su ritmo, sin quedarse pegada ni cruzar un cortafuegos ni pasar al plano" % way.size(), there.ok and float(there.stuck) < 0.5 and (there.crossed as Array).is_empty() and int(there.plan) == 0 and not bool(there.dropped), said(there))
+	check("P1 plénum de punta a punta (%d salas) a su ritmo, sin quedarse pegada ni salir de sus techos ni entrar sola en los ductos" % way.size(), there.ok and float(there.stuck) < 0.5 and (there.crossed as Array).is_empty() and int(there.plan) == 0 and not bool(there.dropped), said(there))
 	check("Su ritmo normal es unos 4,5 m/s", absf(float(there.fastest) - PLAYER.PACE) < 0.3, said(there))
 	var back_way := way.duplicate()
 	back_way.reverse()
 	var back: Dictionary = await crawl_along(back_way.slice(0, mini(4, back_way.size())), true, 60.0)
 	check("Y vuelve en sigilo: 1,5 m/s, en silencio (su bandera de sigilo) y sin quedarse pegada", back.ok and absf(float(back.fastest) - PLAYER.SNEAK_PACE) < 0.15 and bool(back.sneak_flag) and float(back.stuck) < 0.5 and (back.crossed as Array).is_empty(), said(back))
-	# A fire wall: a room of the way with a side on another department.
+	# No fire walls over the ceiling: from a room of hers into one of hers of another department.
+	var crossing := {}
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) != 0 or not shell.tray_of.has(int(room.id)) or not OFFICE.false_ceiling(room): continue
+		var half := FLOOR.size_of(room) * 0.5
+		for side: Vector2 in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
+			var out: Vector2 = Vector2(float(room.px), float(room.pz)) + side * ((Vector2(half.x, half.y) * side.abs()).length() + 1.0)
+			var other := FLOOR.room_at(level.manifest.rooms, Vector3(out.x, float(room.py) + 1.0, out.y))
+			if other.is_empty() or not shell.tray_of.has(int(other.id)) or not OFFICE.false_ceiling(other) or int(other.sector) == int(room.sector): continue
+			crossing = {"from": int(room.id), "to": int(other.id), "goal": out}
+			break
+		if not crossing.is_empty(): break
+	if crossing.is_empty(): lines.append("planta 1: ningún paso de un departamento a otro bajo techo suyo")
+	else:
+		await up_over(int(crossing.from), middle_of(int(crossing.from)))
+		var goal: Vector2 = crossing.goal
+		driver.axis = Vector2(0, -1)
+		for i in int(4.0 / DT):
+			face(Vector3(goal.x - at().x, 0, goal.y - at().z))
+			await physics_frame
+			if flat(at()).distance_to(goal) < 0.4: break
+		driver.axis = Vector2.ZERO
+		var over := int(FLOOR.room_at(level.manifest.rooms, Vector3(at().x, float(level.manifest.rooms[int(crossing.from)].py) + 1.0, at().z)).get("id", -1))
+		check("Sin cortafuegos por arriba: pasa de la sala %d a la %d, de otro departamento" % [int(crossing.from), int(crossing.to)], over == int(crossing.to) and lurker.motion.plenum, "está sobre %d" % over)
+	# What stops her: a room of the way with a side on a core or out of the building.
 	var slid := {}
 	for room in way:
 		var r: Dictionary = level.manifest.rooms[int(room)]
@@ -225,7 +250,7 @@ func crawl_case() -> void:
 		for side: Vector2 in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
 			var out: Vector2 = Vector2(float(r.px), float(r.pz)) + side * (Vector2(half.x, half.y) * side.abs()).length() + side * 0.3
 			var other := FLOOR.room_at(level.manifest.rooms, Vector3(out.x, float(r.py) + 1.0, out.y))
-			if not other.is_empty() and shell.tray_of.has(int(other.id)) and int(other.sector) == int(r.sector): continue
+			if not other.is_empty() and shell.tray_of.has(int(other.id)): continue
 			# From the middle, into that side at 35 degrees off it.
 			await up_over(int(room), middle_of(int(room)))
 			var along: Vector2 = Vector2(-side.y, side.x)
@@ -239,14 +264,14 @@ func crawl_case() -> void:
 				await physics_frame
 				var p := at()
 				var here := FLOOR.room_at(level.manifest.rooms, Vector3(p.x, float(r.py) + 1.0, p.z))
-				if here.is_empty() or int(here.sector) != int(r.sector): crossed = true
+				if here.is_empty() or not shell.tray_of.has(int(here.id)): crossed = true
 			driver.axis = Vector2.ZERO
 			var moved := flat(at()) - flat(start)
 			gone = moved.dot(along)
 			slid = {"room": int(room), "crossed": crossed, "along": gone, "into": moved.dot(side), "half": (Vector2(half.x, half.y) * side.abs()).length()}
 			break
 		if not slid.is_empty(): break
-	check("Contra un cortafuegos o un núcleo en diagonal desliza a lo largo, sin cruzarlo", not slid.is_empty() and not bool(slid.crossed) and float(slid.along) > 2.0 and float(slid.into) < float(slid.half), str(slid))
+	check("Contra un núcleo o el borde del edificio en diagonal desliza a lo largo, sin cruzarlo", not slid.is_empty() and not bool(slid.crossed) and float(slid.along) > 2.0 and float(slid.into) < float(slid.half), str(slid))
 
 ## Down by the tile under her and back up, in the biggest room of hers with tiles.
 func down_case(planta: int) -> void:
@@ -265,12 +290,13 @@ func down_case(planta: int) -> void:
 	await up_over(room, middle_of(room))
 	await press(&"lurker_drop")
 	var down: bool = await until(func() -> bool: return lurker.motion.surface() and lurker.motion.legs.is_empty(), 3.0)
-	var eyes: bool = driver.mode == "eyes" and lurker.motion.room() == room
+	# Behind her, never at her eyes (13.9).
+	var eyes: bool = driver.mode == "down" and lurker.motion.room() == room and driver.camera.global_position.distance_to(lurker.face_point()) > 0.8
 	var tile_open := false
 	for entry in lurker.ducts.open_tiles.get(room, []): tile_open = true
 	await press(&"lurker_drop")
 	var back: bool = await until(func() -> bool: return lurker.motion.plenum, 3.0)
-	check("P%d baja por la placa a la sala %d con la cámara a sus ojos, y vuelve a subir al plénum" % [planta + 1, room], down and eyes and back and driver.mode == "above", "abajo %s, ojos %s, placa abierta %s, arriba %s" % [down, eyes, tile_open, back])
+	check("P%d baja por la placa a la sala %d con la cámara detrás de ella, y vuelve a subir al plénum" % [planta + 1, room], down and eyes and back and driver.mode == "above", "abajo %s, ojos %s, placa abierta %s, arriba %s" % [down, eyes, tile_open, back])
 
 ## Into the ducts by a grille near her, the far way out she looks at picked,
 ## along at the trip's pace, up where it comes out; another refused in its
@@ -298,7 +324,7 @@ func trip_case(planta: int) -> void:
 	driver.trip_ready_at = 0.0
 	var near: int = driver.entrance()
 	await press(&"lurker_enter")
-	var picking: bool = String(driver.trip.get("phase", "")) == "pick" and driver.mode == "dark"
+	var picking: bool = String(driver.trip.get("phase", "")) == "pick" and driver.mode == "ducts"
 	face((ducts.exits[target].position as Vector3) - (exit.position as Vector3))
 	await physics_frame
 	var picked: int = int(driver.trip.get("pick", -1))

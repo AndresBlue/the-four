@@ -157,7 +157,8 @@ func in_archive(point: Vector3) -> bool:
 ## A hand landing (lurker_visual.footfall).
 func footfall(point: Vector3, strength: float, normal: Vector3) -> void:
 	var t := now()
-	if t - step_at < STEP_GAP or not may_sound() or creature.hushed(): return
+	# Hidden (the plenum, a duct) her hands are only drawn for whoever drives her.
+	if t - step_at < STEP_GAP or not may_sound() or creature.hushed() or bool(creature.view().hidden): return
 	step_at = t
 	var material := material_at(point, normal, medium())
 	var kind := "hard" if material == &"soft" else String(material)

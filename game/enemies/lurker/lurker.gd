@@ -741,7 +741,9 @@ func apply_motion() -> void:
 ## hands hold on as hard as what she holds asks.
 func show_body() -> void:
 	var v := view()
-	var hide_now: bool = bool(v.hidden) or bool(v.drop)
+	# Whoever drives her sees her real body wherever she is: only her own
+	# camera draws it (lurker_view.gd, 13.9).
+	var hide_now: bool = (bool(v.hidden) or bool(v.drop)) and control != "player"
 	collision_layer = 0 if bool(v.in_duct) or bool(v.drop) else BODY_LAYER
 	collision_mask = 0
 	if visual == null: return
@@ -1815,7 +1817,8 @@ func scare_off(flash: bool, seat: int, face: Vector3) -> void:
 ## lose the torch that blinded her here too (a guest's driven copy of her
 ## hears no "scare"); her body bolts in as her mind's does, or is taken in.
 func scared_here(flash: bool, from: Vector3, seat: int, seconds: float) -> void:
-	if driver == null or motion == null: return
+	# Nothing sends her off before the hunt begins (lurker_versus.md 13.9).
+	if driver == null or motion == null or grace > 0.0: return
 	driver.scared(flash, from)
 	if flash and seat >= 0 and not in_charge_here(): drink_torches([seat], seconds)
 	if motion.surface() and not motion.bolt(from): motion.place_in_duct(ducts.nearest_node(motion.anchor()))
@@ -1841,11 +1844,6 @@ func judge_peek() -> void:
 		if not SIGHT.beside_view(one.camera, face) or not SIGHT.clear(level, eye, face, [get_rid(), one.get_rid()]): continue
 		peeked[seat] = brain.clock
 		mind.fright(one, mind.SANITY_STARE)
-
-## A noise the machine in charge measured her hearing (match_net.tell_hunter()):
-## a ring in her eyes (lurker_view.contact()).
-func hunter_contact(point: Vector3, apparent: Vector3, distance: float, strength: float, kind: int, _muffle: float) -> void:
-	if driver != null and driver.view != null: driver.view.contact(point, apparent, distance, strength, kind)
 
 ## The victim's machine says it heard warning `cue_id` (match_net.cue_heard):
 ## in the ledger, how long after its start the machine in charge knew.
@@ -1944,7 +1942,9 @@ func drain_step(delta: float) -> void:
 	still_at = global_position
 	var quiet: bool = grace > 0.0 or in_transit() or hushed() or level == null
 	drain_targets = {} if quiet else SENSES.drain_rooms(level, global_position, drain_reach, drain_cache)
-	if control != "ai" and level != null and in_charge_here(): lit_out()
+	# Not in her grace: the floor's lights coming on as it starts sent her off
+	# before anybody had moved (lurker_versus.md 13.9, nothing moves by itself).
+	if control != "ai" and level != null and in_charge_here() and not quiet: lit_out()
 
 ## Every frame: each room's light eased towards its target and trembling
 ## while she drinks (all its lamps together) and moves: still SETTLE s, it

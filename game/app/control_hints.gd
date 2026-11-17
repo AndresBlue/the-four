@@ -79,7 +79,8 @@ func tick(delta: float) -> void:
 		return
 	clock += delta
 	if level.match_net.local_is_locust():
-		if clock > 1.5: offer("hunter" if level.kind.CREATURE_KEY == &"locust" else "lurker")
+		# Her keys are always along the foot (lurker_view.rows()): no card for them.
+		if clock > 1.5 and level.kind.CREATURE_KEY == &"locust": offer("hunter")
 		return
 	if not level.local_alive(): return
 	if clock > SHEET_AFTER: offer("sheet")
@@ -196,10 +197,14 @@ func notice(words: String, seconds: float) -> void:
 func key(action: String) -> String:
 	return level.settings.prompt_name(action).to_upper()
 
-## Her keys are fixed, not bound (settings_service.LURKER_ACTIONS): named from there.
-func lurker_key(action: String) -> String:
+## Her keys are fixed, not bound (settings_service.LURKER_ACTIONS): named from
+## there, a mouse button or a trigger as the hunter's card names them.
+func lurker_keys(action: String) -> Array:
 	var pair: Array = SETTINGS.LURKER_ACTIONS[action]
-	return (level.settings.button_name(int(pair[1])) if on_pad() else OS.get_keycode_string(int(pair[0]))).to_upper()
+	if pair[1] is Array:
+		var right := int(pair[1][0]) == JOY_AXIS_TRIGGER_RIGHT
+		return [level.settings.trigger_name(right) if on_pad() else ("CLIC IZQ." if right else "CLIC DER.")]
+	return [(level.settings.button_name(int(pair[1])) if on_pad() else OS.get_keycode_string(int(pair[0]))).to_upper()]
 
 func on_pad() -> bool:
 	return level.settings.using_pad and level.settings.pad_present()
@@ -234,15 +239,15 @@ func rows(kind: String) -> Array:
 				[[key("flashlight") if pad else key("locust_trace")], "Rastro hasta una tele encendida", ["flashlight" if pad else "locust_trace"]],
 				[[e], "Abrir puertas y armarios, pasar por una tele", ["interact"]],
 			]
-		# Her keys (settings_service.LURKER_ACTIONS), what each is called and nothing more
-		# (lurker_versus.md 13.4: in play only their signs and keys say it).
+		# Her keys (settings_service.LURKER_ACTIONS) and what each is called, as
+		# her view writes them along the foot (lurker_view.rows(), 13.9).
 		"lurker":
 			return [
-				[[settings.trigger_name(true)] if pad else ["CLIC IZQ."], "Atacar", ["mouse_left", "lurker_release"]],
-				[[lurker_key("lurker_drop")], "Bajar y subir", ["lurker_drop"]],
-				[["MANTÉN", lurker_key("lurker_sneak")], "Sin ruido", ["lurker_sneak"]],
-				[[lurker_key("lurker_enter")], "Ductos", ["lurker_enter"]],
-				[[settings.trigger_name(false)] if pad else ["CLIC DER."], "Beber la luz", ["mouse_right", "lurker_drink"]],
-				[[lurker_key("lurker_peek")], "Asomarse", ["lurker_peek"]],
+				[lurker_keys("lurker_release"), "Atacar", ["mouse_left", "lurker_release"]],
+				[lurker_keys("lurker_drop"), "Bajar", ["lurker_drop"]],
+				[["MANTÉN"] + lurker_keys("lurker_sneak"), "Sigilo", ["lurker_sneak"]],
+				[lurker_keys("lurker_enter"), "Ductos", ["lurker_enter"]],
+				[lurker_keys("lurker_drink"), "Beber la luz", ["mouse_right", "lurker_drink"]],
+				[lurker_keys("lurker_peek"), "Asomarse", ["lurker_peek"]],
 			]
 	return []

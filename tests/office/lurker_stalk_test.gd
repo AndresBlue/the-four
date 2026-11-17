@@ -196,7 +196,7 @@ func cases() -> void:
 	var before := str(info())
 	var began: bool = await attack()
 	var entry := last()
-	check("Atacar: va a la placa detrás de la presa, cae y empieza el aviso", began and String(entry.get("outcome", "")) == "active" and lurker.motion.surface() and driver.mode == "eyes", "%s %s; antes %s; %s; %s" % [began, str(entry), before, why_not(), " / ".join(lurker.debug_lines())])
+	check("Atacar: va a la placa detrás de la presa, cae y empieza el aviso", began and String(entry.get("outcome", "")) == "active" and lurker.motion.surface() and driver.mode == "down", "%s %s; antes %s; %s; %s" % [began, str(entry), before, why_not(), " / ".join(lurker.debug_lines())])
 	if began:
 		var run_way: Vector3 = spot.way
 		var ended: bool = await until(func() -> bool:
