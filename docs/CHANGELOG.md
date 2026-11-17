@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.8.1](#181--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | Vuelven el nombre del compañero al mirarlo y a quién observas cuando has muerto. |
 | [1.8.0](#180--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker se juega en Versus desde el menú, por encima del falso techo; pierde su aura; ya no hay textos explicativos en partida, y un invitado oye por fin su aviso de la espalda. |
 | [1.7.0](#170--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | El hotel tiene su propia música, que da la vuelta sobre sí misma y suena inquietante; la entrada del juego no se corta y su música llega después del PLAY. |
 | [1.6.1](#161--16-de-noviembre-de-2026)    | 16 de noviembre de 2026  | Un extra oculto mira hacia donde va. |
@@ -76,6 +77,16 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.8.1 — 17 de noviembre de 2026
+
+*Vuelven el nombre del compañero al mirarlo y a quién observas cuando has muerto.*
+
+Commits `1ad7f862`…`v1.8.1` (3).
+
+### Novedades
+
+- Al mirar a un compañero en línea vuelve a salir su nombre, y muerto, a quién observas («OBSERVANDO A …, CLIC PARA CAMBIAR»). Los quitó la 1.8.0 con los demás textos de partida; el autor los quiere.
 
 ## 1.8.0 — 17 de noviembre de 2026
 
