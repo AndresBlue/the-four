@@ -794,7 +794,7 @@ func floor_recipes(m: Dictionary, tag: String, tally: Dictionary) -> void:
 			# A piece a salon has once is only sure in its head cell, and its other
 			# cells count for no type: the bar stays on the cells that hold the recipe.
 			var head := int(heads.get(int(room.hall), id))
-			var once: Array = OFFICE.ONE_PER_HALL.get(t, []) if head != id else []
+			var once: Array = OFFICE.left_to_others(t, head == id) if heads.has(int(room.hall)) else []
 			var sure: Array = []
 			for entry in recipe:
 				if int(entry[2]) >= 1 and not ["lattice", "table", "closed", "spare", "hall"].has(String(entry[1])) and not once.has(String(entry[0])): sure.append(String(entry[0]))
@@ -808,7 +808,8 @@ func floor_recipes(m: Dictionary, tag: String, tally: Dictionary) -> void:
 				tally.sure = int(tally.sure) + 1
 				if whole: tally.whole = int(tally.whole) + 1
 			if OFFICE.FEATURE_FIRST_PIECE.has(t): first_piece(room, recipe, tag)
-			if heads.has(int(room.hall)):
+			# The reception with its annex is framed cell by cell (office_reception_test).
+			if heads.has(int(room.hall)) and t != OFFICE.RECEPTION:
 				var salon: Dictionary = salons.get(int(room.hall), {"once": 0, "walls": {}})
 				salon.walls[String(room.get("feature", ""))] = true
 				for it in furniture:
@@ -1358,8 +1359,8 @@ static func sizes_fit(room: Dictionary) -> bool:
 	var x := float(room.span_x)
 	var z := float(room.span_z)
 	# Every side a multiple of the 0.6 m tile, from the gallery's 2.4 to the
-	# structure's 7.2, or the reception's bay of 9.6 (planta_real.md 13.2).
-	return [x, z].all(func(side): return absf(snappedf(side, 0.6) - side) < 0.001 and side > 2.4 - 0.001 and side < OFFICE.RECEPTION_BAY + 0.001)
+	# structure's 7.2 (planta_real.md 13.2).
+	return [x, z].all(func(side): return absf(snappedf(side, 0.6) - side) < 0.001 and side > 2.4 - 0.001 and side < OFFICE.BAY + 0.001)
 
 ## No middle dot or long dash in the office's texts (CLAUDE.md), looked for by
 ## their escapes so this file has neither.

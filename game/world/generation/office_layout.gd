@@ -269,7 +269,13 @@ static func clear_zones(manifest: Dictionary, room: Dictionary, exempt_cover: bo
 	# validator's columns_ok(): a column's pad just touches it.
 	var naves := streets(room)
 	var zones: Array = []
-	if not naves: zones.append({"a": Vector2.ZERO, "b": Vector2.ZERO, "r": START_CLEAR if int(room.type) == PALETTE.RECEPTION else CENTRE_CLEAR})
+	# START_CLEAR where a body is put down: the reception's cell the floor is
+	# centred on. Its annex (office_generator.draw_building()), a strip of 2.4 or
+	# 3.0 open its whole length to that cell, keeps no middle nor way to it: its
+	# wait stands down it, against the far wall.
+	var spawn: bool = int(room.type) == PALETTE.RECEPTION and is_zero_approx(float(room.px)) and is_zero_approx(float(room.pz))
+	var annex: bool = int(room.type) == PALETTE.RECEPTION and not spawn
+	if not naves and not annex: zones.append({"a": Vector2.ZERO, "b": Vector2.ZERO, "r": START_CLEAR if spawn else CENTRE_CLEAR})
 	var span_x := float(room.span_x)
 	var span_z := float(room.span_z)
 	if not exempt_cover:
@@ -282,6 +288,7 @@ static func clear_zones(manifest: Dictionary, room: Dictionary, exempt_cover: bo
 	var rooms: Array = manifest.rooms
 	var open: Array = room.get("open_sides", [])
 	for n in manifest.adjacency[int(room.id)]:
+		if annex: break
 		var other: Dictionary = rooms[int(n)]
 		var t := Vector2(float(int(other.x) - int(room.x)), float(int(other.z) - int(room.z)))
 		if naves:

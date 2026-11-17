@@ -407,7 +407,12 @@ static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberG
 		if how == "center": placed = lay_center(room, zones, kind, row)
 		if placed.is_empty():
 			for wall in walls_for(room, "wall" if how in ["run", "center"] else how):
-				placed = lay_wall(room, zones, kind, row, String(wall), how in ["back", "wall", "run", "center"], feature_end(room, String(wall)))
+				# The main piece alone on the feature wall ("back"), or beside it where that
+				# wall had no room and it is the room's first, from the wall's middle out, in
+				# the doorway's view: from a corner of a long wall across a narrow room it
+				# was out of the picture (office_proportion_test, the copy room).
+				if how == "back" or (how == "side" and room.furniture.is_empty()): placed = lay_wall(room, zones, kind, row, String(wall))
+				else: placed = lay_wall(room, zones, kind, row, String(wall), how in ["wall", "run", "center"], feature_end(room, String(wall)))
 				if not placed.is_empty(): break
 		if placed.is_empty():
 			if how == "spare":

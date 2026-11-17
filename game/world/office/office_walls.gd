@@ -386,6 +386,7 @@ static func sign_size(words: String) -> Vector3:
 ## Notes a piece for the dressing test (builder.dressing_log.walls).
 static func logged(builder: Node3D, room: Dictionary, wall: Dictionary, kind: String, x: float, wide: float, low: float, high: float, depth: float) -> void:
 	builder.dressing_log.walls.append({"room": int(room.id), "side": String(wall.side), "kind": kind, "from": x - wide * 0.5, "to": x + wide * 0.5, "low": low, "high": high, "depth": depth})
+	builder.note_hung(wall.boundary, x, wide, int(wall.inner), low)
 
 ## A room-local point along a wall (doorways()' along) in the wall's own x.
 static func to_wall(side: String, along: float) -> float:

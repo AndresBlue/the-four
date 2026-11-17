@@ -97,9 +97,6 @@ static func forced_typology() -> String:
 		if argument.begins_with("--plan=") and TYPOLOGIES.has(argument.get_slice("=", 1)): return argument.get_slice("=", 1)
 	return FORCE_TYPOLOGY if TYPOLOGIES.has(FORCE_TYPOLOGY) else ""
 const BAY := 7.2
-## The reception's bay, at B's end (office_generator.draw_building()): a multiple of
-## 1.2 like the front band, so the floor's origin stays on the lattice.
-const RECEPTION_BAY := 9.6
 ## Rooms a planta of the real building has (up to today's 99: the standby
 ## floor, today's plan, is drawn under the same window), and the least walk to
 ## the refuge (13.3: more direct than the hotel's 90 m).
@@ -852,9 +849,16 @@ const FEATURE_WALLS := {RECEPTION: "far", OPEN_OFFICE: "far", CUBICLES: "far", O
 ## landed on, whichever the rule above tried first.
 const FEATURE_FIRST_PIECE := [RECEPTION, OFFICE, TOILETS, COPY_ROOM, STORE, MAIL, BREAK_ROOM, SECRETARY, DEPOT]
 ## The pieces a salon of a type has once, in its head cell (office_recipes
-## hall_heads()): a director's desk. Salons are open offices, cubicles, archives
-## and directors' offices only (HALL_MIX): no other one-desk type takes one.
-const ONE_PER_HALL := {EXEC_OFFICE: ["exec_desk", "work_desk"]}
+## hall_heads()): a director's desk; the reception's counter and its wait, the
+## wait in its annex (office_generator.furnish_furniture()). Salons are open
+## offices, cubicles, archives and directors' offices (HALL_MIX), and the
+## reception with its annex: no other one-desk type takes one.
+const ONE_PER_HALL := {EXEC_OFFICE: ["exec_desk", "work_desk"], RECEPTION: ["reception_counter_l", "waiting_row_4"]}
+## The pieces of ONE_PER_HALL a salon's cell leaves to its others: all of them
+## but in its head cell; the reception's head leaves its wait, down its annex.
+static func left_to_others(room_type: int, head: bool) -> Array:
+	if room_type == RECEPTION: return ["waiting_row_4"] if head else ["reception_counter_l"]
+	return [] if head else ONE_PER_HALL.get(room_type, [])
 ## The filing cabinets' finish by type (spec_rediseno 6; office_props.gd):
 ## mint at the window, grey in an office and the security post, beige at the
 ## secretary's; olive elsewhere.

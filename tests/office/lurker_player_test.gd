@@ -242,9 +242,14 @@ func crawl_case() -> void:
 		driver.axis = Vector2.ZERO
 		var over := int(FLOOR.room_at(level.manifest.rooms, Vector3(at().x, float(level.manifest.rooms[int(crossing.from)].py) + 1.0, at().z)).get("id", -1))
 		check("Sin cortafuegos por arriba: pasa de la sala %d a la %d, de otro departamento" % [int(crossing.from), int(crossing.to)], over == int(crossing.to) and lurker.motion.plenum, "está sobre %d" % over)
-	# What stops her: a room of the way with a side on a core or out of the building.
+	# What stops her: a room of the way with a side on a core or out of the building,
+	# else any room of hers on the planta (the way need not run by one: seed 81's
+	# since the reception took its cross's stub, 17 November 2026).
 	var slid := {}
-	for room in way:
+	var rooms_of_hers: Array = way.duplicate()
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) == 0 and shell.tray_of.has(int(room.id)) and OFFICE.false_ceiling(room) and not rooms_of_hers.has(int(room.id)): rooms_of_hers.append(int(room.id))
+	for room in rooms_of_hers:
 		var r: Dictionary = level.manifest.rooms[int(room)]
 		var half := FLOOR.size_of(r) * 0.5
 		for side: Vector2 in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:

@@ -13,6 +13,7 @@ extends RefCounted
 ## nothing of it in the manifest: the hotel's (manifest_golden_test) stays.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const MACHINE := preload("res://game/world/interactables/coffee_machine.gd")
+const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 ## Seconds from the cup to feeling it, and that it takes the mind to come back.
 const BREW := 2.5
 const EASE := 1.0
@@ -30,7 +31,21 @@ const LAMP_CLEAR := 1.3
 ## And from a lift's doors: they are no door of `hotel.doors`, and a machine
 ## stood in front of the reception's (the author, 17 November 2026).
 const LIFT_CLEAR := 2.4
+## Tucked into a corner as an office has one (the author, 17 November 2026): a
+## side this far off the wall beside it; mid wall only where no corner is free.
+## Never over what hangs on its wall (hotel_geometry.hung) up to a hand over its
+## top, nor this near in plan to something run down the wall (a pneumatic
+## tube, a duct's drop).
+const CORNER_GAP := 0.15
+const OVER_TOP := 0.1
+const DROP_CLEAR := 0.6
+const STAND := 0.6
+const WAY_BY := 0.65
+## The machine's half width and half depth in plan.
+const HALF := Vector2(MACHINE.SIZE.x, MACHINE.SIZE.z) * 0.5
 var level
+## The floor's upright runs (drops()), found once a floor.
+var drop_spots: Array = []
 var machines: Array = []
 ## This machine's own cup on its way: seconds left (-1 none), and the mind as
 ## it was, for the ease back.
@@ -50,6 +65,7 @@ func place() -> void:
 	easing = -1.0
 	var manifest: Dictionary = level.manifest
 	if manifest.is_empty() or not is_instance_valid(level.hotel): return
+	drop_spots = drops(manifest)
 	# By the floor's size (manifest.area: 0.5 for one survivor, 1 for two or
 	# three, 1.2 and 1.35 for four and five): 3, 4 or 5.
 	var size := float(manifest.get("area", 1.0))
@@ -100,62 +116,138 @@ func candidates(manifest: Dictionary) -> Array:
 	return rooms
 
 ## Somewhere along the room's walls with wall behind and to either side (not a
-## doorway), nothing in the way, a floor to stand on in front, and no other
-## machine near: {position, yaw}, or nothing.
+## doorway), nothing in the way nor hung behind, a floor to stand on in front,
+## and no other machine near: a corner first, then mid wall. {position, yaw},
+## or nothing.
 func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var half := FLOOR.size_of(room) * 0.5
+	# [side, along]: each corner of each wall, then shares of the wall, each lot in its own order.
+	var middles: Array = []
+	for side in 4:
+		var length: float = half.y if side < 2 else half.x
+		for share: float in [0.5, 0.3, 0.7, 0.2, 0.8]: middles.append([side, (share - 0.5) * 2.0 * maxf(length - 1.0, 0.0)])
+	var tries: Array = []
+	for lot: Array in [corners(room), middles]:
+		for i in range(lot.size() - 1, 0, -1):
+			var j := rng.randi_range(0, i)
+			var swap = lot[i]
+			lot[i] = lot[j]
+			lot[j] = swap
+		tries.append_array(lot)
+	for attempt in tries:
+		var spot := spot_at(room, int(attempt[0]), float(attempt[1]))
+		if not spot.is_empty(): return spot
+	return {}
+
+## A room's corner spots, [side, along], CORNER_GAP off the wall beside.
+func corners(room: Dictionary) -> Array:
+	var half := FLOOR.size_of(room) * 0.5
+	var out: Array = []
+	for side in 4:
+		var length: float = half.y if side < 2 else half.x
+		for end: float in [-1.0, 1.0]: out.append([side, end * (length - 0.09 - CORNER_GAP - HALF.x)])
+	return out
+
+## The spot `along` the wall on `side` (0 east, 1 west, 2 south, 3 north) if it
+## takes a machine, {position, yaw}; else {}. `ignore`, a machine left out of
+## the reckoning (coffee_test asks whether its corner was free).
+func spot_at(room: Dictionary, side: int, along_at: float, ignore: Node = null) -> Dictionary:
 	var centre := FLOOR.position_of(room)
-	var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
+	var half := FLOOR.size_of(room) * 0.5
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	var map: RID = level.get_world_3d().navigation_map
 	var lamps: Array = Array(level.hotel.sconce_spots) if "sconce_spots" in level.hotel else []
 	var grilles: Array = []
 	for exit in level.manifest.get("ducts", {}).get("exits", []):
-		if String(exit.get("kind", "")) == "wall":
-			var at = exit.point
-			grilles.append(at if at is Vector3 else Vector3(float(at[0]), float(at[1]), float(at[2])))
-	var tries: Array = []
-	for side in 4:
-		for share in [0.5, 0.3, 0.7, 0.2, 0.8]: tries.append([side, share])
-	var lifts := lift_fronts(room)
-	for i in range(tries.size() - 1, 0, -1):
-		var j := rng.randi_range(0, i)
-		var swap = tries[i]
-		tries[i] = tries[j]
-		tries[j] = swap
-	for attempt in tries:
-		var side: int = attempt[0]
-		var share: float = attempt[1]
-		# Outward from the room to the wall, and along it.
-		var out: Vector3 = [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD][side]
-		var along := Vector3(out.z, 0, out.x)
-		var reach: float = half.x if side < 2 else half.y
-		var length: float = half.y if side < 2 else half.x
-		var point: Vector3 = centre + out * (reach - INSET) + along * (share - 0.5) * 2.0 * maxf(length - 1.0, 0.0)
-		if machines.any(func(machine): return machine.global_position.distance_to(point) < 2.5): continue
-		if level.hotel.doors.any(func(door): return is_instance_valid(door) and Vector2(door.global_position.x - point.x, door.global_position.z - point.z).length() < DOOR_CLEAR): continue
-		# Nor over a wall lamp, nor the painting the hotel hangs between two.
-		if lamps.any(func(lamp: Vector3): return Vector2(lamp.x - point.x, lamp.z - point.z).length() < LAMP_CLEAR and absf(lamp.y - point.y) < 3.0): continue
-		if lifts.any(func(lift: Vector3): return Vector2(lift.x - point.x, lift.z - point.z).length() < LIFT_CLEAR): continue
-		# Nor in front of a low grille of the ducts (her way out on floor 2).
-		if grilles.any(func(grille: Vector3): return Vector2(grille.x - point.x, grille.z - point.z).length() < DOOR_CLEAR and absf(grille.y - point.y) < 2.0): continue
-		var walled := true
-		for offset in [Vector3(0, 0.6, 0), Vector3(0, 1.4, 0), along * SIDE + Vector3(0, 1.0, 0), -along * SIDE + Vector3(0, 1.0, 0)]:
-			var ray := PhysicsRayQueryParameters3D.create(point + offset, point + offset + out * (INSET + 0.4), 1)
-			if space.intersect_ray(ray).is_empty(): walled = false
-		if not walled: continue
-		var query := PhysicsShapeQueryParameters3D.new()
-		var box := BoxShape3D.new()
-		box.size = Vector3(1.6, 1.5, 0.8)
-		query.shape = box
-		query.transform = Transform3D(Basis(Vector3.UP, atan2(-out.x, -out.z)), point + Vector3(0, 0.95, 0))
-		query.collision_mask = 1 | 8
-		if not space.intersect_shape(query, 1).is_empty(): continue
-		var front: Vector3 = point - out * 0.95
-		if NavigationServer3D.map_get_iteration_id(map) > 0:
-			var stand := NavigationServer3D.map_get_closest_point(map, front)
-			if Vector2(stand.x - front.x, stand.z - front.z).length() > 0.4 or absf(stand.y - front.y) > 0.6: continue
-		return {"position": point, "yaw": atan2(-out.x, -out.z)}
-	return {}
+		if String(exit.get("kind", "")) == "wall": grilles.append(as_point(exit.point))
+	# Outward from the room to the wall, and along it.
+	var out: Vector3 = [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD][side]
+	var along := Vector3(out.z, 0, out.x)
+	var reach: float = half.x if side < 2 else half.y
+	var length: float = half.y if side < 2 else half.x
+	var point: Vector3 = centre + out * (reach - INSET) + along * along_at
+	if machines.any(func(machine): return machine != ignore and machine.global_position.distance_to(point) < 2.5): return {}
+	if level.hotel.doors.any(func(door): return is_instance_valid(door) and Vector2(door.global_position.x - point.x, door.global_position.z - point.z).length() < DOOR_CLEAR): return {}
+	# Nor over a wall lamp, nor the painting the hotel hangs between two.
+	if lamps.any(func(lamp: Vector3): return Vector2(lamp.x - point.x, lamp.z - point.z).length() < LAMP_CLEAR and absf(lamp.y - point.y) < 3.0): return {}
+	if lift_fronts(room).any(func(lift: Vector3): return Vector2(lift.x - point.x, lift.z - point.z).length() < LIFT_CLEAR): return {}
+	# Nor in front of a low grille of the ducts (her way out on floor 2).
+	if grilles.any(func(grille: Vector3): return Vector2(grille.x - point.x, grille.z - point.z).length() < DOOR_CLEAR and absf(grille.y - point.y) < 2.0): return {}
+	if covers_hung(point, out, along): return {}
+	if drop_spots.any(func(drop: Vector3): return absf(drop.y - point.y) < 2.5 and drop_gap(point, out, along, drop) < DROP_CLEAR): return {}
+	# Wall behind it, and beyond either side but where the wall beside it comes first.
+	var face := length - 0.09
+	for probe in [Vector3(0, 0.6, 0), Vector3(0, 1.4, 0), along * minf(SIDE, face - along_at - 0.05) + Vector3(0, 1.0, 0), -along * minf(SIDE, face + along_at - 0.05) + Vector3(0, 1.0, 0)]:
+		var ray := PhysicsRayQueryParameters3D.create(point + probe, point + probe + out * (INSET + 0.4), 1)
+		if space.intersect_ray(ray).is_empty(): return {}
+	# Nothing within a way past its sides (WAY_BY, less where the wall beside it
+	# comes first) nor in a body's room before it to use it (STAND): tucked by the
+	# head of a boardroom's table it cut the way round it.
+	var plus := minf(WAY_BY, face - along_at - HALF.x - 0.05)
+	var minus := minf(WAY_BY, face + along_at - HALF.x - 0.05)
+	# The same in plan against the room's furniture as laid (office_recipes.gd): a
+	# table's collider is not all of its footprint.
+	var local := Vector2(point.x - centre.x, point.z - centre.z)
+	var way := Rect2(local, Vector2.ZERO)
+	for a: float in [-HALF.x - minus, HALF.x + plus]:
+		for d: float in [-HALF.y - STAND, HALF.y]: way = way.expand(local + Vector2(along.x, along.z) * a + Vector2(out.x, out.z) * d)
+	if room.get("furniture", []).any(func(it: Dictionary) -> bool: return LAYOUT.footprint(it).grow(-0.01).intersects(way)): return {}
+	var query := PhysicsShapeQueryParameters3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(HALF.x * 2.0 + plus + minus, 1.5, 0.8 + STAND)
+	query.shape = box
+	query.transform = Transform3D(Basis(Vector3.UP, atan2(-out.x, -out.z)), point + along * (plus - minus) * 0.5 - out * STAND * 0.5 + Vector3(0, 0.95, 0))
+	query.collision_mask = 1 | 8
+	if ignore != null:
+		for body in ignore.find_children("*", "StaticBody3D", false, false): query.exclude = [body.get_rid()]
+	if not space.intersect_shape(query, 1).is_empty(): return {}
+	var front: Vector3 = point - out * 0.95
+	if NavigationServer3D.map_get_iteration_id(map) > 0:
+		var stand := NavigationServer3D.map_get_closest_point(map, front)
+		if Vector2(stand.x - front.x, stand.z - front.z).length() > 0.4 or absf(stand.y - front.y) > 0.6: return {}
+	return {"position": point, "yaw": atan2(-out.x, -out.z)}
+
+## Whether a machine at `point`, its back toward `out`, would stand in front of
+## something hung on that wall (hotel_geometry.hung) lower than its top and a
+## hand: a picture, a board, a sign, a switch or a socket.
+func covers_hung(point: Vector3, out: Vector3, along: Vector3) -> bool:
+	if not "hung" in level.hotel: return false
+	for entry: Array in level.hotel.hung:
+		var a: Vector3 = entry[0]
+		var b: Vector3 = entry[1]
+		if absf(a.y - point.y) > 1.0 or float(entry[2]) > point.y + MACHINE.SIZE.y + OVER_TOP: continue
+		# On this room's face of the wall behind it: between the machine and the wall's line.
+		var depth := ((a + b) * 0.5 - point).dot(out)
+		if depth < 0.0 or depth > INSET: continue
+		var from := minf((a - point).dot(along), (b - point).dot(along))
+		var to := maxf((a - point).dot(along), (b - point).dot(along))
+		if from < HALF.x + 0.05 and to > -HALF.x - 0.05: return true
+	return false
+
+## The plan distance from a machine at `point` (its back toward `out`) to an
+## upright run at `drop`.
+static func drop_gap(point: Vector3, out: Vector3, along: Vector3, drop: Vector3) -> float:
+	var d := drop - point
+	return Vector2(maxf(absf(d.dot(along)) - HALF.x, 0.0), maxf(absf(d.dot(out)) - HALF.y, 0.0)).length()
+
+## Where something runs down a wall below the false ceiling, to the floor or
+## to a mouth on it: each upright run of the manifest's networks (the pneumatic
+## tubes, the ducts) at its foot, Vector3(x, y, z). None in the hotel.
+static func drops(manifest: Dictionary) -> Array:
+	var out: Array = []
+	for key in ["tubes", "ducts"]:
+		var net: Dictionary = manifest.get(key, {})
+		var nodes: Array = net.get("nodes", [])
+		for edge in net.get("edges", []):
+			var a := as_point(nodes[int(edge[0])])
+			var b := as_point(nodes[int(edge[1])])
+			var foot := a if a.y < b.y else b
+			# Upright, and down past where a false ceiling is (the plenum's own runs stay up there).
+			if Vector2(a.x - b.x, a.z - b.z).length() < 0.05 and absf(a.y - b.y) > 0.3 and foot.y - FLOOR.planta_y(FLOOR.planta_of(foot.y)) < 2.4: out.append(foot)
+	return out
+
+static func as_point(at) -> Vector3:
+	return at if at is Vector3 else Vector3(float(at[0]), float(at[1]), float(at[2]))
 
 ## Where the doors of the lifts in this room stand: the middle of a lobby's
 ## lift wall, and on floor 2 the hotel's lift arriving in the reception

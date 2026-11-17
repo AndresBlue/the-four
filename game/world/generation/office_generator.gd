@@ -1915,10 +1915,11 @@ func furnish_furniture(job: Dictionary) -> String:
 		if t == palette.OPEN_OFFICE or t == palette.CUBICLES: zones.append_array(nave_zones(room))
 		var walk: Array = zones + RECIPES.ways_in(room, taken)
 		var first_wall := ""
-		var once: Array = palette.ONE_PER_HALL.get(t, []) if head >= 0 and head != int(room.id) else []
+		# The reception's wait down its annex, the long room's far end from its lift and counter.
+		var once: Array = palette.left_to_others(t, head == int(room.id)) if head >= 0 else []
 		var chain := {}
 		var reception_lift := Vector2i.ZERO
-		if t == palette.RECEPTION and f.has("arrival_lift"): reception_lift = Vector2i(int(f.arrival_lift[0]), int(f.arrival_lift[1]))
+		if t == palette.RECEPTION and f.has("arrival_lift") and int(room.id) == reception_of(rooms): reception_lift = Vector2i(int(f.arrival_lift[0]), int(f.arrival_lift[1]))
 		for entry in recipe:
 			if once.has(String(entry[0])): continue
 			var how := String(entry[1])
@@ -2963,14 +2964,19 @@ func working(job: Dictionary) -> Dictionary:
 		if job.out.has(key): view[key] = job.out[key]
 	return view
 
+## The reception's cell the floor is centred on (map_generator.generate()), -1
+## with none: its annex (draw_building()) is a reception's cell too.
+func reception_of(rooms: Array) -> int:
+	for room in rooms:
+		if int(room.type) == palette.RECEPTION and is_zero_approx(float(room.px)) and is_zero_approx(float(room.pz)) and int(room.wing) == 0: return int(room.id)
+	return -1
+
 ## Where the lift the floor is come down by stands in the reception: a closed
 ## wall with no doorway, the one opposite its main door first.
 func furnish_lobby(job: Dictionary) -> String:
 	var f: Dictionary = job.f
 	var rooms: Array = f.rooms
-	var start := -1
-	for room in rooms:
-		if int(room.type) == palette.RECEPTION: start = int(room.id)
+	var start := reception_of(rooms)
 	if start < 0: return ""
 	var reception: Dictionary = rooms[start]
 	var walls: Array = []
@@ -3304,9 +3310,10 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	if closing: b_end = 0 if a_col > middle_cross else width - 1
 	var outermost: int = b_end + (2 if b_end == 0 else -2)
 	var start: int = int(role_rows.call(start_kind)[0]) * width + outermost if start_kind != "end" else int(central[rng.randi_range(0, 1)]) * width + b_end
-	# The reception's bay longer than the structure's (the author, 17 November
-	# 2026): its whole column, so the grid stays one for the three plantas.
-	if start_kind != "end": columns[outermost].size = palette.RECEPTION_BAY
+	# The reception two cells long (the author, 17 November 2026): its bay's and,
+	# on the first planta alone, its cross's stub toward the end, excavated and
+	# opened into it (cell(), real_halls()), so no other planta's room grows.
+	var annex: int = start - outermost + (b_end + (1 if b_end == 0 else -1)) if start_kind != "end" else -1
 	for line in [columns, rows]:
 		var along := 0.0
 		for entry in line:
@@ -3346,7 +3353,9 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 			for c in width:
 				if (c - middle_cross) * (a_col - middle_cross) < 0:
 					for r in rows.size(): cells.append(int(r) * width + c)
-		if planta == 0: cells.erase(start)
+		if planta == 0:
+			cells.erase(start)
+			cells.erase(annex)
 		voids.append(cells)
 	# Cuts (13.6): the second planta's gallery walled next to B's cross, so its
 	# power room has no straight way to B; the third's ring walled across one of
@@ -3384,7 +3393,7 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	# Between the two cores of a floor for one, the bays a smaller planta's
 	# through room takes (real_halls()).
 	var between: Array = range(mini(a_col, b_col) + 1, maxi(a_col, b_col)).filter(func(c): return String(columns[c].role) in ["hall", "offices"]) if closing else []
-	return {"typology": typology, "start_kind": start_kind, "columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "gallery": gallery, "cuts": cuts, "between": between, "programme": [{}, {}, {}]}
+	return {"typology": typology, "start_kind": start_kind, "columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "annex": annex, "gallery": gallery, "cuts": cuts, "between": between, "programme": [{}, {}, {}]}
 
 ## The zone of the programme a cell is in (palette.REAL_ZONES), "" for a lane.
 func zone_of(local: int) -> String:
@@ -3450,6 +3459,10 @@ func draw_programme(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomN
 	var lift: Dictionary = building.lifts[laying]
 	var into: int = int(building.start) if laying == 0 else arrival
 	for local in [int(lift.vest), int(lift.car), into]: taken[local] = true
+	var annex: int = int(building.annex) if laying == 0 else -1
+	if alive.has(annex):
+		taken[annex] = true
+		types[annex] = palette.RECEPTION
 	var room := func(local: int) -> bool: return local >= 0 and alive.has(local) and not taken.has(local) and at(f, local).kind == "module"
 	var central: Array = range(rows.size()).filter(func(r): return rows[r].role == "central")
 	var group := func(kind: String, members: Array, t: int) -> void:
@@ -3838,6 +3851,13 @@ func lay_grid(rng: RandomNumberGenerator, standby: bool, anchor: Dictionary) -> 
 	grid.anchor = int(on.call(grid.rows, anchor.z)) * grid.columns.size() + int(on.call(grid.columns, anchor.x))
 	return grid
 
+## The reception's annex (draw_building()) a room's cell on the first planta,
+## not a lane's: its cross's stub there is the reception's, not a corridor.
+func cell(grid: Dictionary, planta: int, base: int, local: int) -> Dictionary:
+	var out := super(grid, planta, base, local)
+	if planta == 0 and not building.is_empty() and local == int(building.get("annex", -1)): out.kind = "module"
+	return out
+
 ## The building's outline: the cells its notch and its closed half leave out
 ## of this planta (13.1, 13.15), the same cells on every try at it.
 func pick_shape(f: Dictionary, rng: RandomNumberGenerator, keep: int, spare: int) -> Dictionary:
@@ -3904,9 +3924,11 @@ func open_doors(f: Dictionary, alive: Dictionary, corridor: Dictionary, arrival:
 	for g in programme.groups:
 		for m in g.members: grouped[int(m)] = g
 	var lift: Dictionary = building.lifts[laying]
-	var free := func(local: int) -> bool: return alive.has(local) and not corridor.has(local) and not grouped.has(local) and not programme.types.get(local, -1) in [palette.EXEC_OFFICE]
-	var doors := {}
 	var reception: int = int(building.start) if laying == 0 else -1
+	# The reception's annex is come into through the reception alone (real_halls()).
+	var annex: int = int(building.annex) if laying == 0 else -1
+	var free := func(local: int) -> bool: return alive.has(local) and local != annex and not corridor.has(local) and not grouped.has(local) and not programme.types.get(local, -1) in [palette.EXEC_OFFICE]
+	var doors := {}
 	# A corridor that ends against a wall or a cut ends at a door.
 	for local in cells:
 		if not corridor.has(local) or going.call(local) >= 2: continue
@@ -4042,6 +4064,12 @@ func open_doors(f: Dictionary, alive: Dictionary, corridor: Dictionary, arrival:
 func real_halls(f: Dictionary, alive: Dictionary, arrival: int, _rng: RandomNumberGenerator) -> void:
 	var base: int = f.base
 	if laying == 0: f["nave"] = {}
+	# The reception and its annex one room (draw_building()).
+	var annex := int(building.annex)
+	if laying == 0 and alive.has(annex):
+		var start := int(building.start)
+		for member in [start, annex]: at(f, member).hall = base + mini(start, annex)
+		merge(f, base + start, base + annex)
 	for g in building.programme[laying].groups:
 		var members: Array = g.members
 		if String(g.kind) == "row" or members.size() < 2: continue

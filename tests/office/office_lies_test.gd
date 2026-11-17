@@ -216,13 +216,24 @@ func conditions() -> void:
 
 ## Case 6c: the further the mind has gone, the nearer she is felt.
 func escalation() -> void:
-	var room := first_room(0, func(r): return OFFICE.false_ceiling(r) and not level.point_protected(FLOOR.position_of(r)) and float(r.span_x) >= 4.0 and float(r.span_z) >= 4.0)
+	# The first such room the office's own lies reach too (a phone, a typewriter or
+	# the tube within their walk): a corner office left with only her own has
+	# nothing to weigh against (seed 81's room 0 since the reception took its
+	# cross's stub, 17 November 2026).
+	var room := {}
+	var at := Vector3.ZERO
+	var high := {}
+	for r in level.manifest.rooms:
+		if FLOOR.is_void(r) or int(r.get("wing", -1)) != 0 or not OFFICE.false_ceiling(r) or level.point_protected(FLOOR.position_of(r)) or float(r.span_x) < 4.0 or float(r.span_z) < 4.0: continue
+		at = FLOOR.closest(level.get_world_3d().navigation_map, FLOOR.position_of(r)) + Vector3(0, 0.04, 0)
+		await stand_at(at)
+		high = lies.kinds_here(0.1)
+		if ["telefono", "maquina", "tubo"].any(func(k: String) -> bool: return high.has(k)):
+			room = r
+			break
 	if room.is_empty():
-		check("Una sala de la planta 1 con falso techo", false)
+		check("Una sala de la planta 1 con falso techo y las mentiras de la oficina", false)
 		return
-	var at := FLOOR.closest(level.get_world_3d().navigation_map, FLOOR.position_of(room)) + Vector3(0, 0.04, 0)
-	await stand_at(at)
-	var high: Dictionary = lies.kinds_here(0.1)
 	var low: Dictionary = lies.kinds_here(0.9)
 	check("Con poca cordura, bajo un falso techo, hay polvo, una placa que se levanta y tinta", low.has("polvo") and low.has("placa") and low.has("tinta"), str(low.keys()))
 	var share_high := hers_share(high)

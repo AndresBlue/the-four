@@ -1152,21 +1152,23 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	node.add_child(unit)
 	# The download (its body and its heads' glass, baked in register): its back
 	# on the wall and its middle at EMERGENCY_Y; the glass is the lens that lights.
+	# Hung upside down, so its heads face the floor they light (the author, 17
+	# November 2026); turned about the wall's normal, its back stays on the wall.
 	var body := MeshInstance3D.new()
 	body.mesh = PROPS.MODELS.mesh_of(self, "emergency_unit")
 	var bounds := body.mesh.get_aabb()
-	body.position = Vector3(0, -bounds.size.y * 0.5, -bounds.position.z)
+	body.transform = Transform3D(Basis(Vector3.BACK, PI), Vector3(2.0 * bounds.position.x + bounds.size.x, 2.0 * bounds.position.y + bounds.size.y * 0.5, -bounds.position.z))
 	unit.add_child(body)
 	var lens := MeshInstance3D.new()
 	lens.mesh = PROPS.MODELS.mesh_of(self, "emergency_glass")
-	lens.position = body.position
+	lens.transform = body.transform
 	unit.add_child(lens)
 	var pip_material := StandardMaterial3D.new()
 	pip_material.albedo_color = Color(0.5, 0.02, 0.02)
 	pip_material.emission_enabled = true
 	pip_material.emission = Color(1.0, 0.05, 0.03)
 	pip_material.emission_energy_multiplier = 2.0
-	unit_box(unit, Vector3(0.13, -0.02, 0.075), Vector3(0.004, 0.004, 0.004), pip_material)
+	unit_box(unit, Vector3(0.13, 0.02, 0.075), Vector3(0.004, 0.004, 0.004), pip_material)
 	var light := SpotLight3D.new()
 	light.name = "EmergencyLight"
 	light.light_color = LIGHTING.light_color(EMERGENCY_KELVIN)
@@ -1177,8 +1179,8 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	light.shadow_bias = 0.04
 	light.light_bake_mode = Light3D.BAKE_DISABLED
 	light.light_volumetric_fog_energy = 0.0
-	# From before its heads and 35 degrees down: -Z of the light along +Z of the unit.
-	light.transform = Transform3D(Basis.looking_at(Vector3(0, -sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)))), Vector3(0, 0.1, 0.16))
+	# From before its heads, now under the box, and 35 degrees down: -Z of the light along +Z of the unit.
+	light.transform = Transform3D(Basis.looking_at(Vector3(0, -sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)))), Vector3(0, -0.1, 0.16))
 	if board_at != Vector3.INF:
 		# The electrical room's on its board, narrower: the board is what shows.
 		light.transform = Transform3D(Basis.looking_at(unit.transform.affine_inverse() * board_at - light.position), light.position)
@@ -1604,6 +1606,7 @@ func zone_sign(boundary: Node3D, x: float, inner: int, label: String, colour: Co
 	var wide := SIGN_MARGIN * 3.0 + SWATCH + SIGN_LETTER * label.length()
 	# wall_art() keeps its board and its posters off this span.
 	sign_spans[boundary.get_instance_id()] = Vector2(x - wide * 0.5, x + wide * 0.5)
+	note_hung(boundary, x, wide, inner, SIGN_Y - SIGN_HIGH * 0.5)
 	var face := inner * 0.09
 	box(boundary, Vector3(x, SIGN_Y, face + inner * SIGN_DEPTH * 0.5), Vector3(wide, SIGN_HIGH, SIGN_DEPTH), "plaque")
 	box(boundary, Vector3(x - wide * 0.5 + SIGN_MARGIN + SWATCH * 0.5, SIGN_Y, face + inner * (SIGN_DEPTH + 0.0005)), Vector3(SWATCH, SWATCH, 0.001), key)
@@ -2010,6 +2013,7 @@ func build_exit_door(data: Dictionary) -> void:
 func switch_plate(boundary: Node3D, x: float, inner: int) -> void:
 	# Proud of the secretary's panelled wall where it is on it.
 	var lift := panel_lift(boundary)
+	note_hung(boundary, x, 0.08, inner, SWITCH_Y - 0.06)
 	box(boundary, Vector3(x, SWITCH_Y, inner * (0.094 + lift)), Vector3(0.08, 0.12, 0.008), "switch", false, "detail")
 	box(boundary, Vector3(x, SWITCH_Y, inner * (0.1 + lift)), Vector3(0.03, 0.05, 0.008), "switch", false, "detail", Vector3(inner * -0.2, 0, 0))
 

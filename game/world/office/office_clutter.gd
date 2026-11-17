@@ -59,7 +59,7 @@ const TOPS := {
 	"work_table": [["paper_stack", Vector3(-0.6, 0.74, 0.1), 0.2, 0.9], ["paper_stack", Vector3(0.1, 0.74, -0.2), 1.7, 0.7], ["tray_wire", Vector3(0.55, 0.74, 0.2), 0.0, 0.8], ["pen_cup", Vector3(-0.1, 0.74, 0.3), 0.0, 0.7], ["archive_box", Vector3(-0.5, 0.0, 0.0), 0.1, 0.8], ["archive_box", Vector3(0.4, 0.0, -0.1), -0.2, 0.6], ["stapler", Vector3(0.85, 0.74, -0.3), 0.3, 0.7], ["magnifier", Vector3(-0.9, 0.74, -0.3), 1.0, 0.5]],
 	"dining_set": [["mug", Vector3(-0.25, 0.74, -0.15), 0.0, 0.7], ["mug", Vector3(0.3, 0.74, 0.2), 1.0, 0.5], ["ashtray", Vector3(0.0, 0.74, 0.0), 0.0, 0.6], ["paper_stack", Vector3(0.3, 0.74, -0.2), 0.4, 0.4], ["thermos", Vector3(-0.38, 0.74, 0.2), 0.0, 0.5]],
 	"sideboard": [["desk_clock", Vector3(0.35, 0.8, -0.1), 0.0, 0.7], ["books", Vector3(-0.5, 0.8, 0.0), 0.0, 0.8], ["plant_small", Vector3(0.6, 0.8, 0.0), 0.0, 0.6], ["mug", Vector3(-0.05, 0.8, -0.05), 0.0, 0.5], ["mug", Vector3(0.18, 0.8, 0.1), 0.6, 0.4]],
-	"sorting_table": [["box", Vector3(-0.5, 1.02, 0.05), 0.2, 0.8], ["paper_stack", Vector3(0.4, 1.02, 0.1), 0.5, 0.8]],
+	"sorting_table": [["box", Vector3(-0.5, 0.9, 0.05), 0.2, 0.8], ["paper_stack", Vector3(0.4, 0.9, 0.1), 0.5, 0.8]],
 	"pigeon_counter": [["paper_stack", Vector3(-0.6, 1.1, 0.0), 0.0, 0.6], ["box", Vector3(0.5, 1.1, 0.0), 0.3, 0.6]],
 	"filing": [["binders", Vector3(0.0, 1.32, -0.125), 0.0, 0.35], ["folders", Vector3(0.0, 1.32, 0.15), 0.2, 0.4]],
 	# A box left on the floor before the lowest shelf, now and then.

@@ -219,6 +219,7 @@ func partition_mouldings(room_node: Node3D, frame: Transform3D, length: float, h
 
 ## A socket in the skirting: a brass plate and its two slots.
 func socket(boundary: Node3D, x: float, face: int) -> void:
+	note_hung(boundary, x, 0.07, face, 0.0)
 	box(boundary, Vector3(x, 0.056, face * 0.175), Vector3(0.07, 0.07, 0.008), "gold", false, "detail")
 	for slot in [-1, 1]: box(boundary, Vector3(x + slot * 0.012, 0.058, face * 0.1795), Vector3(0.005, 0.02, 0.002), "black", false, "detail")
 
@@ -263,6 +264,7 @@ func dado_panels(boundary: Node3D, x: float, length: float, face: int) -> void:
 
 ## A brass switch plate with its toggle, on the plaster at x.
 func switch_plate(boundary: Node3D, x: float, inner: int) -> void:
+	note_hung(boundary, x, 0.076, inner, 1.2)
 	box(boundary, Vector3(x, 1.26, inner * 0.094), Vector3(0.076, 0.116, 0.008), "gold", false, "detail")
 	box(boundary, Vector3(x, 1.268, inner * 0.103), Vector3(0.012, 0.03, 0.012), "black", false, "detail", Vector3(inner * -0.45, 0, 0))
 
@@ -1055,6 +1057,7 @@ func build(data: Dictionary) -> void:
 	building = true
 	visible = false
 	manifest = data
+	hung.clear()
 	palette = FLOOR.palette(data)
 	looks = looks_of(int(data.get("seed", 0)))
 	open_pairs.clear()
@@ -2738,6 +2741,8 @@ func hang_painting(boundary: Node3D, pos: Vector3, inner: int, carved: bool) -> 
 	var list := paintings()
 	var pick: Dictionary = list[int(vary(boundary.position + boundary.basis * pos, 13) * list.size())]
 	var canvas := Vector2(CANVAS.y, CANVAS.x) if pick.portrait else CANVAS
+	# The frame's border round the canvas, both kinds within 0.15.
+	note_hung(boundary, pos.x, canvas.x + 0.3, inner, pos.y - canvas.y * 0.5 - 0.15)
 	var facing := Basis(Vector3.UP, PI if inner < 0 else 0.0)
 	# The plaster face above the chair rail is 9 cm from the wall's centre.
 	var face := 0.09
@@ -3205,6 +3210,20 @@ var shown_planta := -1
 var room_spots := PackedVector3Array()
 var door_spots := PackedVector3Array()
 var sconce_spots := PackedVector3Array()
+## What hangs on the walls, [a, b, bottom]: the ends of its span on the face it
+## hangs on, 10 cm off the wall's line, at floor height, and how high it starts,
+## in the world. The coffee machines keep off it (coffee.gd). Through the
+## parents' transforms: a boundary may be built before it is in the tree, and
+## may be merged away after.
+var hung: Array = []
+func note_hung(boundary: Node3D, x: float, wide: float, face: int, bottom: float) -> void:
+	var xform := boundary.transform
+	var parent := boundary.get_parent()
+	while parent is Node3D:
+		xform = (parent as Node3D).transform * xform
+		parent = parent.get_parent()
+	var a := xform * Vector3(x - wide * 0.5, 0, signi(face) * 0.1)
+	hung.append([a, xform * Vector3(x + wide * 0.5, 0, signi(face) * 0.1), a.y + bottom])
 var practical_spots := PackedVector3Array()
 var exit_spots := PackedVector3Array()
 ## Whether any wall lamp is lit, any probe made: with none, and none wanted,
