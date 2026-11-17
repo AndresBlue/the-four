@@ -251,12 +251,12 @@ func watch_teammates() -> void:
 	level.player.collision_layer = 0
 	var body: Node3D = level.match_net.watched_body()
 	level.camcorder.focus("")
-	# Only the control: the lost signal already said it died.
+	# Who is watched and the control: the lost signal already said it died.
 	if body == null:
 		level.ui.hint.text = ""
 		return
 	watch_over(body)
-	level.ui.hint.text = "%s PARA CAMBIAR" % (level.settings.button_name(JOY_BUTTON_A) if level.settings.using_pad and level.settings.pad_present() else "CLIC")
+	level.ui.hint.text = "OBSERVANDO A %s, %s PARA CAMBIAR" % [body.player_name.to_upper(), (level.settings.button_name(JOY_BUTTON_A) if level.settings.using_pad and level.settings.pad_present() else "CLIC")]
 
 ## Through the teammate's own camera: what it sees, as it sees it. Where its
 ## camera is and which way it looks comes from its owner (match_net.pack_local)
