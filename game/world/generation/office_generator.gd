@@ -33,10 +33,6 @@ const EXPRESS_MOST := 0.9     # a straight trunk cuts the walk to this or less
 const EXPRESS_STARTS := 80    # cells tried as a trunk's start, per planta
 const NAVE_LONG := 0.6       # a nave of 2 x 3 tried before one of 2 x 2 this often
 
-## The real building's plan (office_palette.real_plan_on()); the standby floor
-## is always today's.
-var real_plan: bool = OFFICE_PALETTE.real_plan_on()
-
 func _init() -> void: palette = OFFICE_PALETTE
 
 func validator() -> RefCounted: return OFFICE_VALIDATOR.new()
@@ -49,7 +45,7 @@ func attempts() -> int: return 12
 ## play pick the office palette by "floor", and a checkpoint or a match
 ## compares "version" with office_floor.GENERATOR_VERSION.
 func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
-	building = draw_building(run_seed, attempt) if real_plan and not standby else {}
+	building = draw_building(run_seed, attempt) if not standby else {}
 	OFFICE_PALETTE.typology = String(building.get("typology", ""))
 	var result := super.candidate(run_seed, attempt, standby)
 	if not result.is_empty():
@@ -62,7 +58,7 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 ## from the lift's side): in an 8 m lobby a door at 1.5 had that wall standing
 ## in it (seed 2026, passage_210_220); and a leaf into an archive hung from
 ## the jamb away from the middle of its wall; in the real building a
-## boardroom's doors toward one corner. Only offsets and hinges move,
+## boardroom's and a secretary's doors toward one corner. Only offsets and hinges move,
 ## with no draw of their own, so every other door stays as it was.
 func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var doors := super.hang_doors(f, gates, rng)
@@ -76,11 +72,16 @@ func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dict
 		# The real building's boardroom is one bay square: its doors toward one
 		# corner of it (where the walls of two meet, else the lower x or z), so the
 		# ways in keep to that side and leave its table, and the chairs on the
-		# table's near side, the other.
-		if not building.is_empty() and palette.BOARDROOM in [int(a.type), int(b.type)]:
-			var board: Dictionary = a if int(a.type) == palette.BOARDROOM else b
+		# table's near side, the other. A secretary's the same where she is a way
+		# through: with a door in the middle of each end wall, the way between them
+		# left no wall the depth of her L desk (seed 7 of the spine, one survivor:
+		# office_dressing_test).
+		var cornered := [palette.BOARDROOM, palette.SECRETARY]
+		var board: Dictionary = a if int(a.type) in cornered else b
+		var sides: Array = f.adjacency[int(board.id)].map(func(n): return Vector2i(int(f.rooms[int(n)].x) - int(board.x), int(f.rooms[int(n)].z) - int(board.z)))
+		if not building.is_empty() and int(board.type) in cornered and (int(board.type) == palette.BOARDROOM or sides.any(func(w): return sides.has(-w))):
 			var corner := Vector2i.ZERO
-			for n in f.adjacency[int(board.id)]: corner += Vector2i(int(f.rooms[int(n)].x) - int(board.x), int(f.rooms[int(n)].z) - int(board.z))
+			for side: Vector2i in sides: corner += side
 			var toward: int = corner.y if beside_x else corner.x
 			offset = BOARDROOM_DOOR * float(signi(toward) if toward != 0 else -1)
 		for room in [a, b]:
@@ -129,9 +130,11 @@ func leaf_covers(f: Dictionary, into: Dictionary, other: Dictionary, offset: flo
 	var half_along := float(into.span_z if way.x != 0 else into.span_x) * 0.5
 	var half_across := float(into.span_x if way.x != 0 else into.span_z) * 0.5
 	var jamb := offset + float(hinge) * FLOOR.PORTAL * 0.5
-	# Off a side wall by less than a body and a half, the leaf shuts what is behind it.
-	if half_along - absf(jamb) > 0.9: return false
-	var side := Vector2i(0, signi(jamb)) if way.x != 0 else Vector2i(signi(jamb), 0)
+	# Off a side wall by less than a body and a half, the leaf shuts what is behind it;
+	# farther in, it stands square across the way in from a doorway in the side wall
+	# toward its hinge (seed 33 of the spine: a core's store, office_bots_test).
+	var toward := signi(jamb) if half_along - absf(jamb) <= 0.9 else hinge
+	var side := Vector2i(0, toward) if way.x != 0 else Vector2i(toward, 0)
 	var wall := float(way.x + way.y) * half_across
 	var low := minf(wall, wall - float(way.x + way.y) * FLOOR.LEAF_WIDTH)
 	var high := maxf(wall, wall - float(way.x + way.y) * FLOOR.LEAF_WIDTH)
@@ -3270,11 +3273,6 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	columns.append({"lane": true, "size": cross, "role": "cross"})
 	columns.append({"lane": false, "size": float(ends[rng.randi_range(0, ends.size() - 1)]), "role": "end"})
 	if rng.randf() < 0.5: columns.reverse()
-	for line in [columns, rows]:
-		var along := 0.0
-		for entry in line:
-			entry["centre"] = along + float(entry.size) * 0.5
-			along += float(entry.size)
 	var width := columns.size()
 	var role_rows := func(role: String) -> Array: return range(rows.size()).filter(func(r): return rows[r].role == role)
 	var central: Array = role_rows.call("central")
@@ -3306,6 +3304,14 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	if closing: b_end = 0 if a_col > middle_cross else width - 1
 	var outermost: int = b_end + (2 if b_end == 0 else -2)
 	var start: int = int(role_rows.call(start_kind)[0]) * width + outermost if start_kind != "end" else int(central[rng.randi_range(0, 1)]) * width + b_end
+	# The reception's bay longer than the structure's (the author, 17 November
+	# 2026): its whole column, so the grid stays one for the three plantas.
+	if start_kind != "end": columns[outermost].size = palette.RECEPTION_BAY
+	for line in [columns, rows]:
+		var along := 0.0
+		for entry in line:
+			entry["centre"] = along + float(entry.size) * 0.5
+			along += float(entry.size)
 	# The notch: the service band and its gallery left out at one end, as far as the first bay past the core.
 	var void_all: Array = []
 	var shape := "rect"

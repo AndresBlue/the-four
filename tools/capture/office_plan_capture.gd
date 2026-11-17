@@ -12,7 +12,7 @@ extends "res://tools/capture/office_rooms_capture.gd"
 ## reception towards its lift; the third's central zone, a director's office of
 ## two bays and the corridor along it.
 ## With a window:
-##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent --real-plan [--seed=7] [--quality=2] [--survivors=1] [--out=evidence/planta/capturas]
+##   godot --path . --script res://tools/capture/office_plan_capture.gd --log-file <log> -- --automation --test-profile --silent [--plan=spine] [--seed=7] [--quality=2] [--survivors=1] [--out=evidence/planta/capturas]
 ## Writes <out>/<seed>_{anillo,despacho,galeria,...}.png. Quits
 ## saying so when the floor that came up is not the real plan's.
 ## How far down a corridor the eye looks.

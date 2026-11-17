@@ -16,8 +16,9 @@ extends Node
 ##
 ## The camera is always behind and over her (13.9): over the ceiling looking
 ## down, lurker_view.gd drawing what is under it as if it were not there; down
-## in a room, behind her and under its ceiling, kept off the walls; in the
-## ducts, over her as over the plenum. lurker_drop lets her down by the tile
+## in a room, beside and under her looking where she looks, and on her prey
+## through her attack, her warning and her take; in the ducts, over her as over
+## the plenum. lurker_drop lets her down by the tile
 ## under her into the room, and back up. The
 ## attack (lurker_release) on her marked prey (the survivor nearest the middle
 ## of her view) crawls to the tile behind it, drops and asks the host for her
@@ -28,7 +29,8 @@ extends Node
 ## (match_net.lurker_duct()),
 ## which she makes along the ducts at TRIP_SPEED, heard in them; lurker_drop
 ## turns back. Blinded or looked at in the light, the host sends her off
-## (scared()): her body bolts in and comes up in the plenum.
+## (scared()): her body bolts in and comes up in the plenum; sent off half way
+## through a tile, she bolts once she is on the ceiling it takes her to.
 const MOTION := preload("res://game/enemies/lurker/lurker_motion.gd")
 const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
@@ -51,22 +53,34 @@ const CLIMB_RATE := 3.0
 ## down within TILT. It may look down from over her planta's slab (the floor
 ## draws her planta round her ear): her ear stays under CAMERA_TOP over her
 ## planta's floor, where the camera was, and the floor hears and draws from
-## it. Changing between over her and down in a room takes BLEND s. Down,
-## DOWN_DISTANCE behind her face, pitched within DOWN_PITCH, and kept
-## CAMERA_CLEAR off whatever stands behind her. It looks LEAD metres ahead of
-## her and LOOK_DOWN under her (down in a room, LEAD_DOWN ahead and DIP under
-## her face), so she is low in the picture and what she goes to is in its
-## middle, not under her. Along the ducts it turns to her way at TRIP_TURN.
-const DISTANCE := 6.0
+## it. Changing between over her and down in a room takes BLEND s. It looks
+## LEAD metres ahead of her and LOOK_DOWN under her, so she is low in the
+## picture and what she goes to is in its middle, not under her. Along the
+## ducts it turns to her way at TRIP_TURN. FOV over the ceiling, narrower than
+## down in a room (FOV_DOWN), so a survivor under her reads at a glance.
+const DISTANCE := 4.0
 const LEAD := 5.0
 const LOOK_DOWN := 1.5
-const LEAD_DOWN := 3.0
-const DIP := 1.2
 const CAMERA_TOP := 4.8
-const DOWN_DISTANCE := 3.0
-const DOWN_PITCH := Vector2(-0.75, 0.45)
-## Down in a room the camera starts over her, as far as her ceiling lets it.
-const DOWN_START := -0.45
+const FOV := 58.0
+const FOV_DOWN := 74.0
+## Down in a room her ceiling leaves no room over her: the camera is
+## DOWN_DISTANCE behind her face, DOWN_SIDE to the side with more room and
+## DOWN_UNDER under it, looking where she looks (pitch within DOWN_PITCH,
+## LEAD_DOWN ahead of her face), so she sits in an upper corner of the
+## picture and the room fills the rest; kept CAMERA_CLEAR off what stands
+## between. In her attack, her warning and her take it frames her prey:
+## STRIKE_BACK behind her from it, STRIKE_SIDE aside and STRIKE_UNDER under her
+## face, she in the foreground to one side, eased in over BLEND.
+const LEAD_DOWN := 3.5
+const DOWN_DISTANCE := 2.6
+const DOWN_SIDE := 1.0
+const DOWN_UNDER := 0.7
+const DOWN_PITCH := Vector2(-1.2, 0.5)
+const DOWN_START := -0.35
+const STRIKE_BACK := 1.6
+const STRIKE_SIDE := 1.1
+const STRIKE_UNDER := 0.5
 const CAMERA_CLEAR := 0.25
 const CAMERA_MASK := 1 | 8 | 128
 const TRIP_TURN := 4.0
@@ -78,9 +92,6 @@ const TILT := Vector2(-1.4, -0.5)
 const BLEND := 0.35
 ## Through a tile she squeezes this fast (her motion's bolt pace).
 const SQUEEZE := 2.5
-## Sent off, a bolt that has not got her in after this long takes her in where
-## she is (her motion's way can stall let down over a body).
-const BOLT_STUCK := 0.8
 ## Her trip along the ducts: this pace, never shorter than TRIP_LEAST s;
 ## another only TRIP_GAP s after (the host's lurker.TRIP_GAP); a way in within
 ## ENTER_REACH of her; ways out nearer than TRIP_NEAR to the one she went in
@@ -146,6 +157,13 @@ var blend_from := Transform3D.IDENTITY
 var blend_left := 0.0
 var drawn := Transform3D.IDENTITY
 var trip_was := Vector3.INF
+## Down: the side the camera sits on (1 her right, -1 her left), picked on the
+## way down; how far it frames her prey (0..1), and whose (seat, -1 none: kept
+## through her warning and her take, after her attack is over).
+var side := 1.0
+var strike := 0.0
+var struck := -1
+var struck_at := Vector3.INF
 ## The scripted driver (the tests) writes `axis` (left stick: x right, y back),
 ## `asked` and `sneak_held` itself and the devices are not read.
 var scripted := false
@@ -172,6 +190,8 @@ var charge := 0.0
 var attacked := {}
 var flashed_until := -INF
 var fled_at := -INF
+## Whence she was sent off, until she is in (INF none).
+var fled_from := Vector3.INF
 ## Her attack under way: {phase ("crawl", "drop", "land", "wait"), seat, drop, clock}.
 var attack := {}
 ## Her trip along the ducts: {phase ("pick", "ask", "go"), from, pick, targets
@@ -188,7 +208,7 @@ func setup(owner) -> void:
 	name = "Driver"
 	camera = Camera3D.new()
 	camera.name = "LurkerCamera"
-	camera.fov = 74.0
+	camera.fov = FOV
 	camera.near = 0.05
 	camera.far = 200.0
 	# Not her own body nor its ink: a blot over her own eyes.
@@ -289,7 +309,13 @@ func drive(delta: float) -> void:
 	# Her warning over, she is no longer let down as far as it took her.
 	if cue_was and not creature.cue and motion.surface() and motion.state.lowered: motion.drop(false)
 	cue_was = creature.cue
-	if motion.bolting and not motion.in_duct and clock - fled_at > BOLT_STUCK and clock - fled_at < BOLT_STUCK + 1.0: motion.place_in_duct(creature.ducts.nearest_node(motion.anchor()))
+	# Sent off with no ceiling under her to bolt from (half way down a tile, her
+	# attack's drop) or held in her take's scene: once she is on one, free and
+	# with nothing under way, the bolt.
+	if motion.in_duct: fled_from = Vector3.INF
+	elif fled_from != Vector3.INF and motion.surface() and motion.legs.is_empty() and not creature.scene_held:
+		if not motion.bolt(fled_from): motion.place_in_duct(creature.ducts.nearest_node(motion.anchor()))
+		fled_from = Vector3.INF
 	mark_clock -= delta
 	if mark_clock <= 0.0:
 		mark_clock = MARK_EVERY
@@ -303,7 +329,9 @@ func drive(delta: float) -> void:
 	asked.clear()
 	# Landed for her attack she looks at her prey at once (the camera is still easing down).
 	var one = body_of(int(attack.seat)) if String(attack.get("phase", "")) in ["land", "wait"] else null
-	if creature.visual != null: creature.visual.look_point = one.camera.global_position if one != null else camera.global_position - camera.global_basis.z * 10.0
+	# Down, where she looks from her own face (her camera is off to a side).
+	var looks: Vector3 = creature.face_point() + look_way() * 10.0 if mode == "down" else camera.global_position - camera.global_basis.z * 10.0
+	if creature.visual != null: creature.visual.look_point = one.camera.global_position if one != null else looks
 	if not scripted and is_instance_valid(level.get("camcorder")):
 		level.camcorder.announce("%d" % int(ceil(creature.grace)) if creature.grace > 0.0 else "")
 
@@ -317,7 +345,10 @@ func _physics_process(delta: float) -> void:
 	if String(trip.get("phase", "")) == "go" and trip_was != Vector3.INF and Vector2(at.x - trip_was.x, at.z - trip_was.z).length() > 1e-3:
 		yaw = lerp_angle(yaw, atan2(-(at.x - trip_was.x), -(at.z - trip_was.z)), 1.0 - exp(-TRIP_TURN * delta))
 	trip_was = at
-	if mode == "down" and was != "down": pitch = DOWN_START
+	if mode == "down" and was != "down":
+		pitch = DOWN_START
+		side = roomier_side(at)
+	strike = move_toward(strike, 1.0 if mode == "down" and strike_point() != Vector3.INF else 0.0, delta / BLEND)
 	if was != mode or focus_to == Vector3.INF:
 		# From the camera as last drawn: the move up into the plenum, or down into a room, is seen.
 		blend_from = drawn
@@ -351,22 +382,71 @@ func focus() -> Vector3:
 	if mode == "down": return creature.face_point() + Vector3(0, 0.15, 0)
 	return creature.motion.anchor() + Vector3(0, FOCUS_UP, 0)
 
+## Where she looks down in a room (the mouse's pitch and yaw).
+func look_way() -> Vector3: return Basis.from_euler(Vector3(pitch, yaw, 0.0)) * Vector3.FORWARD
+
 ## The camera round `at` as the mouse has it now: behind and over her, kept
-## under the planta above, or down in a room kept off what stands behind her.
+## under the planta above; or down in a room beside and under her, looking
+## where she looks or, in her attack, at her prey, kept off what stands between.
 func camera_at(at: Vector3) -> Transform3D:
 	if mode == "down":
-		var turn := Basis.from_euler(Vector3(pitch, yaw, 0.0))
-		var place: Vector3 = at + turn.z * DOWN_DISTANCE
-		var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
-		# Under her ceiling, as high as it lets it: over her let down, level with her hanging.
-		var lid: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(at, at + Vector3.UP * 3.0, CAMERA_MASK, [creature.get_rid()]))
-		if not lid.is_empty(): place.y = minf(place.y, (lid.position as Vector3).y - CAMERA_CLEAR)
-		var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(at, place, CAMERA_MASK, [creature.get_rid()]))
-		if not hit.is_empty(): place = at + (place - at).normalized() * maxf(at.distance_to(hit.position) - CAMERA_CLEAR, 0.1)
-		return Transform3D(Basis.looking_at(at + forward() * LEAD_DOWN - Vector3(0, DIP, 0) - place), place)
+		var ahead := forward()
+		var right := Vector3(-ahead.z, 0, ahead.x)
+		var look: Vector3 = at + look_way() * LEAD_DOWN
+		var place: Vector3 = at - ahead * DOWN_DISTANCE + right * side * DOWN_SIDE - Vector3(0, DOWN_UNDER, 0)
+		# Short of room on that side (a wall behind her): the other side,
+		# straight behind or well under her, whichever leaves more, or the
+		# camera ends in her body.
+		var room: float = kept_clear(at, place).distance_to(at)
+		if room < DOWN_DISTANCE * 0.7:
+			for instead: Vector3 in [at - ahead * DOWN_DISTANCE - right * side * DOWN_SIDE - Vector3(0, DOWN_UNDER, 0), at - ahead * DOWN_DISTANCE - Vector3(0, DOWN_UNDER, 0), at - ahead * 1.2 - Vector3(0, DOWN_UNDER * 2.0, 0)]:
+				var more: float = kept_clear(at, instead).distance_to(at)
+				if more > room + 0.3:
+					room = more
+					place = instead
+		if strike > 0.0 and struck_at != Vector3.INF:
+			var away := Vector3(at.x - struck_at.x, 0, at.z - struck_at.z)
+			away = away.normalized() if away.length() > 0.1 else -ahead
+			var framed: Vector3 = at + away * STRIKE_BACK + Vector3(away.z, 0, -away.x) * side * STRIKE_SIDE - Vector3(0, STRIKE_UNDER, 0)
+			var t := smoothstep(0.0, 1.0, strike)
+			place = place.lerp(framed, t)
+			look = look.lerp(struck_at, t)
+		place = kept_clear(at, place)
+		return Transform3D(Basis.looking_at(look - place), place)
 	var over := Basis.from_euler(Vector3(tilt, yaw, 0.0))
 	var from: Vector3 = at + over.z * distance
 	return Transform3D(Basis.looking_at(at + forward() * LEAD - Vector3(0, LOOK_DOWN, 0) - from), from)
+
+## `place` under her ceiling and short of whatever stands between it and `at`.
+func kept_clear(at: Vector3, place: Vector3) -> Vector3:
+	var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
+	var lid: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(at, at + Vector3.UP * 3.0, CAMERA_MASK, [creature.get_rid()]))
+	if not lid.is_empty(): place.y = minf(place.y, (lid.position as Vector3).y - CAMERA_CLEAR)
+	var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(at, place, CAMERA_MASK, [creature.get_rid()]))
+	if not hit.is_empty(): place = at + (place - at).normalized() * maxf(at.distance_to(hit.position) - CAMERA_CLEAR, 0.1)
+	return place
+
+## The side of her (1 right, -1 left) where the camera has more room, right on a tie.
+func roomier_side(at: Vector3) -> float:
+	var ahead := forward()
+	var right := Vector3(-ahead.z, 0, ahead.x)
+	var room := {}
+	for s: float in [1.0, -1.0]:
+		var place: Vector3 = at - ahead * DOWN_DISTANCE + right * s * DOWN_SIDE - Vector3(0, DOWN_UNDER, 0)
+		room[s] = kept_clear(at, place).distance_to(at)
+	return 1.0 if float(room[1.0]) >= float(room[-1.0]) - 0.05 else -1.0
+
+## Her prey's chest while the camera frames it (her attack, her warning, her
+## take), INF none; let go when all of that is over.
+func strike_point() -> Vector3:
+	if struck < 0: return Vector3.INF
+	if attack.is_empty() and not creature.cue and level.execution.is_empty():
+		struck = -1
+		struck_at = Vector3.INF
+		return Vector3.INF
+	var one = body_of(struck)
+	if one != null: struck_at = one.global_position + Vector3(0, 1.1, 0)
+	return struck_at
 
 func _process(delta: float) -> void:
 	if creature == null or level == null: return
@@ -381,6 +461,7 @@ func _process(delta: float) -> void:
 		var t: float = smoothstep(0.0, 1.0, 1.0 - blend_left / BLEND)
 		target = Transform3D(blend_from.basis.slerp(target.basis, t), blend_from.origin.lerp(target.origin, t))
 	camera.global_transform = target
+	camera.fov = move_toward(camera.fov, FOV_DOWN if mode == "down" else FOV, (FOV_DOWN - FOV) / BLEND * delta)
 	drawn = target
 	# Her ear where the camera is, kept on her planta.
 	ear.global_position = Vector3(target.origin.x, minf(target.origin.y, FLOOR.planta_y(planta()) + CAMERA_TOP), target.origin.z)
@@ -698,6 +779,7 @@ func find_drop(one) -> Dictionary:
 func attack_now() -> void:
 	if prey < 0 or not bool(prey_info.get("ok", false)): return
 	attacked[prey] = clock
+	struck = prey
 	if creature.motion.plenum:
 		attack = {"phase": "crawl", "seat": prey, "drop": prey_info.drop, "clock": 0.0}
 		return
@@ -738,7 +820,7 @@ func attack_step(delta: float) -> void:
 func look_at_point(point: Vector3) -> void:
 	var to: Vector3 = point - creature.face_point()
 	yaw = atan2(-to.x, -to.z)
-	pitch = clampf(atan2(to.y, Vector2(to.x, to.z).length()), -1.45, 1.2)
+	pitch = clampf(atan2(to.y, Vector2(to.x, to.z).length()), DOWN_PITCH.x, DOWN_PITCH.y)
 
 # --- Along the ducts (the author's vents) -------------------------------------------
 
@@ -880,7 +962,10 @@ func scared(flash: bool, from: Vector3) -> void:
 	creature.intent_clip = "scare"
 	pose_clock = SCARE_POSE
 	fled_at = clock
+	fled_from = from
 	attack = {}
+	struck = -1
+	struck_at = Vector3.INF
 	if flash:
 		flashed_until = clock + FLASH_WAIT
 		view.flash((from - camera.global_position).normalized())

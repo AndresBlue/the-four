@@ -1,13 +1,13 @@
 extends SceneTree
 ## The offices drawn as plans from the manifest, nothing built: a PNG a planta
 ## from above and a sheet with the three side by side at one scale.
-##   godot --headless --script tools/dev/office_plan.gd -- 7 33 [--real-plan] [--out=evidence/planta/hoy] [--survivors=N]
+##   godot --headless --script tools/dev/office_plan.gd -- 7 33 [--plan=spine] [--out=evidence/planta/hoy] [--survivors=N]
 ## Walls dark, doorways pale gaps (fire doors red), rooms filled by type with
 ## their code, corridors grey, the service gallery tan, unused cells black;
 ## the lift cars crossed and lettered (A, B, the shaft), the planta's landmarks
-## outlined in red, the main duct in orange. With --real-plan the floor is the
-## first try that comes out (office_generator.real_plan), judged or not by the
-## validator, whose complaints are printed.
+## outlined in red, the main duct in orange. The floor is the game's (the
+## standby one where no try of the building passes); --plan= forces a typology
+## (office_palette.forced_typology()). The validator's complaints are printed.
 const GEN := preload("res://game/world/generation/office_generator.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -24,16 +24,14 @@ func _initialize() -> void:
 	var seeds: Array = []
 	var out := "res://evidence/planta/hoy"
 	var survivors := 2
-	var real := false
 	for argument in OS.get_cmdline_user_args():
 		if argument.is_valid_int(): seeds.append(int(argument))
 		elif argument.begins_with("--out="): out = "res://" + argument.get_slice("=", 1).trim_prefix("res://")
 		elif argument.begins_with("--survivors="): survivors = int(argument.get_slice("=", 1))
-		elif argument == "--real-plan": real = true
 	if seeds.is_empty(): seeds = [7]
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
 	for run_seed in seeds:
-		var data := floor_of(int(run_seed), survivors, real)
+		var data := GEN.new().generate(int(run_seed), survivors)
 		if data.is_empty():
 			print("PLAN semilla %d: ningún intento sale" % run_seed)
 			continue
@@ -41,24 +39,11 @@ func _initialize() -> void:
 		print("PLAN semilla %d intento %d respaldo %s, paseo %d salas, %d errores del validador %s" % [run_seed, int(data.get("attempt", -1)), str(data.get("fallback", false)), int(data.walk), errors.size(), str(codes(errors))])
 		var images: Array = []
 		for planta in 3:
-			var image := draw_planta(data, planta, real)
+			var image := draw_planta(data, planta)
 			image.save_png(ProjectSettings.globalize_path("%s/s%d_p%d.png" % [out, run_seed, planta + 1]))
 			images.append(image)
 		sheet(images).save_png(ProjectSettings.globalize_path("%s/s%d_hoja.png" % [out, run_seed]))
 	quit()
-
-## The floor a seed gives: today's as the game draws it; the real plan's first
-## try that comes out, whatever the validator says (it is not finished).
-static func floor_of(run_seed: int, survivors: int, real: bool) -> Dictionary:
-	OFFICE.real_plan_test = real
-	var generator = GEN.new()
-	if not real: return generator.generate(run_seed, survivors)
-	generator.areas = OFFICE.areas_for(survivors)
-	for attempt in generator.attempts():
-		var data: Dictionary = generator.candidate(run_seed, attempt)
-		if not data.is_empty(): return data
-	print("PLAN semilla %d sin intento: %s" % [run_seed, str(generator.stats)])
-	return {}
 
 ## The validator's codes without their numbers, counted.
 static func codes(errors: Array) -> Dictionary:
@@ -68,7 +53,7 @@ static func codes(errors: Array) -> Dictionary:
 		out[code] = int(out.get(code, 0)) + 1
 	return out
 
-static func draw_planta(data: Dictionary, planta: int, real: bool) -> Image:
+static func draw_planta(data: Dictionary, planta: int) -> Image:
 	var dims: Dictionary = data.plantas[planta]
 	var rooms: Array = data.rooms
 	var cells: Array = []
@@ -161,7 +146,7 @@ static func draw_planta(data: Dictionary, planta: int, real: bool) -> Image:
 	# Title and scale.
 	var plan: Dictionary = data.plans[planta]
 	var title := "SEMILLA %d  PLANTA %d %s" % [int(data.seed), planta + 1, plain(OFFICE.PLANTA_NAMES[planta])]
-	var below := "%s %s %s  %.1f X %.1f M  %d SALAS" % ["NUEVA" if real else "HOY", String(plan.plan), String(plan.shape), used_high.x - used_low.x, used_high.y - used_low.y, int(plan.rooms)]
+	var below := "%s %s %s  %.1f X %.1f M  %d SALAS" % ["RESERVA" if bool(data.get("fallback", false)) else "EDIFICIO", String(plan.plan), String(plan.shape), used_high.x - used_low.x, used_high.y - used_low.y, int(plan.rooms)]
 	write(image, Vector2i(MARGIN, 12), title, 3, Color("1a1a1a"))
 	write(image, Vector2i(MARGIN, 38), plain(below), 2, Color("404040"))
 	var foot := image.get_height() - 24

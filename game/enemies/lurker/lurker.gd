@@ -1796,7 +1796,8 @@ func judge_light(p, delta: float) -> void:
 ## drinks that torch torch_drunk s), immune to another flash while hers lasts
 ## and FLASH_IMMUNE more, and FLASH_WAIT s before her warning or her drink.
 ## Either way, her driver's machine bolts her into the ceiling
-## (match_net.lurker_scared()).
+## (match_net.lurker_scared()), and a warning of hers still running ends with
+## no take: lit, she flees (a torch not her victim's, the light come on).
 func scare_off(flash: bool, seat: int, face: Vector3) -> void:
 	var clock: float = brain.clock
 	var one = senses.body_of(seat) if seat >= 0 else null
@@ -1805,6 +1806,10 @@ func scare_off(flash: bool, seat: int, face: Vector3) -> void:
 	beam_time = 0.0
 	watching.clear()
 	charged.clear()
+	var running: Dictionary = warning.active
+	if not running.is_empty():
+		warning.cancel(clock, "echada")
+		brain.cue_ended.emit(running)
 	if flash:
 		immune_until = clock + PLAYER.VIEW.FLASH_RISE + PLAYER.VIEW.FLASH_FALL + PLAYER.VIEW.FLASH_IMMUNE
 		stunned_until = clock + FLASH_WAIT
@@ -1816,12 +1821,13 @@ func scare_off(flash: bool, seat: int, face: Vector3) -> void:
 ## On the machine that drives her: the host sent her off from `from`. Her eyes
 ## lose the torch that blinded her here too (a guest's driven copy of her
 ## hears no "scare"); her body bolts in as her mind's does, or is taken in.
+## Held in her take's scene she goes once it lets her go (her driver).
 func scared_here(flash: bool, from: Vector3, seat: int, seconds: float) -> void:
 	# Nothing sends her off before the hunt begins (lurker_versus.md 13.9).
 	if driver == null or motion == null or grace > 0.0: return
 	driver.scared(flash, from)
 	if flash and seat >= 0 and not in_charge_here(): drink_torches([seat], seconds)
-	if motion.surface() and not motion.bolt(from): motion.place_in_duct(ducts.nearest_node(motion.anchor()))
+	if motion.surface() and not scene_held and not motion.bolt(from): motion.place_in_duct(ducts.nearest_node(motion.anchor()))
 
 ## Her peek (lurker_versus.md 7), on the machine in charge: whoever has her
 ## at the edge of their view (SIGHT.beside_view()) and would make her out as

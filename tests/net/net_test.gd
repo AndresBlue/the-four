@@ -861,7 +861,7 @@ func lurker_corridor() -> Dictionary:
 	for room in level.manifest.rooms:
 		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR: continue
 		var span := FLOOR.size_of(room)
-		if maxf(span.x, span.y) < (7.0 if OFFICE.real_plan_on() else 8.0) or not level.creature.shell.tray_of.has(int(room.id)): continue
+		if maxf(span.x, span.y) < 7.0 or not level.creature.shell.tray_of.has(int(room.id)): continue
 		if level.manifest.adjacency[int(room.id)].any(func(other): return off.has(int(other))): continue
 		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
 		return {"room": int(room.id), "centre": FLOOR.position_of(room), "along": along}
@@ -1423,6 +1423,16 @@ func match_hunter() -> void:
 			check("Al empezar, la cuenta atrás de su gracia, en cifras y sin palabras", String(level.camcorder.notice.text).is_valid_int(), String(level.camcorder.notice.text))
 			var keys: Array = level.hints.rows("lurker")
 			check("Y sus teclas, cada una con su nombre", keys.size() == 6 and keys.all(func(row): return not (row[0] as Array).has("-")), str(keys))
+			# Nothing moves her by herself (lurker_versus.md 13.9): with no key,
+			# stick or mouse she and her camera stay put, in her grace and after.
+			var held := func() -> Array: return [lurker.motion.anchor(), lurker.driver.camera.global_transform]
+			for part in ["en su gracia", "acabada su gracia"]:
+				if part != "en su gracia": await wait_for(func(): return lurker.grace <= 0.0, 60.0)
+				var was: Array = held.call()
+				await pause_for(3.0)
+				var now: Array = held.call()
+				var turned: float = ((was[1] as Transform3D).basis.z as Vector3).angle_to((now[1] as Transform3D).basis.z)
+				check("Sin tocar nada, ni ella ni su cámara se mueven, %s" % part, (was[0] as Vector3).distance_to(now[0]) < 0.01 and (was[1] as Transform3D).origin.distance_to((now[1] as Transform3D).origin) < 0.01 and turned < 0.01, "%s a %s, cámara %.3f m, %.3f rad; gracia %.1f" % [str(was[0]), str(now[0]), (was[1] as Transform3D).origin.distance_to((now[1] as Transform3D).origin), turned, float(lurker.grace)])
 		lurker.driver.scripted = true
 		lurker.grace = 0.0
 		level.camcorder.announce("")

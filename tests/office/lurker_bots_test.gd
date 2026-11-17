@@ -63,7 +63,7 @@ func run() -> void:
 func dark_rooms(least := 5.0) -> Array:
 	var out: Array = []
 	# The real building's naves are open offices or cubicles.
-	for kind in [1, OFFICE.CORRIDOR, 15, 3] + ([2] if OFFICE.real_plan_on() else []):
+	for kind in [1, OFFICE.CORRIDOR, 15, 3, 2]:
 		for room in level.manifest.rooms:
 			var id := int(room.id)
 			if int(room.type) != kind or FLOOR.is_void(room) or int(room.get("wing", -1)) != 0 or level.off_limits_rooms().has(id) or level.hotel.lit(id) or not lurker.shell.tray_of.has(id): continue
@@ -72,7 +72,7 @@ func dark_rooms(least := 5.0) -> Array:
 			# wall: a nave's cell open on that side keeps her in the room.
 			# The spine's naves are one row, open along the building (planta_real.md 13.7).
 			var sides: Array = ["south", "east", "west"] if String(level.manifest.plans[0].get("plan", "")) == "spine" else ["south"]
-			if least >= 7.0 and OFFICE.real_plan_on() and not sides.any(func(side): return room.get("open_sides", []).has(side)): continue
+			if least >= 7.0 and not sides.any(func(side): return room.get("open_sides", []).has(side)): continue
 			out.append(id)
 	return out
 

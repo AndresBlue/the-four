@@ -17,6 +17,7 @@ const LIGHTING := preload("res://game/world/hotel/lighting.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const ACCENTS := preload("res://game/world/office/office_accents.gd")
 const LANDMARKS := preload("res://game/world/office/office_landmarks.gd")
+const PICTURES := preload("res://game/world/office/office_pictures.gd")
 var checks: Array = []
 var failed := 0
 
@@ -707,7 +708,21 @@ func block_landmarks(level, hotel) -> void:
 	var kept: bool = doors.all(func(e): return (e.light as Light3D).visible and (e.light as Light3D).light_energy > 0.0 and not (e.light as Light3D).shadow_enabled)
 	hotel.blackout(false)
 	for e: Dictionary in doors: hotel.set_room_power(int(e.room), not cut_before.has(int(e.room)))
-	check("Los apliques de las puertas siguen encendidos con la planta a oscuras, y sin sombra", not doors.is_empty() and kept)
+	check("Los apliques de las puertas siguen encendidos con la planta a oscuras, y sin sombra en Alto", not doors.is_empty() and kept)
+	# The evacuation plans keep the freight lift's way out hidden (no red).
+	var red := false
+	for planta in 2:
+		var plan: Image = PICTURES.plan(m, planta)
+		for y in range(0, plan.get_height(), 2):
+			for x in range(0, plan.get_width(), 2):
+				var c := plan.get_pixel(x, y)
+				if c.r > 0.5 and c.g < 0.4 and c.b < 0.4: red = true
+	check("El plano de pared no pinta el vestíbulo del montacargas", not red)
+	# A lit room's light out of its doors into the corridor: every spill aimed
+	# into its corridor, its cone all on the corridor's side of the wall.
+	var spills: Array = hotel.spills
+	var astray: Array = spills.filter(func(s): return FLOOR.room_at(m.rooms, (s.light as Node3D).global_position + (-(s.light as Node3D).global_basis.z) * 0.5).get("id", -1) != int(s.corridor) or (s.light as Light3D).shadow_enabled)
+	check("Cada puerta de una sala a un pasillo tiene su luz hacia el pasillo, sin sombra", not spills.is_empty() and OG.SPILL_DOWN + OG.SPILL_ANGLE < 90.0 and astray.is_empty(), "%d de %d: %s" % [astray.size(), spills.size(), astray.slice(0, 3).map(func(s): return [s.room, s.corridor, FLOOR.room_at(m.rooms, (s.light as Node3D).global_position).get("id", -1), (s.light as Light3D).shadow_enabled])])
 	check("Solo el halo alumbra el aire", doors.all(func(e): return (e.light as Light3D).light_volumetric_fog_energy == (OG.LANDMARK_AIR if bool(e.get("air", false)) else 0.0)))
 	# The plant's lamp: casting only with the eye in the plant.
 	if not plant.is_empty():

@@ -30,14 +30,14 @@ const INK_BLACK := Color(0.06, 0.06, 0.05)
 const INK_WHITE := Color(0.93, 0.91, 0.86)
 const INK_YELLOW := Color(0.98, 0.8, 0.12)
 ## What each kind of landmark shows: its banner's lines and look, its door
-## lamp's light and glass and how bright it lights the door (a red one
-## more: it lights with its red alone), its door sign, its name on the way
-## signs.
+## lamp's light and glass and how bright it lights the door, its door sign,
+## its name on the way signs.
 const KINDS := {
-	"window": {"banner": "PERSONAL\nVENTANILLA", "look": "white", "lamp": Color(1.0, 0.86, 0.66), "glass": "glow_white", "wash": 0.8, "sign": "", "way": "VENTANILLA DE PERSONAL"},
-	"electrical": {"banner": "CUARTO ELÉCTRICO", "look": "yellow", "lamp": Color(1.0, 0.58, 0.2), "glass": "glow_amber", "wash": 1.4, "sign": "electrical", "way": "CUADRO ELÉCTRICO"},
-	"security": {"banner": "SEGURIDAD\nCONTROL DE ACCESO", "look": "red", "lamp": Color(1.0, 0.2, 0.12), "glass": "glow_red", "wash": 2.6, "sign": "restricted", "way": "SEGURIDAD"},
-	"machines": {"banner": "SALA DE MÁQUINAS", "look": "red", "lamp": Color(1.0, 0.2, 0.12), "glass": "glow_red", "wash": 2.6, "sign": "machines", "way": "SALA DE MÁQUINAS"},
+	"window": {"banner": "PERSONAL\nVENTANILLA", "look": "white", "lamp": Color(1.0, 0.86, 0.66), "glass": "glow_white", "wash": 1.6, "sign": "window", "way": "VENTANILLA DE PERSONAL"},
+	# Cold white: the battery units of planta 2 are amber too (2400 K).
+	"electrical": {"banner": "CUARTO ELÉCTRICO", "look": "yellow", "lamp": Color(0.78, 0.88, 1.0), "glass": "glow_white", "wash": 1.2, "sign": "electrical", "way": "CUADRO ELÉCTRICO"},
+	"security": {"banner": "SEGURIDAD\nCONTROL DE ACCESO", "look": "red", "lamp": Color(1.0, 0.2, 0.12), "glass": "glow_red", "wash": 1.3, "sign": "restricted", "way": "SEGURIDAD"},
+	"machines": {"banner": "SALA DE MÁQUINAS", "look": "red", "lamp": Color(1.0, 0.2, 0.12), "glass": "glow_red", "wash": 1.3, "sign": "machines", "way": "SALA DE MÁQUINAS"},
 	"lift": {"banner": "", "look": "", "sign": "lift", "way": ""},
 }
 ## A panel's enamel and its letters.
@@ -49,11 +49,19 @@ const SIGNS := {
 	"restricted": ["black", "sign_red", INK_YELLOW, "ACCESO RESTRINGIDO", "sign_yellow", INK_BLACK, "SOLO PERSONAL\nAUTORIZADO", ""],
 	"machines": ["sign_white", "sign_red", INK_WHITE, "SALA DE MÁQUINAS", "sign_red", INK_WHITE, "SOLO PERSONAL\nAUTORIZADO", ""],
 	"lift": ["black", "sign_red", INK_WHITE, "MONTACARGAS", "sign_white", INK_BLACK, "SOLO PERSONAL\nREGISTRADO", ""],
+	"window": ["black", "black", INK_WHITE, "PERSONAL", "sign_white", INK_BLACK, "VENTANILLA", "ATENCIÓN DE 9 A 14 H"],
 }
 ## A door sign: its size (A3 across), its head's share of it, its middle's height.
 const SIGN := Vector2(0.42, 0.3)
 const SIGN_HEAD := 0.34
 const SIGN_Y := 1.6
+## Its middle over a number plaque on its side (office_geometry PLAQUE_Y 1.55, 9 cm high).
+const SIGN_OVER_PLAQUE := 1.79
+## On a glazed wall: the pane's face from the wall's (office_geometry
+## glazed_run(), the glass GLASS_THICK in the wall's middle), and the plain wall
+## kept either side of the security post's reader (READER_SOLID).
+const GLASS_FACE := -OFFICE.WALL_HALF + 0.005
+const READER_SOLID := 0.4
 ## Where the door's frame ends either side of its middle (FLOOR.PORTAL, the
 ## jamb), and the gap from it to the sign.
 const FRAME_EDGE := FLOOR.PORTAL * 0.5 + 0.09
@@ -74,6 +82,11 @@ const LAMP_ENERGY := 0.7
 const LAMP_REACH := 2.8
 const WASH_ANGLE := 46.0
 const WASH_REACH := 3.2
+## The wash from WASH_OUT off the wall: from the glass it grazed the wall and
+## left the sign beside the door dark. Paler than the glass by WASH_WHITE, so a
+## red lamp does not leave its sign one red.
+const WASH_OUT := 0.45
+const WASH_WHITE := 0.85
 const CEILING_OUT := 0.35
 const TUBE_CLEAR := 0.22
 ## The banner: off the frame's edge, out from the wall, its middle's height.
@@ -164,6 +177,14 @@ static func wall_left(b: Node3D, inside: Dictionary, outside: Dictionary, center
 		if ahead > 0.0: left = minf(left, ahead - FRAME_EDGE)
 	return left
 
+## Whether the wall between two rooms is glass (office_geometry.glazed_run()).
+static func glazed(a: Dictionary, c: Dictionary) -> bool:
+	for pair in [[a, c], [c, a]]:
+		var d := FLOOR.position_of(pair[1]) - FLOOR.position_of(pair[0])
+		var side := ("east" if d.x > 0.0 else "west") if absf(d.x) > absf(d.z) else ("south" if d.z > 0.0 else "north")
+		if (pair[0] as Dictionary).get("glazed", []).has(side): return true
+	return false
+
 static func dress_door(b: Node3D, kind: String, inside: Dictionary, outside: Dictionary, center: Vector3, yaw: float, card: bool) -> void:
 	var spec: Dictionary = KINDS[kind]
 	var holder: Node3D = b.room_nodes[int(outside.id)]
@@ -177,10 +198,25 @@ static func dress_door(b: Node3D, kind: String, inside: Dictionary, outside: Dic
 	# The wash on the door's middle, or between it and its sign.
 	var wash := Vector3(0, 1.3, 0)
 	if not String(spec.sign).is_empty():
-		# Past the plaque when it has to share its side.
-		var x: float = sign_x if sign_side != plaque else FRAME_EDGE + 0.5 + SIGN.x * 0.5
+		# Over the plaque when it has to share its side: beside it, a long number
+		# ran under the sign's edge.
+		var x: float = sign_x
+		var y: float = SIGN_Y if sign_side != plaque else SIGN_OVER_PLAQUE
+		var z := 0.0
+		if glazed(inside, outside):
+			# Past the door's frame the wall is glass (but the card door's stretch
+			# of plain wall to its reader): stuck on the glass, clear of the plain
+			# wall. On the wall's face it hung in the air before the pane.
+			var solid := FRAME_EDGE
+			var reader: Dictionary = b.manifest.air.security.get("reader", {}) if card else {}
+			if not reader.is_empty():
+				var off: float = (spot_of(reader) - center).dot(face.basis.x * sign_side)
+				if off > 0.0: solid = off + READER_SOLID
+			if solid < x + SIGN.x * 0.5:
+				x = maxf(x, solid + SIGN_GAP + SIGN.x * 0.5)
+				z = GLASS_FACE
 		if wall_left(b, inside, outside, center, face.basis.x * sign_side) >= x + SIGN.x * 0.5 + 0.05:
-			door_sign(b, holder, face * Transform3D(Basis.IDENTITY, Vector3(sign_side * x, SIGN_Y, 0.0)), String(spec.sign))
+			door_sign(b, holder, face * Transform3D(Basis.IDENTITY, Vector3(sign_side * x, y, z)), String(spec.sign))
 			wash = Vector3(sign_side * x * 0.45, 1.4, 0)
 	if kind == "lift": return
 	var banner_side := plaque if wall_left(b, inside, outside, center, face.basis.x * plaque) >= FRAME_EDGE + BANNER_GAP + 0.1 else -plaque
@@ -214,7 +250,8 @@ static func door_head(b: Node3D, holder: Node3D, face: Transform3D, kind: String
 	var from := Vector3(0, ceiling - BULKHEAD.z - 0.01, CEILING_OUT) if ceiling > 0.0 else Vector3(0, LAMP_Y - 0.03, BULKHEAD.z + 0.01)
 	var down := deg_to_rad(LAMP_DOWN)
 	door_light(b, holder, face * Transform3D(Basis.looking_at(Vector3(0, -sin(down), cos(down)), Vector3.UP), from), spec.lamp, LAMP_ENERGY, LAMP_REACH, LAMP_ANGLE, room_id, "LandmarkDoorHalo")
-	door_light(b, holder, face * Transform3D(Basis.looking_at(wash - from, Vector3.UP), from), spec.lamp, float(spec.wash), WASH_REACH, WASH_ANGLE, room_id, "LandmarkDoorWash")
+	var wash_from := Vector3(0, from.y, WASH_OUT)
+	door_light(b, holder, face * Transform3D(Basis.looking_at(wash - wash_from, Vector3.UP), wash_from), (spec.lamp as Color).lerp(Color(1.0, 0.92, 0.82), WASH_WHITE), float(spec.wash), WASH_REACH, WASH_ANGLE, room_id, "LandmarkDoorWash")
 
 ## One of a door's bulkhead lights, filed for round_landmarks(): the halo
 ## lights the air, the wash does not.

@@ -20,9 +20,11 @@ shader_type spatial;
 // draw the ceiling of her planta (lurker_view.ceilings()), so the same reading
 // looks down into the rooms: the T-grid only round her, faint, at its height;
 // past `reach` from her it all sinks to black. Survivors (`figure_at`) read as
-// dark figures cut out by a pale rim, never as heat; her prey's is marked
-// white (the attack may go) or red (not), and a lit room that keeps her off
-// it reddens its floor.
+// dark figures cut out by a pale rim and outlined pale a little wider than
+// they are, never as heat; her prey's is marked white (the attack may go) or
+// red (not), and a lit room that keeps her off it reddens its floor. What she
+// hears goes out as a faint wave of warmth over the surfaces round it
+// (`ripple_at`).
 //
 // Out goes the reading, not a colour (lurker_thermal_sensor.gdshader makes the
 // recording of it): red, the reading from FOOT to RANGE; green, a pale mark
@@ -79,6 +81,11 @@ uniform vec4 lit_rect[32];
 uniform float lit_heat[32];
 // The lit room that keeps her off her prey, reddened (z > x when there is one).
 uniform vec4 red_rect = vec4(0.0);
+// What she hears: a wave of warmth over the surfaces round each noise, (world
+// point, 0..1 of its life), out to its reach (metres).
+uniform int ripple_count = 0;
+uniform vec4 ripple_at[8];
+uniform float ripple_reach[8];
 
 const float DAZZLE_NEAR = 4.0;
 const float DAZZLE_LEVEL = 0.1;
@@ -87,6 +94,15 @@ const float FIGURE_RADIUS = 0.42;
 const float FIGURE_LOW = 0.05;
 const float FIGURE_HIGH = 1.8;
 const float LIT_LIFT = 0.07;
+// Every survivor in reach outlined, a little wider than its body (OUTLINE
+// pixels at 720 lines), pale, so it reads at a glance from over the ceiling:
+// OUTLINE_PALE, its prey's as its mark.
+const float OUTLINE = 2.0;
+const float OUTLINE_PALE = 0.75;
+// A noise's wave: this much warmer at its front, this wide (metres), broken
+// by the surface's own blotches so it is a wash of warmth, not a ring.
+const float RIPPLE_LIFT = 0.45;
+const float RIPPLE_WIDTH = 0.7;
 const float SURFACE_SPAN = 0.42;
 // Nothing drawn: the coldest there is.
 const float VOID = 0.04;
@@ -143,6 +159,18 @@ vec3 view_at(vec2 uv, mat4 inv_projection, out bool drawn) {
 	return view.xyz / view.w;
 }
 
+// The survivor a world point is on (its capsule, over its feet), -1 none.
+int figure_of(vec3 w) {
+	for (int i = 0; i < figure_count; i++) {
+		vec3 o = w - figure_at[i].xyz;
+		// Its body, not the floor round its feet.
+		if (o.y < FIGURE_LOW) continue;
+		o.y -= clamp(o.y, FIGURE_LOW, FIGURE_HIGH);
+		if (length(o) <= FIGURE_RADIUS) return i;
+	}
+	return -1;
+}
+
 void fragment() {
 	vec2 uv = SCREEN_UV;
 	vec2 texel = 1.0 / VIEWPORT_SIZE;
@@ -185,19 +213,35 @@ void fragment() {
 				if (world.x >= r.x && world.x <= r.z && world.z >= r.y && world.z <= r.w && n.y > 0.6) t += LIT_LIFT * lit_heat[i];
 			}
 		}
+		// What she hears: its wave going out over the surfaces round it.
+		for (int i = 0; i < ripple_count; i++) {
+			vec4 r = ripple_at[i];
+			float band = 1.0 - smoothstep(0.0, RIPPLE_WIDTH, abs(distance(world, r.xyz) - r.w * ripple_reach[i]));
+			t += RIPPLE_LIFT * band * sqrt(1.0 - r.w) * value_noise(plane * 2.5 + float(i) * 7.0);
+		}
 		// The survivors: dark figures, cut out by a pale rim where they turn
-		// away from her eye.
+		// away from her eye, and outlined a little wider than they are.
 		float rimmed = pow(1.0 - facing, 2.0) * 0.7 + edge * 0.5;
-		for (int i = 0; i < figure_count; i++) {
-			vec3 o = world - figure_at[i].xyz;
-			// Its body, not the floor round its feet.
-			if (o.y < FIGURE_LOW) continue;
-			o.y -= clamp(o.y, FIGURE_LOW, FIGURE_HIGH);
-			if (length(o) > FIGURE_RADIUS) continue;
+		int f = figure_of(world);
+		if (f >= 0) {
 			t = -0.09 + 0.26 * rimmed;
 			float mark = 0.55 + 0.45 * clamp(rimmed, 0.0, 1.0);
-			if (figure_at[i].w > 1.5) red = max(red, mark);
-			else if (figure_at[i].w > 0.5) pale = max(pale, mark);
+			if (figure_at[f].w > 1.5) red = max(red, mark);
+			else if (figure_at[f].w > 0.5) pale = max(pale, mark);
+		} else if (figure_count > 0) {
+			// Just outside one that stands nearer than what is here: its outline.
+			float grow = OUTLINE * VIEWPORT_SIZE.y / 720.0;
+			for (int k = 0; k < 8; k++) {
+				float a = float(k) * 0.785398;
+				bool near_drawn;
+				vec3 v = view_at(uv + vec2(cos(a), sin(a)) * texel * grow, INV_PROJECTION_MATRIX, near_drawn);
+				if (!near_drawn || length(v) > dist - 0.2) continue;
+				int g = figure_of((INV_VIEW_MATRIX * vec4(v, 1.0)).xyz);
+				if (g < 0) continue;
+				if (figure_at[g].w > 1.5) red = max(red, 1.0);
+				else pale = max(pale, figure_at[g].w > 0.5 ? 1.0 : OUTLINE_PALE);
+				break;
+			}
 		}
 		if (red_rect.z > red_rect.x && world.x >= red_rect.x && world.x <= red_rect.z && world.z >= red_rect.y && world.z <= red_rect.w && n.y > 0.6) red = max(red, 0.3);
 	}

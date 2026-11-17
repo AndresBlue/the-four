@@ -11,8 +11,10 @@ extends SceneTree
 ## with its torch in her warning: saved, she is blinded and bolts back up into
 ## the plenum by herself, the picture closing in; a torch on her face out of a
 ## warning does the same; a look in the light sends her off with no flash.
-## Her peek, down, frightens it once in 10 s. It keeps its back to her: taken
-## at her due time, never without its warning.
+## Her peek, down, frightens it once in 10 s. Sent off half way down the tile
+## of her attack, she comes back up by herself; sent off half way through her
+## warning, the warning is called off and nobody is taken. It keeps its back to her:
+## taken at her due time, never without its warning.
 ## evidence/versus/rehecho/ataque.json and ataque.txt.
 ##   godot --headless --fixed-fps 60 --path . --script res://tests/office/lurker_stalk_test.gd -- --automation --test-profile --silent [--seed=81]
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -314,6 +316,34 @@ func cases() -> void:
 	driver.asked[&"lurker_peek"] = true
 	await wait(0.1)
 	check("Asomarse, abajo, al borde de su vista le baja la cordura, una vez en 10 s y sin el sonido del aviso", first >= 0.0 and survivor.sanity < sane - 5.0 and float(lurker.peeked.get(seat, -1.0)) == first and lurker.warning.active.is_empty(), "%.1f -> %.1f, %.2f" % [sane, survivor.sanity, first])
+	# --- Sent off half way down the tile of her attack: no ceiling under her to
+	# bolt from; once on the one below, back up by herself.
+	fresh()
+	level.hotel.set_room_power(int(spot.room), false)
+	await wait(1.2)
+	stand()
+	await over(1.5)
+	await wait(0.3)
+	driver.asked[&"lurker_release"] = true
+	var dropping: bool = await until(func() -> bool: return String(driver.attack.get("phase", "")) == "drop" and not lurker.motion.surface(), 2.0)
+	lurker.scare_off(false, seat, lurker.face_point())
+	var sent: float = driver.clock
+	var back_up: bool = await until(func() -> bool: return driver.up(), 2.0)
+	check("Echada a media caída por la placa: vuelve sola al plénum, sin quedarse abajo", dropping and back_up and driver.clock - sent < 1.2 and lurker.warning.active.is_empty(), "%s %s %.2f s; %s" % [dropping, back_up, driver.clock - sent, " / ".join(lurker.debug_lines())])
+	# --- Sent off half way through her warning by a torch the warning does not
+	# judge (a third's: the judge's call by hand): no take, she goes up.
+	fresh()
+	await wait(1.2)
+	stand()
+	await over(1.5)
+	await wait(0.3)
+	if await attack():
+		var counting: Dictionary = last()
+		await wait(0.4)
+		lurker.scare_off(true, seat, lurker.face_point())
+		await wait(float(counting.window) + 1.5)
+		check("Echada por una linterna a media cuenta: el aviso se cancela, sin captura, y vuelve al plénum", String(counting.outcome) == "aborted" and String(counting.reason) == "echada" and level.execution.is_empty() and lurker.warning.active.is_empty() and driver.up(), "%s; %s" % [str(counting), " / ".join(lurker.debug_lines())])
+	else: check("El aviso para echarla a media cuenta", false, "%s %s" % [str(last()), str(info())])
 	# --- Its back to her: taken at her due time, with its warning.
 	fresh()
 	level.hotel.set_room_power(int(spot.room), false)

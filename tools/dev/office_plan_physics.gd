@@ -3,7 +3,7 @@ extends SceneTree
 ## each seed's floor 2 started in a level of its own, and whether it came out
 ## of the generator (validator) and of the physics check or fell to the standby
 ## floor, with the physics' codes.
-##   godot --headless --script tools/dev/office_plan_physics.gd -- 1 40 [--survivors=N] [--real-plan]
+##   godot --headless --script tools/dev/office_plan_physics.gd -- 1 40 [--survivors=N] [--plan=spine]
 ## Seeds from the first number to the second.
 const PLAN := preload("res://tools/dev/office_plan.gd")
 const GEN := preload("res://game/world/generation/office_generator.gd")
@@ -19,7 +19,6 @@ func run() -> void:
 	var survivors := 2
 	for argument in OS.get_cmdline_user_args():
 		if String(argument).begins_with("--survivors="): survivors = int(String(argument).get_slice("=", 1))
-	OFFICE.real_plan_test = OS.get_cmdline_user_args().has("--real-plan")
 	OFFICE.columns_test = true
 	var standby := 0
 	var physical := 0

@@ -7,8 +7,8 @@ extends SceneTree
 ## per planta its rings, lockers, square metres and rooms by size, and the
 ## light layers each floor takes (room_layers, as light_layers_scan counts them).
 ##   godot --headless --script tools/dev/office_plan_metrics.gd -- 200 [--survivors=N]
-## The floor of a seed is the first try that comes out (office_plan.floor_of()),
-## so a validator not yet rewritten for the real plan does not hide it.
+## The floor of a seed is the first try that comes out, so the validator's
+## complaints show and do not hide it.
 ## Writes evidence/planta/metricas.json.
 const PLAN := preload("res://tools/dev/office_plan.gd")
 const GEN := preload("res://game/world/generation/office_generator.gd")
@@ -24,7 +24,6 @@ func _initialize() -> void:
 	for argument in OS.get_cmdline_user_args():
 		if argument.is_valid_int(): floors = int(argument)
 		elif argument.begins_with("--survivors="): survivors = int(argument.get_slice("=", 1))
-	OFFICE.real_plan_test = true
 	var made := 0
 	var reasons := {}
 	var codes := {}

@@ -208,7 +208,7 @@ const GRADE := {"key": 0.05, "white": Vector3(1.2, 1.0, 1.15), "contrast": 1.16,
 ## by the torch as the small hard source it is (the hotel's 0.35 left no beam).
 ## The lamps' share is air_lights()'.
 const AIR_DENSITY := [0.008, 0.02, 0.02]
-const AIR_ANISOTROPY := 0.6
+const AIR_ANISOTROPY := 0.45
 const TORCH_AIR := 3.0
 func grade() -> Dictionary:
 	var air := GRADE.duplicate()
@@ -659,7 +659,7 @@ const RECEPTION_HALO := 0.0
 const RECEPTION_BOUNCE := 0.5
 ## The window's a little down too: its typewriter under its arm lamp is what
 ## shows there (office_landmarks.gd).
-const WINDOW_DIM := 0.7
+const WINDOW_DIM := 0.55
 static func dim_of(room: Dictionary) -> float:
 	match int(room.get("type", -1)):
 		OFFICE.RECEPTION: return RECEPTION_DIM
@@ -1067,8 +1067,8 @@ const SECURITY_DESK := Vector3(1.8, 0.755, 0.45)
 ## The window's arm lamp: turned from the desk's back left corner so its
 ## light (office_models LIGHTS) lands on the typewriter.
 const WINDOW_LAMP_YAW := 1.29
-const WINDOW_LAMP_ENERGY := 7.0
-const WINDOW_LAMP_ANGLE := 34.0
+const WINDOW_LAMP_ENERGY := 10.0
+const WINDOW_LAMP_ANGLE := 30.0
 func post_desk(node: Node3D, spot: Dictionary, size := POST_DESK) -> void:
 	var yaw := float(spot.yaw)
 	var holder := Node3D.new()
@@ -1097,7 +1097,7 @@ const EMERGENCY_CAST := 6
 const EMERGENCY_CAST_COMPAT := 3
 const EMERGENCY_ENERGY := 1.4
 const EMERGENCY_RANGE := 9.0
-const EMERGENCY_ANGLE := 55.0
+const EMERGENCY_ANGLE := 40.0
 const EMERGENCY_KELVIN := 2400.0
 ## The electrical room's unit aimed at its board, this high up it, this wide.
 const EMERGENCY_ON_BOARD := 1.3
@@ -1234,6 +1234,7 @@ func round_lamps() -> void:
 	round_pools()
 	air_lights()
 	round_landmarks()
+	round_spills()
 	if emergency.is_empty() or round_at.is_empty(): return
 	var at: Vector3 = round_at.position
 	var casting: bool = round_at.shadows and not echo_view
@@ -1262,7 +1263,7 @@ func round_lamps() -> void:
 ## without its shadow lit the air behind the walls of its room; and a lamp
 ## that lights nothing (lit_by_fittings()) lights no air either -- with the
 ## hotel's 1.0 it was an unseen bulb in the middle of every lit room's air.
-const EMERGENCY_AIR := 3.0
+const EMERGENCY_AIR := 4.0
 const ACCENT_AIR := 1.5
 const EXIT_AIR := 4.0
 const POOL_AIR := 0.12
@@ -1282,23 +1283,97 @@ func air_lights() -> void:
 
 ## The landmarks' battery lamps (office_landmarks.gd): {light, room, focal,
 ## air}. On whatever the power, shown and put away with the room they hang in.
-## Over a door: no shadow ever; the halo (air) lights the dust of the
-## corridor, its cone kept off its wall, the wash none. Over a dark landmark's
-## object: casting, and lighting the air, only while the eye is in that room.
+## Over a door: the halo (air) lights the dust of the corridor, its cone kept
+## off its wall, the wash none; neither casts where the lamps keep to their
+## rooms' layers. Elsewhere (Medio) the wash, aimed at its wall, lit the room
+## behind it through the wall: there it casts within WASH_CAST of the eye.
+## Over a dark landmark's object: casting, and lighting the air, only while
+## the eye is in that room.
 var landmark_lamps: Array = []
 const LANDMARK_AIR := 6.0
 const FOCAL_AIR := 2.0
+const WASH_CAST := 14.0
 func round_landmarks() -> void:
 	if landmark_lamps.is_empty() or round_at.is_empty(): return
 	var here: Dictionary = FLOOR.room_at(manifest.rooms, round_at.position)
 	var inside := int(here.get("id", -1))
+	var shading: bool = round_at.shadows and not echo_view
 	for entry: Dictionary in landmark_lamps:
 		var light: Light3D = entry.light
-		var casts: bool = bool(entry.focal) and round_at.shadows and not echo_view and int(entry.room) == inside
+		var casts: bool = shading and int(entry.room) == inside if bool(entry.focal) else shading and not layered and not bool(entry.get("air", false)) and light.global_position.distance_to(round_at.position) < WASH_CAST
 		if light.shadow_enabled != casts: light.shadow_enabled = casts
 		var air_share: float = (FOCAL_AIR if casts else 0.0) if bool(entry.focal) else (LANDMARK_AIR if bool(entry.get("air", false)) else 0.0)
 		var wanted: float = air_share if preset.lamp_fog else 0.0
 		if light.light_volumetric_fog_energy != wanted: light.light_volumetric_fog_energy = wanted
+
+## A lit room's light out of its open door into a dark corridor: kept to its
+## room's layers, a room's light never left it, and its pools light little air
+## so the room's stays clear (POOL_AIR). A spot of its own in the doorway, aimed
+## out and SPILL_DOWN down: its cone all on the corridor's side of the wall, its
+## reach across the corridor and no further, no shadow; weak on the corridor's
+## own layers (none where the layers are not kept: there the room's lamp
+## already lights the corridor) and lighting its air. While the door is open,
+## its room lit and the corridor not, the nearest SPILLS_MOST of the eye's
+## planta, dimmed with her drain.
+const SPILL_Y := 1.6
+const SPILL_DOWN := 55.0
+const SPILL_ANGLE := 34.0
+const SPILL_EDGE := 0.5
+## Its reach: across the corridor and this much more, so its cone dies on the far wall.
+const SPILL_PAST := 0.3
+const SPILL_ENERGY := 1.5
+const SPILL_AIR := 25.0
+const SPILL_NEAR := 14.0
+const SPILLS_MOST := 6
+## Every spill: {light, door, room, corridor, planta}.
+var spills: Array = []
+
+static func passage(room: Dictionary) -> bool:
+	return bool(room.get("corridor", false)) or int(room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY, OFFICE.LOBBY, OFFICE.LANDING]
+
+func door_spill(door: Node3D, room: Dictionary, corridor: Dictionary, center: Vector3, yaw: float) -> void:
+	var normal := Basis(Vector3.UP, yaw).z
+	var out := normal * signf((FLOOR.position_of(corridor) - center).dot(normal))
+	var holder: Node3D = room_nodes[int(corridor.id)]
+	var across: float = absf(Vector2(out.x, out.z).dot(FLOOR.size_of(corridor)))
+	var down := deg_to_rad(SPILL_DOWN)
+	var light := SpotLight3D.new()
+	light.name = "DoorSpill"
+	light.transform = Transform3D(Basis.looking_at(out * cos(down) - Vector3.UP * sin(down), Vector3.UP), center + out * (OFFICE.WALL_HALF + 0.02) + Vector3(0, SPILL_Y, 0) - holder.position)
+	light.light_color = LIGHTING.light_color(OFFICE.lamp_kelvin(room))
+	light.light_energy = SPILL_ENERGY
+	light.spot_range = across + SPILL_PAST
+	light.spot_angle = SPILL_ANGLE
+	# Soft to its edge: the light of a whole room through a doorway, no lamp's cone.
+	light.spot_attenuation = SPILL_EDGE
+	light.light_specular = 0.0
+	light.shadow_enabled = false
+	light.light_bake_mode = Light3D.BAKE_DISABLED
+	light.light_volumetric_fog_energy = 0.0
+	light.visible = false
+	holder.add_child(light)
+	spills.append({"light": light, "door": door, "room": int(room.id), "corridor": int(corridor.id), "planta": FLOOR.planta_of(center.y)})
+
+func round_spills() -> void:
+	if spills.is_empty() or round_at.is_empty(): return
+	var near: Array = []
+	for k in spills.size():
+		var s: Dictionary = spills[k]
+		var light: SpotLight3D = s.light
+		var distance: float = light.global_position.distance_to(round_at.position)
+		if not echo_view and int(s.planta) == int(round_at.here) and distance < SPILL_NEAR and bool(s.door.opened) and lit(int(s.room)) and not lit(int(s.corridor)): near.append([distance, k])
+		elif light.visible: light.visible = false
+	near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for place in near.size():
+		var s: Dictionary = spills[int(near[place][1])]
+		var light: SpotLight3D = s.light
+		var shown: bool = place < SPILLS_MOST
+		if light.visible != shown: light.visible = shown
+		if not shown: continue
+		light.light_energy = SPILL_ENERGY * (1.0 - drained(int(s.room)))
+		ROOM_LAYERS.light_only(light, int(room_layers.mask[int(s.corridor)]) if layered and not room_layers.is_empty() else 0)
+		var air_share: float = SPILL_AIR if preset.lamp_fog else 0.0
+		if light.light_volumetric_fog_energy != air_share: light.light_volumetric_fog_energy = air_share
 
 func air(light: Light3D, energy: float) -> void:
 	var wanted: float = energy if light.shadow_enabled and preset.lamp_fog else 0.0
@@ -1317,10 +1392,10 @@ func air(light: Light3D, energy: float) -> void:
 ## room's layer they speckled the reception's ceiling like snow.
 const DUST := preload("res://game/enemies/lurker/ceiling_dust.gd")
 const MOTES_BOX := 4.0
-const MOTES_PER_DUST := 14
+const MOTES_PER_DUST := 40
 const MOTES_MOST := 140
-const MOTE_ALPHA := Vector2(0.6, 1.0)
-const MOTE_LOOK := {"wrap": MOTES_BOX, "speck": Vector2(0.003, 0.008), "min_pixels": 2.0, "bokeh": 10.0, "focus": 1.0, "twinkle": 0.5, "scatter": 3.0}
+const MOTE_ALPHA := Vector2(0.8, 1.0)
+const MOTE_LOOK := {"wrap": MOTES_BOX, "speck": Vector2(0.002, 0.004), "min_pixels": 2.0, "bokeh": 3.0, "focus": 0.6, "twinkle": 0.3, "scatter": 30.0}
 var motes: MultiMeshInstance3D
 func build_dust() -> void:
 	DUST.textures()
@@ -2143,7 +2218,11 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 ## that room so it batches and layers with it, proud enough to stand off a
 ## panelled wall; not yet kept off reserved spots. The doorway's threshold
 ## strip too.
-func door_plaques(_door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, yaw: float) -> void:
+func door_plaques(door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, yaw: float) -> void:
+	# A room's light out of the door into its corridor (door_spill()).
+	if gate_stage(manifest, int(a.id), int(b.id)) == 0:
+		for pair in [[a, b], [b, a]]:
+			if not passage(pair[0]) and passage(pair[1]): door_spill(door, pair[0], pair[1], center, yaw)
 	var turn := Basis(Vector3.UP, yaw)
 	var normal := turn.z
 	var along := turn.x

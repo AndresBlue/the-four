@@ -359,7 +359,9 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			# The reception's big plants in its first view: the hotel's monstera, the tall pachira.
 			if int(room.get("type", -1)) == OFFICE.RECEPTION:
 				var big: Array = RECEPTION_PLANTS[int(builder.vary(seed_pos, 47) * 2.0)]
-				fitted(builder, holder, String(big[0]), 0.75, float(big[1]), builder.vary(seed_pos, 48) * TAU)
+				var pot: Vector3 = big[2]
+				if pot != Vector3.ZERO: builder.place(holder, STAND.plant_pot(builder, pot, "steel_dark"), Transform3D.IDENTITY)
+				fitted(builder, holder, String(big[0]), 0.75, float(big[1]) - pot.y, builder.vary(seed_pos, 48) * TAU, pot.y - 0.01 if pot != Vector3.ZERO else 0.0)
 			else: fitted(builder, holder, String(PLANT_MODELS[int(builder.vary(seed_pos, 47) * 2.0)]), 0.55, 1.3, builder.vary(seed_pos, 48) * TAU)
 		"reception_counter_l":
 			front_desk(builder, holder, size, room, item)
@@ -564,17 +566,18 @@ const BIN_MODELS := ["res://assets/props/hotel/metal_trash_can_clean.res", "res:
 ## Not the hotel's potted_plant_02 (some 35 k triangles): a nave lines up
 ## dozens of them (dens6, 12 November 2026).
 const PLANT_MODELS := ["res://assets/props/hotel/potted_plant_04.res", "res://assets/props/office/potted_plant_01.res"]
-## The reception's big plants: [model, height].
-const RECEPTION_PLANTS := [["res://assets/props/monstera/monstera.res", 1.45], ["res://assets/props/office/pachira_aquatica_01_d.res", 1.7]]
+## The reception's big plants: [model, height, its pot]. The pachira comes
+## without one and stood in the screed (the author, 17 November 2026).
+const RECEPTION_PLANTS := [["res://assets/props/monstera/monstera.res", 1.45, Vector3.ZERO], ["res://assets/props/office/pachira_aquatica_01_d.res", 1.7, Vector3(0.5, 0.46, 0.5)]]
 
 ## A model scaled to fit `wide` by `tall`, centred on the holder and on its
-## floor, turned by `yaw`.
-static func fitted(builder: Node3D, holder: Node3D, path: String, wide: float, tall: float, yaw: float) -> void:
+## floor (or `rise` above it, on its pot), turned by `yaw`.
+static func fitted(builder: Node3D, holder: Node3D, path: String, wide: float, tall: float, yaw: float, rise := 0.0) -> void:
 	var mesh: Mesh = load(path)
 	var bounds := mesh.get_aabb()
 	var fit: float = minf(tall / bounds.size.y, wide / maxf(bounds.size.x, bounds.size.z))
 	var spin := Basis(Vector3.UP, yaw)
-	var foot: Vector3 = spin * Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z) * fit
+	var foot: Vector3 = spin * Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z) * fit + Vector3(0, rise, 0)
 	# A plant or a bin: no shadow (office_models.casts()).
 	builder.place(holder, mesh, Transform3D(spin.scaled(Vector3.ONE * fit), foot), false)
 

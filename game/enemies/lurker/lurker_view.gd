@@ -22,7 +22,13 @@ extends Node
 ## the cores and the building's edge standing up to the slab as what stops her
 ## (barriers), and nothing past her prey's reach but what burns. She herself,
 ## her real body and its ink, is drawn alone by a camera of her own and laid
-## over the recording with a cold rim (lurker_her.gdshader). Her marks are in
+## over the recording with a cold rim (lurker_her.gdshader), screened to a
+## faint dither where it would hide her prey or, down in a room, what she
+## looks at. Every survivor in reach is outlined pale, a little wider than
+## its body; from over the ceiling the lit rooms' fittings glow under what
+## burns (UP_FITTING, GAIN_LEAST_UP). What she hears loud (a door, somebody
+## running, the typewriter) goes out as a faint wave of warmth over the
+## surfaces round it, where she hears it. Her marks are in
 ## the world, in the reading's terms (lurker_mark.gdshader): the outline of
 ## the tile she would go down by, of the way into the ducts at hand, her prey
 ## white (the attack may go) or red, and why not: the line of a look on where
@@ -112,6 +118,11 @@ const TORCH_THROUGH := Vector2(0.62, 40.0)
 ## GAIN_LEAST (the walls alone stay low); it follows over GAIN_TIME.
 const GAIN_LOW := 0.06
 const GAIN_LEAST := 0.5
+## From over the ceiling the lit rooms' fittings would be all she sees: they
+## read UP_FITTING of their heat and the gain starts at GAIN_LEAST_UP, so they
+## glow and the machines and torches still burn over them.
+const UP_FITTING := 0.75
+const GAIN_LEAST_UP := 0.85
 const GAIN_SHARE := 1.0
 const HIDDEN_SHARE := 1.5
 const GAIN_TIME := 0.35
@@ -171,6 +182,25 @@ const DRINK_EVERY := 25.0
 const DIM := 0.3
 ## Into and out of the ducts' colours (per second).
 const DUCTS_RATE := 3.0
+## What she hears shows where it is: a faint wave of warmth over the surfaces
+## round it (the shader's ripples), RIPPLES at most, each RIPPLE_LIFE s, out to
+## a reach by how loud. Running is heard every RUN_EVERY over RUN_SPEED m/s,
+## typing every TYPE_EVERY by somebody standing at the typewriter. Heard close
+## it is where it is; further, where it comes from (the opening it came
+## through).
+const RIPPLES := 8
+const RIPPLE_LIFE := 0.9
+const RUN_SPEED := 4.5
+const RUN_EVERY := 0.4
+const TYPE_EVERY := 0.3
+const TYPE_REACH := 1.4
+const RIPPLE_TRUTH := 6.0
+const NOISE := preload("res://game/audio/noise_kinds.gd")
+## Where her body is screened over what it hides: her prey's figure grown by
+## HOLE_GROW; down in a room, the middle of the picture this wide (screen
+## heights).
+const HOLE_GROW := 1.35
+const HOLE_MIDDLE := 0.14
 
 var driver
 var creature
@@ -242,6 +272,11 @@ var hud: Control
 ## When the room she drank went dark here (Beber's wait).
 var drank_at := -INF
 var deep_was := -1
+## What she heard lately: [point, born, reach]; seat -> s to its next run
+## heard; s to the next typing heard.
+var ripples: Array = []
+var run_clocks := {}
+var type_clock := 0.0
 
 func setup(owner_driver, cover: CanvasLayer) -> void:
 	driver = owner_driver
@@ -328,6 +363,9 @@ func setup(owner_driver, cover: CanvasLayer) -> void:
 	wire_a.resize(WIRES)
 	wire_b.resize(WIRES)
 	nuc_clock = randf_range(NUC_EVERY.x, NUC_EVERY.y)
+	if is_instance_valid(level.get("hotel")):
+		for door in level.hotel.doors:
+			if door.has_signal("noise"): door.noise.connect(on_door)
 
 ## A mesh of hers in the world, drawn by her camera only while her view is on.
 func world_mesh(title: String, with: Material) -> MeshInstance3D:
@@ -412,6 +450,7 @@ func _process(delta: float) -> void:
 	if gather_clock <= 0.0:
 		gather_clock = GATHER_EVERY
 		gather()
+	listen(delta)
 	dazzle = move_toward(dazzle, 1.0 if dazzled else 0.0, DAZZLE_RATE * delta)
 	ducts_shade = move_toward(ducts_shade, 1.0 if driver.mode == "ducts" else 0.0, DUCTS_RATE * delta)
 	calibrate(delta)
@@ -520,7 +559,7 @@ func gather() -> void:
 		if int(room.get("wing", -1)) != here or id >= hotel.lights.size() or not hotel.lit(id): continue
 		var light: OmniLight3D = hotel.lights[id]
 		if light.has_meta("off") or light.has_meta("void"): continue
-		var left: float = 1.0 - 0.5 * float(hotel.drained(id))
+		var left: float = (1.0 - 0.5 * float(hotel.drained(id))) * (UP_FITTING if above() else 1.0)
 		for shape in shapes_of(id): found.append([shape[0], shape[1], shape[2], FITTING_HEAT * left, Kind.LAMP, false])
 		var middle := FLOOR.position_of(room)
 		lit_rooms.append([Vector2(middle.x - eye.x, middle.z - eye.z).length(), id, left])
@@ -671,6 +710,45 @@ func look_at_survivors(eye: Vector3) -> void:
 			torch_view[int(one.slot)] = in_view(eye, torch.global_position, [one.get_rid()] if one is CollisionObject3D else [])
 	cold = level.sanity.burnt_survivors() if level.get("sanity") != null else []
 
+# --- What she hears --------------------------------------------------------------------
+
+func on_door(point: Vector3, radius: float, _kind: int) -> void:
+	if seat(): ripple(point, radius, 2.4)
+
+## The loud noises she would hear, from what this machine has of them:
+## survivors running, somebody at the typewriter.
+func listen(delta: float) -> void:
+	for one in level.survivors():
+		if not is_instance_valid(one) or not "slot" in one or not level.survivor_active(one): continue
+		var seat_id := int(one.slot)
+		var velocity: Vector3 = one.get("velocity") if one.get("velocity") != null else Vector3.ZERO
+		run_clocks[seat_id] = float(run_clocks.get(seat_id, 0.0)) - delta
+		if Vector2(velocity.x, velocity.z).length() > RUN_SPEED and float(run_clocks[seat_id]) <= 0.0:
+			run_clocks[seat_id] = RUN_EVERY
+			ripple(one.global_position + Vector3(0, 0.05, 0), NOISE.radius("run"), 2.0)
+	var files = level.objectives.get("files")
+	if files == null or files.usables.is_empty(): return
+	var typewriter: Vector3 = files.usables[0].global_position
+	type_clock -= delta
+	if type_clock > 0.0: return
+	for one in level.survivors():
+		if not is_instance_valid(one): continue
+		var velocity: Vector3 = one.get("velocity") if one.get("velocity") != null else Vector3.ZERO
+		var off: Vector3 = one.global_position - typewriter
+		if Vector2(off.x, off.z).length() < TYPE_REACH and absf(off.y) < 1.5 and Vector2(velocity.x, velocity.z).length() < 0.3:
+			type_clock = TYPE_EVERY
+			ripple(typewriter, NOISE.radius("door_slow"), 0.9)
+			return
+
+## A noise where she hears it, as she hears it, or nowhere: its wave over the
+## surfaces round it, out to `reach` metres.
+func ripple(point: Vector3, radius: float, reach: float) -> void:
+	if not creature.has_method("hear_route"): return
+	var route: Dictionary = creature.hear_route(point, radius)
+	if not bool(route.get("audible", false)): return
+	ripples.append([point if float(route.distance) < RIPPLE_TRUTH else route.apparent, clock, reach])
+	if ripples.size() > RIPPLES: ripples.pop_front()
+
 # --- The flash and the calibration -----------------------------------------------------
 
 ## A torch full in her face, from `from_direction` (world, from her to it):
@@ -796,7 +874,7 @@ func place(delta: float) -> void:
 		wire_a[w] = Vector4(run[0].x, run[0].y, run[0].z, float(run[2]))
 		wire_b[w] = Vector4(run[1].x, run[1].y, run[1].z, 0.0)
 	# The gain: the hottest in view at the top over GAIN_SHARE, slowly.
-	var target := maxf(GAIN_LEAST, maxf(float(peak[0]) * GAIN_SHARE, float(peak[1]) * HIDDEN_SHARE))
+	var target := maxf(GAIN_LEAST_UP if above() else GAIN_LEAST, maxf(float(peak[0]) * GAIN_SHARE, float(peak[1]) * HIDDEN_SHARE))
 	gain_high = lerpf(gain_high, target, 1.0 - exp(-delta / GAIN_TIME))
 	var reduced: bool = level.settings.values.reduced
 	material.set_shader_parameter("count", placed)
@@ -834,8 +912,8 @@ func place_figures() -> void:
 	for one in level.survivors():
 		if count >= FIGURES or not driver.markable(one, at, here): continue
 		var mark := 0.0
-		# Her prey white while she may go, or while she goes (her attack, her warning).
-		var going: bool = not driver.attack.is_empty() or creature.cue
+		# Her prey white while she may go, or while she goes (her attack, her warning, her take).
+		var going: bool = not driver.attack.is_empty() or creature.cue or int(one.slot) == driver.struck
 		if int(one.slot) == driver.prey: mark = 1.0 if bool(info.get("ok", false)) or going else 2.0
 		figures[count] = Vector4(one.global_position.x, one.global_position.y, one.global_position.z, mark)
 		count += 1
@@ -861,6 +939,18 @@ func place_figures() -> void:
 	material.set_shader_parameter("lit_heat", heats)
 	var red := int(info.get("room", -1))
 	material.set_shader_parameter("red_rect", rect_of(red) if red >= 0 and driver.prey >= 0 else Vector4.ZERO)
+	var waves := PackedVector4Array()
+	var reaches := PackedFloat32Array()
+	waves.resize(RIPPLES)
+	reaches.resize(RIPPLES)
+	ripples = ripples.filter(func(entry: Array) -> bool: return clock - float(entry[1]) < RIPPLE_LIFE)
+	for i in mini(ripples.size(), RIPPLES):
+		var point: Vector3 = ripples[i][0]
+		waves[i] = Vector4(point.x, point.y, point.z, (clock - float(ripples[i][1])) / RIPPLE_LIFE)
+		reaches[i] = float(ripples[i][2])
+	material.set_shader_parameter("ripple_count", mini(ripples.size(), RIPPLES))
+	material.set_shader_parameter("ripple_at", waves)
+	material.set_shader_parameter("ripple_reach", reaches)
 
 ## A room's floor, (min x, min z, max x, max z).
 func rect_of(id: int) -> Vector4:
@@ -949,6 +1039,29 @@ func place_her() -> void:
 	her_eye.fov = camera.fov
 	her_eye.near = camera.near
 	her_eye.far = camera.far
+	# Screened where she would hide her prey (the one she goes for first) and,
+	# down in a room, the middle of the picture, what she looks at.
+	var holes := PackedVector4Array()
+	holes.resize(3)
+	var count := 0
+	var seats: Array = [driver.struck, driver.prey].filter(func(s: int) -> bool: return s >= 0)
+	for s: int in seats:
+		var one = driver.body_of(s)
+		if one == null or count >= 2: continue
+		var chest: Vector3 = one.global_position + Vector3(0, 0.95, 0)
+		if camera.is_position_behind(chest): continue
+		var middle := camera.unproject_position(chest)
+		var wide: float = (camera.unproject_position(chest + camera.global_basis.x * 0.45) - middle).length()
+		var tall: float = (camera.unproject_position(one.global_position + Vector3(0, 1.85, 0)) - camera.unproject_position(one.global_position)).length() * 0.5
+		var half := Vector2(wide, maxf(wide, tall)) * HOLE_GROW
+		holes[count] = Vector4(middle.x / size.x, middle.y / size.y, half.x / size.x, half.y / size.y)
+		count += 1
+	if driver.mode == "down":
+		holes[count] = Vector4(0.5, 0.5, HOLE_MIDDLE * float(size.y) / float(size.x), HOLE_MIDDLE)
+		count += 1
+	var rim: ShaderMaterial = (her_layer.get_child(0) as TextureRect).material
+	rim.set_shader_parameter("hole_count", count)
+	rim.set_shader_parameter("holes", holes)
 
 ## A key in its keycap beside a piece (`kind` "way" or "down"), none at INF.
 func tag(kind: String, at: Vector3, action: String) -> void:

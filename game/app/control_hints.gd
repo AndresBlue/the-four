@@ -206,8 +206,12 @@ func lurker_keys(action: String) -> Array:
 		return [level.settings.trigger_name(right) if on_pad() else ("CLIC IZQ." if right else "CLIC DER.")]
 	return [(level.settings.button_name(int(pair[1])) if on_pad() else OS.get_keycode_string(int(pair[0]))).to_upper()]
 
+## A script cannot plug a pad in: the drive with a pad's events
+## (tools/dev/lurker_hunt_drive.gd) says one is there.
+var pad_said := false
+
 func on_pad() -> bool:
-	return level.settings.using_pad and level.settings.pad_present()
+	return level.settings.using_pad and (pad_said or level.settings.pad_present())
 
 ## A card: rows of [keys, what they do, what does it (done())]. "MANTÉN"
 ## before a key says to hold it.

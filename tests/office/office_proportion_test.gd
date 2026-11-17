@@ -51,7 +51,7 @@ var rows: Array = [
 	["montacargas", [OFFICE.REFUGE, OFFICE.LOBBY], 3.0, 30.0, [OFFICE.REFUGE, OFFICE.LOBBY]],
 ]
 ## The real building's own figures where its cells, not its furniture, set the
-## share (planta_real.md 13.2 and 13.4; read when office_palette.real_plan_on()):
+## share (planta_real.md 13.2 and 13.4):
 ## an archive's 1.6 m spine, door ends and open aisle in a cell of 3.6 (mobile)
 ## or 7.2 m leave its rows under today's share of 6 to 9 m modules; a director's
 ## office of two bays (some 100 m2) keeps its desk once (ONE_PER_HALL); and a
@@ -289,10 +289,10 @@ func run() -> void:
 		print("PROPORCION %s suelo=%.1f salas=%d banda=%d libre=%.1f pieza=%.1f" % [name_of, taken, count, int(in_band), free, width])
 		if count == 0 and NO_CAP.has(name_of): continue
 		var most: float = 100.0 if NO_CAP.has(name_of) else MOST_FLOOR
-		var least: float = float(REAL_FLOORS.get(name_of, row[2])) if OFFICE.real_plan_on() else float(row[2])
+		var least: float = float(REAL_FLOORS.get(name_of, row[2]))
 		check("Suelo ocupado en %s: mediana entre %.0f y %.0f" % [name_of, least, most], taken >= least and taken <= most, "%.1f" % taken)
 		check("Suelo libre en cuadro en %s: %.0f o menos" % [name_of, float(row[3])], free <= float(row[3]), "%.1f" % free)
-		var piece: float = float(REAL_PIECE.get(name_of, LEAST_PIECE)) if OFFICE.real_plan_on() else LEAST_PIECE
+		var piece: float = float(REAL_PIECE.get(name_of, LEAST_PIECE))
 		if name_of in ["electrico", "climatizacion"] or MAIN_KINDS.has(name_of): check("Pieza principal en cuadro en %s: %.0f o más" % [name_of, piece], width >= piece, "%.1f" % width)
 		if BANDED.has(name_of): check("Las salas de %s en su banda: la mitad o más" % name_of, in_band >= 50.0, "%d" % int(in_band))
 	check("El paseo del cuadro al montacargas cabe andando en los 60 s de lift_timer", walk_most <= 60.0 * GAIT.SPEED_WALK, "%.1f m" % walk_most)

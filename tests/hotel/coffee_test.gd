@@ -20,6 +20,10 @@ func card_words(level) -> Array:
 		if not line.is_queued_for_deletion(): words.append(String(line.get_child(line.get_child_count() - 1).text))
 	return words
 
+## Every machine LIFT_CLEAR or more from the doors of each lift in its room.
+func clear_of_lifts(level, machines: Array) -> bool:
+	return machines.all(func(one): return level.coffee.lift_fronts(level.FLOOR.room_at(level.manifest.rooms, one.global_position)).all(func(lift: Vector3): return Vector2(lift.x - one.global_position.x, lift.z - one.global_position.z).length() >= level.coffee.LIFT_CLEAR))
+
 func run() -> void:
 	var level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -48,6 +52,7 @@ func run() -> void:
 	check("Mirándola de frente, la mirada da con la máquina", level.interaction.focused_area() == machine, str(level.interaction.focused_area()))
 	var lamps: Array = Array(level.hotel.sconce_spots)
 	check("Ninguna tapa un aplique ni el cuadro entre dos", machines.all(func(one): return lamps.all(func(lamp: Vector3): return Vector2(lamp.x - one.global_position.x, lamp.z - one.global_position.z).length() >= level.coffee.LAMP_CLEAR or absf(lamp.y - one.global_position.y) >= 3.0)))
+	check("Ninguna delante de un ascensor", clear_of_lifts(level, machines))
 	level.player.sanity = 20.0
 	level.coffee.drink(machine)
 	check("Una vez por superviviente y máquina", not level.coffee.can_drink(machine))
@@ -66,5 +71,6 @@ func run() -> void:
 	check("El piso 2 de cinco supervivientes, el más grande, tiene 5", office.size() == 5, str(office.size()))
 	var palette = level.FLOOR.palette(level.manifest)
 	check("Alguna en una sala de descanso", office.any(func(one): return int(level.FLOOR.room_at(level.manifest.rooms, one.global_position).get("type", -1)) == palette.BREAK_ROOM))
+	check("Ninguna delante del ascensor de la recepción ni de otro", clear_of_lifts(level, office))
 	print("COFFEE_TEST_RESULT %d fallos" % failed)
 	quit(1 if failed > 0 else 0)

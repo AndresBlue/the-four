@@ -10,9 +10,15 @@ extends SceneTree
 ## far way out, on the way and arriving; down by a tile; a prey white, red for
 ## a look on where she would drop, red for a torch on it; the attack, its
 ## warning and the take; a torch turned on her in her warning, the flash and
-## her flight. evidence/versus/presentacion/*.png, sesion.txt and hoja.png.
+## her flight. Then the polish (lurker_versus.md 11, «Estado del pulido»): a
+## door slammed near her (its wave), a service gallery with no false ceiling,
+## planta 3 in the dark, her keys and moves on a pad's events, and the flash
+## and the calibration with reduced effects. The 1.9.0 shots of down in a
+## room and of the attack lead the sheet, as they were.
+## evidence/versus/pulido/*.png, sesion.txt and hoja.png.
 ##   godot --path . --script res://tools/dev/lurker_hunt_drive.gd -- --bots-hunt --floor=2 --bots=3 --seed=81 --test-profile
-const OUT := "res://evidence/versus/presentacion/"
+const OUT := "res://evidence/versus/pulido/"
+const BEFORE := "res://evidence/versus/presentacion/"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const SIZE := Vector2i(1280, 720)
@@ -47,6 +53,9 @@ func run() -> void:
 	level.automation = true
 	level.settings.set_designed(ALTO)
 	level.apply_settings()
+	for title in ["13_abajo", "17_ataque_cae", "18_aviso", "02_plenum_supervivientes"]:
+		var old := Image.load_from_file(ProjectSettings.globalize_path(BEFORE + title + ".png"))
+		if old != null and not old.is_empty(): shots.append(["antes_%s.png" % title, old])
 	# As it loads: nothing touched, her and her camera where they were 3 s later.
 	await shot("00_carga")
 	var at_load: Vector3 = at()
@@ -65,6 +74,8 @@ func run() -> void:
 	level.player.global_position = Vector3(0, -60, 0)
 	level.player.torch.visible = false
 	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
+	# A stage given back would put her elsewhere with a new grace: not in this drive.
+	if level.session.revived.is_connected(level.on_revived): level.session.revived.disconnect(level.on_revived)
 	lurker.grace = 0.0
 	level.camcorder.announce("")
 	note("en sus manos; %d bots quietos" % bots.size())
@@ -73,7 +84,12 @@ func run() -> void:
 	await busy_part()
 	await duct_part()
 	await down_part()
+	await noise_part()
 	await prey_part()
+	await gallery_part()
+	await top_part()
+	await pad_part()
+	await reduced_part()
 	var file := FileAccess.open(OUT + "sesion.txt", FileAccess.WRITE)
 	if file != null:
 		for line in log_lines: file.store_line(line)
@@ -338,8 +354,13 @@ func down_part() -> void:
 	await wait(0.25)
 	await shot("12_bajando")
 	await wait(1.0)
-	note("abajo: en un techo %s, cámara %s" % [str(lurker.motion.surface()), String(driver.mode)])
+	note("abajo: en un techo %s, cámara %s, a %.2f m de su cara, lado %d" % [str(lurker.motion.surface()), String(driver.mode), driver.camera.global_position.distance_to(lurker.face_point()), int(driver.side)])
 	await shot("13_abajo")
+	# Looking round the room with the mouse.
+	await turn_to(driver.forward().rotated(Vector3.UP, 0.6))
+	await tilt_to(-0.7)
+	await wait(0.2)
+	await shot("13b_abajo_mira")
 	await tap(KEY_SPACE)
 	await wait(1.0)
 	note("arriba otra vez: plénum %s" % str(lurker.motion.plenum))
@@ -380,6 +401,11 @@ func prey_part() -> void:
 		await tick()
 	note("presa: %s" % str(driver.prey_info))
 	await shot("14_presa_blanca")
+	# A run's noise where it stands, as her view gets one (lurker_view.listen()).
+	driver.view.ripple(prey.global_position + Vector3(0, 0.05, 0), driver.view.NOISE.radius("run"), 2.0)
+	await wait(0.15)
+	note("la oye correr: %d ondas" % driver.view.ripples.size())
+	await shot("14b_onda_carrera")
 	# A witness beside the prey looking past it at where her face would be.
 	var drop: Dictionary = driver.prey_info.get("drop", {})
 	var face: Vector3 = drop.get("face", stand - way * 1.8 + Vector3(0, 2.4, 0))
@@ -402,6 +428,11 @@ func prey_part() -> void:
 		await tick()
 		if String(driver.attack.get("phase", "")) == "drop": break
 	await shot("17_ataque_cae")
+	for i in 60:
+		await tick()
+		if driver.strike > 0.99: break
+	note("encuadre de la presa: %.2f, cámara a %.2f m de su pecho" % [float(driver.strike), driver.camera.global_position.distance_to(prey.global_position + Vector3(0, 1.1, 0))])
+	await shot("17b_ataque_encuadre")
 	for i in 120:
 		await tick()
 		if lurker.cue: break
@@ -435,7 +466,7 @@ func prey_part() -> void:
 		var to: Vector3 = lurker.face_point() - lit_one.camera.global_position
 		lit_one.look_yaw = atan2(-to.x, -to.z)
 		lit_one.look_pitch = atan2(to.y, Vector2(to.x, to.z).length())
-		for i in 60:
+		for i in 10:
 			await tick()
 			if driver.view.flash_clock != flash_was: break
 		# The bot's turn did not blind her (its torch follows its own look):
@@ -450,4 +481,203 @@ func prey_part() -> void:
 		await wait(1.5)
 		note("tras el fogonazo: %s, cámara %s" % ["arriba" if driver.up() else "abajo", String(driver.mode)])
 		await shot("22_huida_arriba")
+		# Sent off, that warning is called off (lurker.scare_off()): no take.
+		for i in 600:
+			if level.execution.is_empty() and not lurker.scene_held and lurker.warning.active.is_empty(): break
+			await tick()
+		note("aquel aviso acabó: %s %s" % [String(lurker.warning.ledger.back().get("outcome", "")), String(lurker.warning.ledger.back().get("reason", ""))])
 	else: note("la segunda presa no empezó aviso: %s" % str(driver.prey_info))
+
+## A door of the room under her slammed: the wave of what she hears.
+func noise_part() -> void:
+	var spot := prey_room()
+	if spot.is_empty(): return
+	var room := int(spot.room)
+	var door = null
+	for one in level.hotel.doors:
+		var at: Vector3 = one.doorway
+		if absf(at.y - float(level.manifest.rooms[room].py)) < 2.0 and Vector2(at.x - centre(room).x, at.z - centre(room).z).length() < 12.0 and (door == null or Vector2(at.x - centre(room).x, at.z - centre(room).z).length() < Vector2(door.doorway.x - centre(room).x, door.doorway.z - centre(room).z).length()): door = one
+	if door == null:
+		note("sin puerta cerca para el ruido")
+		return
+	var doorway: Vector3 = door.doorway
+	driver.to_plenum(doorway + (centre(room) - doorway).normalized() * 5.0 + Vector3(0, 2.0, 0), room)
+	await wait(0.3)
+	await turn_to(doorway - at())
+	await tilt_to(-1.0)
+	await wait(0.3)
+	door.toggle(false, true, true)
+	await wait(0.05)
+	note("portazo en %s: %d ondas" % [str(doorway), driver.view.ripples.size()])
+	await shot("13c_ruido_portazo")
+
+## A service gallery (no false ceiling): on its slab, in sight, and crawling it.
+func gallery_part() -> void:
+	var best := -1
+	for room in level.manifest.rooms:
+		var id := int(room.id)
+		if int(room.get("wing", -1)) != 0 or not lurker.shell.tray_of.has(id) or OFFICE.false_ceiling(room) or FLOOR.is_void(room): continue
+		# The longest of planta 1.
+		var size := FLOOR.size_of(room)
+		if best < 0 or maxf(size.x, size.y) > maxf(FLOOR.size_of(level.manifest.rooms[best]).x, FLOOR.size_of(level.manifest.rooms[best]).y): best = id
+	if best < 0:
+		note("sin galería de servicio")
+		return
+	for bot in bots: park(bot)
+	driver.to_plenum(centre(best) + Vector3(0, 1, 0), best)
+	await wait(0.3)
+	# Along its long way.
+	var size := FLOOR.size_of(level.manifest.rooms[best])
+	await turn_to(Vector3(1, 0, 0) if size.x >= size.y else Vector3(0, 0, 1))
+	await wait(0.3)
+	note("galería %d (planta %d): galería %s, arriba %s, cámara %s" % [best, int(level.manifest.rooms[best].get("wing", -1)) + 1, str(driver.gallery()), str(driver.up()), String(driver.mode)])
+	await shot("23_galeria")
+	var from: Vector3 = at()
+	key(KEY_W, true)
+	var m = lurker.motion
+	for i in 4:
+		await wait(0.25)
+		note("  W: %.2f m/s (ritmo %.2f), empuje %s, tramos %d, ráfagas %s, aviso %s, huida %s, ataque %s, viaje %s" % [m.speed, m.pace, str(m.free_way), m.legs.size(), str(m.in_bursts()), str(lurker.cue), str(m.bolting), str(driver.attack), str(driver.trip.get("phase", ""))])
+	key(KEY_W, false)
+	await wait(0.3)
+	note("por la galería: %.2f m en 1 s, galería %s" % [Vector2(at().x - from.x, at().z - from.z).length(), str(driver.gallery())])
+	await shot("24_galeria_avanza")
+
+## Planta 3 in the dark, from over its ceiling.
+func top_part() -> void:
+	var best := -1
+	for room in level.manifest.rooms:
+		var id := int(room.id)
+		if int(room.get("wing", -1)) != 2 or not lurker.shell.tray_of.has(id) or not OFFICE.false_ceiling(room): continue
+		if best < 0 or FLOOR.size_of(room).x * FLOOR.size_of(room).y > FLOOR.size_of(level.manifest.rooms[best]).x * FLOOR.size_of(level.manifest.rooms[best]).y: best = id
+	if best < 0:
+		note("sin sala en la planta 3")
+		return
+	driver.to_plenum(centre(best) + Vector3(0, 1, 0), best)
+	await wait(1.0)
+	note("planta 3, sala %d: plénum %s, planta %d, encendida %s; su cuerpo visible %s a %.2f m de su punto; cámara a %.2f m sobre el suelo" % [best, str(lurker.motion.plenum), driver.planta() + 1, str(level.hotel.lit(best)), str(lurker.visual.is_visible_in_tree()), lurker.visual.global_position.distance_to(at()), driver.camera.global_position.y - FLOOR.planta_y(2)])
+	await shot("25_planta3")
+
+func pad_axis(axis: JoyAxis, value: float) -> void:
+	var event := InputEventJoypadMotion.new()
+	event.device = 0
+	event.axis = axis
+	event.axis_value = value
+	Input.parse_input_event(event)
+
+func pad_button(button: JoyButton, down: bool) -> void:
+	var event := InputEventJoypadButton.new()
+	event.device = 0
+	event.button_index = button
+	event.pressed = down
+	Input.parse_input_event(event)
+
+func pad_tap(button: JoyButton) -> void:
+	pad_button(button, true)
+	await tick()
+	await tick()
+	pad_button(button, false)
+
+## On a pad's events (no pad can be plugged in from a script: the hints are
+## told one is): the stick moves her, the other turns her camera, each button
+## does its action, and her keys along the foot name the pad's.
+func pad_part() -> void:
+	var spot := prey_room()
+	if spot.is_empty(): return
+	for bot in bots: park(bot)
+	level.hints.pad_said = true
+	driver.to_plenum((spot.centre as Vector3) + Vector3(-3, 1, 0), int(spot.room))
+	await wait(0.3)
+	var from: Vector3 = at()
+	pad_axis(JOY_AXIS_LEFT_Y, -1.0)
+	await wait(0.8)
+	pad_axis(JOY_AXIS_LEFT_Y, 0.0)
+	await wait(0.3)
+	note("mando, stick izquierdo 0,8 s: %.2f m (usa mando %s)" % [Vector2(at().x - from.x, at().z - from.z).length(), str(level.settings.using_pad)])
+	var yaw_was: float = driver.yaw
+	pad_axis(JOY_AXIS_RIGHT_X, 1.0)
+	await wait(0.5)
+	pad_axis(JOY_AXIS_RIGHT_X, 0.0)
+	await wait(0.3)
+	note("stick derecho 0,5 s: la cámara gira %.2f rad" % absf(wrapf(driver.yaw - yaw_was, -PI, PI)))
+	pad_button(JOY_BUTTON_LEFT_SHOULDER, true)
+	pad_axis(JOY_AXIS_LEFT_X, 1.0)
+	await wait(0.4)
+	note("LB mantenido: sigilo %s a %.2f m/s" % [str(driver.sneaking), lurker.motion.speed])
+	pad_axis(JOY_AXIS_LEFT_X, 0.0)
+	pad_button(JOY_BUTTON_LEFT_SHOULDER, false)
+	var distance_was: float = driver.distance
+	await pad_tap(JOY_BUTTON_RIGHT_SHOULDER)
+	await wait(0.1)
+	note("RB: la cámara de %.1f a %.1f m" % [distance_was, driver.distance])
+	await wait(0.3)
+	await shot("26_mando_plenum")
+	await pad_tap(JOY_BUTTON_A)
+	await wait(1.2)
+	note("A: abajo %s, cámara %s" % [str(not driver.up()), String(driver.mode)])
+	var clip_was: String = lurker.intent_clip
+	await pad_tap(JOY_BUTTON_Y)
+	await wait(0.1)
+	note("Y: asomarse, pose %s (antes %s)" % [lurker.intent_clip, clip_was])
+	await wait(1.3)
+	pad_axis(JOY_AXIS_TRIGGER_LEFT, 1.0)
+	await wait(0.1)
+	pad_axis(JOY_AXIS_TRIGGER_LEFT, 0.0)
+	note("LT: beber pedido; sala bebida %s" % str(lurker.get("deep_room")))
+	await shot("27_mando_abajo")
+	pad_axis(JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	await wait(0.1)
+	pad_axis(JOY_AXIS_TRIGGER_RIGHT, 0.0)
+	note("RT: atacar sin presa, nada: ataque %s" % str(driver.attack))
+	await pad_tap(JOY_BUTTON_A)
+	await wait(1.2)
+	note("A otra vez: arriba %s" % str(driver.up()))
+	var grille := duct_near()
+	if grille >= 0: driver.to_plenum((lurker.ducts.exits[grille].position as Vector3) + Vector3(1.5, 1, 0), int(lurker.ducts.exits[grille].room))
+	await wait(0.4)
+	await pad_tap(JOY_BUTTON_X)
+	await wait(0.4)
+	note("X junto a una rejilla: ductos %s" % String(driver.trip.get("phase", "-")))
+	await shot("28_mando_ductos")
+	await pad_tap(JOY_BUTTON_A)
+	await wait(0.4)
+	note("teclas con mando: %s" % str(driver.view.rows().map(func(row: Array) -> Array: return row[0])))
+	level.hints.pad_said = false
+
+## The nearest way into the ducts of planta 1 to her, -1 none.
+func duct_near() -> int:
+	var best := -1
+	var nearest := INF
+	for e in lurker.ducts.exits.size():
+		if not driver.travel_exit(e) or int(lurker.ducts.node_wings[int(lurker.ducts.exits[e].node)]) != 0: continue
+		var d := Vector2((lurker.ducts.exits[e].position as Vector3).x - at().x, (lurker.ducts.exits[e].position as Vector3).z - at().z).length()
+		if d < nearest:
+			nearest = d
+			best = e
+	return best
+
+## Reduced effects: the flash half as far and steady, and the calibration
+## never holds the picture.
+func reduced_part() -> void:
+	var spot := prey_room()
+	if spot.is_empty(): return
+	level.settings.values.reduced = true
+	level.apply_settings()
+	driver.to_plenum((spot.centre as Vector3) + Vector3(0, 1, 0), int(spot.room))
+	await wait(0.3)
+	driver.go_down()
+	await wait(1.2)
+	var held: float = driver.view.frozen_until
+	driver.view.nuc_clock = 0.0
+	await wait(0.2)
+	note("efectos reducidos: calibración forzada, imagen congelada %s" % str(driver.view.frozen_until != held or driver.view.frozen.visible))
+	driver.view.immune_until = -1.0
+	driver.view.flash(-driver.camera.global_basis.z)
+	var values: Array = []
+	for i in 30:
+		await tick()
+		values.append(snappedf(driver.view.flash_now(), 0.01))
+		if i == 9: await shot("29_reducidos_fogonazo")
+	note("fogonazo con efectos reducidos, %s (tope %.2f)" % [str(values), driver.view.REDUCED_PEAK])
+	level.settings.values.reduced = false
+	level.apply_settings()

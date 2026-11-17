@@ -103,7 +103,24 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 - La cámara fecha en 1990; el año de cada cosa sigue abierto en LORE.md.
 - Burocracia de lo anómalo: expedientes, fichas, triplicados de papel carbón, sellos de CONFIDENCIAL, tubos neumáticos, teléfonos de disco y terminales de fósforo verde apagados.
 
+### El edificio (uno por partida)
+
+Detalle y cifras en `.claude/specs/planta_real.md` (§13 y «Estado de la construcción»).
+
+- **Un sótano sin fachada.** Lo ordenan el muro del perímetro, la estructura que baja del hotel y los núcleos. Cada partida sortea un edificio de su semilla (`office_palette.TYPOLOGIES`), con una rejilla que usan tal cual sus tres plantas: lo que cambia de una planta a otra son los tabiques, el programa y los cortes.
+- **La rejilla.** Vanos de 7,2 m a lo largo: de despachos (dos celdas de 3,6) o de salas (una de 7,2). Todas las cotas son múltiplos de 0,6 (la placa del techo). Toda sala es una celda, salvo las naves, los archivos y el despacho de dirección de dos vanos, que son salones de varias celdas de 7,2.
+- **Dos tipologías**, sorteadas por peso: **anillo** (2) y **espina** (1).
+  - **Anillo:** dos pasillos principales con dos filas centrales de 7,2 entre ellos, una banda de despachos delante y otra detrás, la galería de servicio y la banda de servicio. 11 o 12 vanos: en 60 semillas, de 88,8 a 96,0 m de largo por 37,8 a 40,8 de fondo. Se da la vuelta por los pasillos y los transversales.
+  - **Espina:** un solo pasillo de punta a punta, la banda delantera a un lado y una fila central de 7,2 al otro, la galería y la banda de servicio detrás. 12 o 13 vanos: de 96,0 a 103,2 m por 23,4 a 24,6. El transversal del medio es macizo y en las plantas 1 y 3 la galería se tabica en él: no hay vuelta de pasillo, y se da la vuelta por las salas pasantes (naves, archivos, la sala de juntas con dos puertas).
+- **Los núcleos:** uno en cada extremo de la zona central, con su montacargas y sus aseos. El del montacargas A, lejos de la recepción, con la climatización de la planta 3; el del B, en el extremo de la recepción. Ninguno toca el perímetro: la mano en la pared no los encuentra.
+- **La galería de servicio**, de 2,4 m y sin falso techo, por detrás de todo el edificio, con la banda de servicio (almacenes, depósitos, cuartos técnicos). En la planta 2 se tabica junto al núcleo de B: del cuadro eléctrico al B hay que cruzar tres zonas de circuito o más.
+- **La recepción**, en el extremo de B, en una esquina de la banda delantera (en el anillo, también de la trasera): una sala de 9,6 × 6,0 m (el autor, 17 de noviembre de 2026). Su vano es el único más largo que la estructura, y lo es entero, en las tres plantas: con él, el montacargas B y su vestíbulo, que suelen caer en ese vano, miden 9,6 a lo largo. En ella están el ascensor del hotel por el que se llega, el mostrador y la espera.
+- **Un superviviente:** el edificio es el de la planta mayor, y las plantas 2 y 3, de media superficie, cierran la mitad sin núcleos tras un cortafuegos.
+- **La planta de reserva:** si ningún intento del edificio pasa el validador y la comprobación física (12 intentos), sale el plano de antes (la rejilla del hotel con módulos de 6 a 9 m). En 60 semillas no sale ninguna (`evidence/planta/ronda10/`).
+
 ### Las salas (catálogo propuesto)
+
+En el edificio, «módulo» es una celda (3,6 o 7,2 m por el fondo de su banda) y «salón», varias celdas de 7,2 seguidas.
 
 | Sala | Tamaño | Luz | Qué tiene | Para ella |
 |---|---|---|---|---|
@@ -732,7 +749,9 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
 ### 11.3 El generador y la geometría de las oficinas
 
 - **`office_generator.gd`:**
-  - el motor de rejilla del hotel con la paleta de oficinas (módulos de 6 a 9 m, pasillos de 3 a 3,6 m y alguno de 2,4);
+  - el edificio de la sección 2: `draw_building()` lo sortea en cada intento desde la tabla de su tipología (`office_palette.TYPOLOGIES`; `typology_of()` elige anillo o espina por peso en un flujo propio de la semilla, o la que fuerce `--plan=` o `FORCE_TYPOLOGY`), y el motor de rejilla del hotel lo recorre con sobrescrituras propias (`map_generator.gd` no cambia). El manifiesto dice la tipología en `plans[*].plan`;
+  - el programa antes que las puertas (`draw_programme()`, por zonas: `REAL_ZONES`, `REAL_MUSTS`, `REAL_MOST`, `REAL_APART`), las puertas con motivo (`open_doors()`; `hang_doors()` lleva las de la sala de juntas y la secretaría hacia una esquina, y cuelga una hoja de su otra jamba si abierta taparía otra puerta de la sala o se cruzaría en el paso desde ella) y los cortes de cada planta;
+  - el plano de antes (rejilla del hotel, módulos de 6 a 9 m) queda solo como **planta de reserva**: `candidate(..., standby = true)` llama a `super`, y sale si ningún intento del edificio pasa;
   - su propio `finish()`: tipos, falso techo a 2,95, taquillas en vez de armarios, muebles;
   - y lo de cada planta:
     - en la 1, la ventanilla, las estaciones y la red de tubos;
@@ -740,7 +759,7 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
     - en la 3, el puesto de seguridad, la sala de climatización, el ducto principal y el pozo;
     - el montacargas, colocado como el refugio del hotel;
   - genera la red de **ductos** y los **pasillos de archivo** en el manifiesto, que la huella de red ya compara.
-  - amuebla cada sala por la receta de su tipo (`office_recipes.gd`, con un sorteo propio; las tablas por tipo están en la paleta: `ROOM_FURNITURE`, `FEATURE_WALLS`, `CORNERS_REPLACED`). Lo que ocupa suelo va a `room.furniture`: contra su pared característica (`room.feature`, la que miran las capturas de `office_rooms_capture.gd`; en las salas de `FEATURE_FIRST_PIECE`, cuyas recetas no tienen entradas contra esa pared, pasa a ser la pared donde cayó su primera pieza), contra otra pared libre o exento hacia esa pared. De las otras paredes prueba antes las que no tienen puerta y la de enfrente de la característica la última, y en cada una empieza por la esquina que se ve desde la puerta (`walls_for()`, `feature_end()`): lo que queda junto al ojo no se ve. Un salón de dirección pone su único escritorio en la celda con la puerta al pasillo, o si no cabe en la siguiente que lo admita (`ONE_PER_HALL`, `hall_heads()`), y todas sus celdas comparten `room.feature`. Deja libres las puertas, las taquillas, las estaciones, los lectores, el cuadro, los minuteros, la consola, la climatizadora y, en un vestíbulo o refugio con montacargas, el sitio donde la etapa levanta a los caídos (`RAISE_AWAY`, `RAISE_REACH`), con un paso hasta cada uno para los muebles de pared y los exentos; no pone nada a menos de 0,6 m de una cristalera (tampoco las piezas de esquina más altas que el antepecho), y las piezas de esquina que la receta sustituye solo vuelven si su sustituta no cupo;
+  - amuebla cada sala por la receta de su tipo (`office_recipes.gd`, con un sorteo propio; las tablas por tipo están en la paleta: `ROOM_FURNITURE`, `FEATURE_WALLS`, `CORNERS_REPLACED`). Las celdas estrechas del edificio tienen recetas propias (`recipe_of()`): `SMALL_FURNITURE` para las de 4,5 m o menos de lado corto (el despacho de 3,6 y los demás), `NARROW_EXEC` para el despacho de dirección de un vano de despachos (dos celdas de 3,6) y `HALL_EXEC` para el de dos vanos (14,4 × 7,2: la zona de mesa en su celda de cabeza y la de reunión en la otra). Lo que ocupa suelo va a `room.furniture`: contra su pared característica (`room.feature`, la que miran las capturas de `office_rooms_capture.gd`; en las salas de `FEATURE_FIRST_PIECE`, cuyas recetas no tienen entradas contra esa pared, pasa a ser la pared donde cayó su primera pieza), contra otra pared libre o exento hacia esa pared. De las otras paredes prueba antes las que no tienen puerta y la de enfrente de la característica la última, y en cada una empieza por la esquina que se ve desde la puerta (`walls_for()`, `feature_end()`): lo que queda junto al ojo no se ve. Un salón de dirección pone su único escritorio en la celda con la puerta al pasillo, o si no cabe en la siguiente que lo admita (`ONE_PER_HALL`, `hall_heads()`), y todas sus celdas comparten `room.feature`. Deja libres las puertas, las taquillas, las estaciones, los lectores, el cuadro, los minuteros, la consola, la climatizadora y, en un vestíbulo o refugio con montacargas, el sitio donde la etapa levanta a los caídos (`RAISE_AWAY`, `RAISE_REACH`), con un paso hasta cada uno para los muebles de pared y los exentos; no pone nada a menos de 0,6 m de una cristalera (tampoco las piezas de esquina más altas que el antepecho), y las piezas de esquina que la receta sustituye solo vuelven si su sustituta no cupo;
   - en una celda de nave de oficina abierta o de cubículos (desde el 12 de noviembre de 2026; detalle en `.claude/specs/spec_rediseno.md` 3.3) deja calles fijas de 1,2 m (el pasillo central, los lados abiertos, de cada puerta al pasillo y entre grupos), pone hasta tres islas de mesas rectas con mamparas de 1,2 m en cruz y una pieza en cada extremo (`lay_islands()`), y llena de punta a punta cada pared cerrada con archivadores, estanterías y carros, con una planta al final de cada tramo (`lay_wall_rows()`);
   - en las celdas de oficina abierta que no son nave, donde los pares de mesas no llegan a dos, pone mesas sueltas si sientan a más gente que los pares;
   - cuando puede, pone cada secretaría junto a un despacho de dirección, con puerta entre los dos, cambiándole el tipo con una sala corriente o con otro despacho de dirección, y deja esa puerta abierta;
@@ -823,7 +842,7 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
 - **Versus:**
   - `lurker_player.gd` (moverse por el parche actual; contra una pared o un techo, se sube);
   - entrar en un ducto abre el mapa de ductos, reutilizando la brújula de canales de las teles;
-  - `lurker_view.gd`: su vista, con exposición alta, sin color, grano y brillo que quema lo encendido;
+  - `lurker_view.gd`: su vista, la cámara térmica en azul marino muy oscuro de la sección 7 (solo la luz, la electricidad y las linternas calientes; las personas, figuras oscuras con borde claro);
   - peticiones validadas en el anfitrión: coger (siempre con su ventana), ducto, apagar una sala;
   - `--lurker` para probarlo en local.
 - **Cordura:** `creature.hallucinations()` sustituye lo que hoy está fijo en `sanity.gd`. Las de The Locust se mudan sin cambios; las de The Lurker, las de la sección 5.

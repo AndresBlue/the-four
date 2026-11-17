@@ -27,6 +27,9 @@ const SIDE := 0.75
 const DOOR_CLEAR := 2.0
 ## And from wall lamps: the hotel hangs its paintings between two of them.
 const LAMP_CLEAR := 1.3
+## And from a lift's doors: they are no door of `hotel.doors`, and a machine
+## stood in front of the reception's (the author, 17 November 2026).
+const LIFT_CLEAR := 2.4
 var level
 var machines: Array = []
 ## This machine's own cup on its way: seconds left (-1 none), and the mind as
@@ -113,6 +116,7 @@ func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var tries: Array = []
 	for side in 4:
 		for share in [0.5, 0.3, 0.7, 0.2, 0.8]: tries.append([side, share])
+	var lifts := lift_fronts(room)
 	for i in range(tries.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var swap = tries[i]
@@ -131,6 +135,7 @@ func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 		if level.hotel.doors.any(func(door): return is_instance_valid(door) and Vector2(door.global_position.x - point.x, door.global_position.z - point.z).length() < DOOR_CLEAR): continue
 		# Nor over a wall lamp, nor the painting the hotel hangs between two.
 		if lamps.any(func(lamp: Vector3): return Vector2(lamp.x - point.x, lamp.z - point.z).length() < LAMP_CLEAR and absf(lamp.y - point.y) < 3.0): continue
+		if lifts.any(func(lift: Vector3): return Vector2(lift.x - point.x, lift.z - point.z).length() < LIFT_CLEAR): continue
 		# Nor in front of a low grille of the ducts (her way out on floor 2).
 		if grilles.any(func(grille: Vector3): return Vector2(grille.x - point.x, grille.z - point.z).length() < DOOR_CLEAR and absf(grille.y - point.y) < 2.0): continue
 		var walled := true
@@ -151,6 +156,22 @@ func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 			if Vector2(stand.x - front.x, stand.z - front.z).length() > 0.4 or absf(stand.y - front.y) > 0.6: continue
 		return {"position": point, "yaw": atan2(-out.x, -out.z)}
 	return {}
+
+## Where the doors of the lifts in this room stand: the middle of a lobby's
+## lift wall, and on floor 2 the hotel's lift arriving in the reception
+## (office_geometry.arrival_lift(): its wall, slid along it).
+func lift_fronts(room: Dictionary) -> Array:
+	var out: Array = []
+	var centre := FLOOR.position_of(room)
+	var half := FLOOR.size_of(room) * 0.5
+	var wall := FLOOR.lift_wall(room)
+	if wall != Vector2i.ZERO: out.append(centre + Vector3(wall.x * half.x, 0, wall.y * half.y))
+	var manifest: Dictionary = level.manifest
+	if int(room.id) == int(manifest.get("start", -1)) and manifest.has("arrival_lift"):
+		var back := Vector3(float(manifest.arrival_lift[0]), 0, float(manifest.arrival_lift[1]))
+		var along := float(manifest.get("arrival_lift_along", 0.0))
+		out.append(centre + Vector3(back.x * half.x, 0, back.z * half.y) + (Vector3.BACK if back.x != 0.0 else Vector3.RIGHT) * along)
+	return out
 
 func can_drink(machine: Node) -> bool:
 	return brewing < 0.0 and not machine.served.has(int(level.player.slot))

@@ -11,15 +11,6 @@ extends RefCounted
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
 const VERSION := 3
 
-## The plan drawn as a real office building (.claude/specs/planta_real.md 13):
-## off until it is accepted; a tool or a test turns it on with --real-plan on
-## the command line or real_plan_test (office_generator.real_plan).
-const REAL_PLAN := true
-static var real_plan_test := false
-
-static func real_plan_on() -> bool:
-	return REAL_PLAN or real_plan_test or OS.get_cmdline_user_args().has("--real-plan")
-
 ## The real building's typologies (planta_real.md 13.7), a table each: its rows
 ## from the front wall to the back, [role, sizes] ("main" and "gallery" are
 ## corridor lanes); its end bands and cross corridors; the bays of 7.2 m each
@@ -80,7 +71,7 @@ const TYPOLOGIES := {
 		"starts": ["front"],
 		"pools": [0.35, 0.5, 0.7],
 		"middles": [["offices", "hall", "offices", "hall"], ["hall", "offices", "offices", "hall"], ["offices", "hall", "hall", "offices"], ["hall", "offices", "hall", "offices"]],
-		"weight": 0.0,
+		"weight": 1.0,
 		"cross_rows": ["main", "central", "gallery"],
 		"middle_rows": ["main", "gallery"],
 		"notch_rows": ["service"],
@@ -98,7 +89,7 @@ const TYPOLOGIES := {
 ## rooms_window() and rings() read the building's own.
 static var typology := ""
 ## Every building one typology ("spine", "ring"), so verify.ps1 and the bench
-## can run on it; "" draws by weight. Changed only for a while, as REAL_PLAN.
+## can run on it; "" draws by weight. Changed only for a while.
 const FORCE_TYPOLOGY := ""
 ## A tool or a test forces a typology with --plan=<name> on the command line.
 static func forced_typology() -> String:
@@ -106,6 +97,9 @@ static func forced_typology() -> String:
 		if argument.begins_with("--plan=") and TYPOLOGIES.has(argument.get_slice("=", 1)): return argument.get_slice("=", 1)
 	return FORCE_TYPOLOGY if TYPOLOGIES.has(FORCE_TYPOLOGY) else ""
 const BAY := 7.2
+## The reception's bay, at B's end (office_generator.draw_building()): a multiple of
+## 1.2 like the front band, so the floor's origin stays on the lattice.
+const RECEPTION_BAY := 9.6
 ## Rooms a planta of the real building has (up to today's 99: the standby
 ## floor, today's plan, is drawn under the same window), and the least walk to
 ## the refuge (13.3: more direct than the hotel's 90 m).
@@ -182,17 +176,15 @@ const REAL_ROOM_BANDS := {
 	REFUGE: [7.2, 7.2, 7.2, 7.2],
 	AIR_ROOM: [7.2, 7.2, 7.2, 7.2],
 }
-## Whether a cell is one a type wants on the plan being drawn: REAL_ROOM_BANDS
-## with the real plan on, ROOM_BANDS without.
+## Whether a cell is one a type wants in the real building (REAL_ROOM_BANDS).
 static func fits_band_now(room_type: int, room: Dictionary) -> bool:
-	if not real_plan_on(): return fits_band(room_type, room)
 	return in_band(REAL_ROOM_BANDS.get(room_type, []), room)
 ## Departments a planta of the real building is cut into along its length (13.9).
 const REAL_DEPARTMENTS := Vector2i(5, 7)
 
 ## The least walks the plan being drawn keeps (the validator asks here).
 static func least_walks() -> Array:
-	return REAL_LEAST_WALKS if real_plan_on() else LEAST_WALKS
+	return REAL_LEAST_WALKS
 ## How often a building has its notch: the end of its service band left
 ## unexcavated (13.1).
 const NOTCH_P := 0.35
@@ -248,7 +240,7 @@ static func areas_for(survivors: int) -> Array:
 	return [1.0 if clampi(survivors, 1, 5) == 1 else area, area, area]
 
 static func rooms_window(area: float) -> Vector2i:
-	var rooms: Vector2i = TYPOLOGIES.get(typology, {}).get("rooms", REAL_ROOMS) if real_plan_on() else ROOMS
+	var rooms: Vector2i = TYPOLOGIES.get(typology, {}).get("rooms", REAL_ROOMS)
 	return Vector2i(roundi(float(rooms.x) * area), roundi(float(rooms.y) * area))
 
 ## No stage of this floor asks for televisions.
@@ -256,7 +248,7 @@ static func tv_rooms(_area: float) -> int:
 	return 0
 
 static func rings(area: float) -> int:
-	var own: Array = TYPOLOGIES.get(typology, {}).get("rings", [6, 4]) if real_plan_on() else [6, 4]
+	var own: Array = TYPOLOGIES.get(typology, {}).get("rings", [6, 4])
 	return int(own[1]) if area < 1.0 else int(own[0])
 
 ## Lockers per type (hide_kind()): two in the toilets' changing room and the

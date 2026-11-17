@@ -223,7 +223,7 @@ func walls_dressed(rooms: Array, notes: Dictionary) -> void:
 		# The real building's crossings have no wall of their own to hang anything
 		# on, nor its cells of 3.6 m along a bay of offices: an office's door in
 		# the middle of each wall takes 2.5 m of it (office_walls DOOR_HALF).
-		var real_bare: bool = OFFICE.real_plan_on() and (String(room.get("kind", "")) == "cross" or maxf(float(room.span_x), float(room.span_z)) < OFFICE.SMALL_SIDE)
+		var real_bare: bool = String(room.get("kind", "")) == "cross" or maxf(float(room.span_x), float(room.span_z)) < OFFICE.SMALL_SIDE
 		if t == OFFICE.CORRIDOR and not real_bare:
 			halls += 1
 			if dressed.has(int(room.id)): hung += 1

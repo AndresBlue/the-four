@@ -206,12 +206,11 @@ static func drawer_row(builder: Node3D, room: Dictionary, seed_pos: Vector3) -> 
 	if roll(builder, seed_pos, 460) >= float(OPEN_DRAWER[mess_of(room)]): return -1
 	return 1 + int(builder.vary(seed_pos, 461) * 2.0)
 
-## vary(), but in the real building an integer hash of the spot to the
-## centimetre (as the generator seeds its streams): its furniture stands on a
-## regular lattice, where vary()'s sine falls in bands (seed 7, planta 1: 18 of
-## 55 drawers out where the table says 15 %).
+## Not vary(): an integer hash of the spot to the centimetre (as the generator
+## seeds its streams). The furniture stands on a regular lattice, where vary()'s
+## sine falls in bands (seed 7, planta 1: 18 of 55 drawers out where the table
+## says 15 %).
 static func roll(builder: Node3D, at: Vector3, salt: int) -> float:
-	if not OFFICE.real_plan_on(): return builder.vary(at, salt)
 	return float(posmod(hash([builder.looks, roundi(at.x * 100.0), roundi(at.y * 100.0), roundi(at.z * 100.0), salt]), 10007)) / 10007.0
 
 ## Papers dropped on the floor beside a piece that was sat at (spec_rediseno 7),
@@ -307,7 +306,7 @@ static func chair_pose(builder: Node3D, holder: Node3D, at: Vector3, face: float
 	if pose != "upright" and not swept_clear(builder, room, holder, at, turn):
 		# The real building's chairs stand close in rows: one that falls with no
 		# room behind it falls to a side that has some before it stays up.
-		var fell := pose == "fallen" and OFFICE.real_plan_on()
+		var fell := pose == "fallen"
 		pose = "upright"
 		if fell:
 			for quarter: float in [PI / 2, -PI / 2]:

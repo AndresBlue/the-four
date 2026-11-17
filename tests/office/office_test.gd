@@ -8,9 +8,9 @@ extends SceneTree
 ## furniture as the design asks, in time, without moving the hotel's.
 ## verify.ps1 runs it as three parts side by side (`part`, set by
 ## office_test_generator.gd, office_test_validator.gd and
-## office_test_physics.gd); on its own it runs all of them. With --real-plan
-## it judges the real building (.claude/specs/planta_real.md 13) by its own
-## figures where they differ.
+## office_test_physics.gd); on its own it runs all of them. It judges the real
+## building (.claude/specs/planta_real.md 13) by its own figures where they
+## differ from the hotel's.
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const HOTEL := preload("res://game/floors/palettes/hotel_palette.gd")
 const KIND := preload("res://game/floors/office_floor.gd")
@@ -142,7 +142,7 @@ func palette_tables() -> void:
 		if OFFICE.area_for(survivors) != HOTEL.area_for(survivors) or OFFICE.areas_for(survivors) != HOTEL.areas_for(survivors): sizes_same = false
 	# The real building's window of rooms is its own (planta_real.md 13.20).
 	for area in [0.5, 1.0, 1.2, 1.35]:
-		var window: Vector2i = Vector2i(roundi(float(OFFICE.REAL_ROOMS.x) * area), roundi(float(OFFICE.REAL_ROOMS.y) * area)) if OFFICE.real_plan_on() else HOTEL.rooms_window(area)
+		var window: Vector2i = Vector2i(roundi(float(OFFICE.REAL_ROOMS.x) * area), roundi(float(OFFICE.REAL_ROOMS.y) * area))
 		if OFFICE.rooms_window(area) != window or OFFICE.rings(area) != HOTEL.rings(area) or OFFICE.tv_rooms(area) != 0: sizes_same = false
 	check("El tamaño del piso, sus ventanas y sus anillos son los del hotel, y no pide teles", sizes_same)
 	check("Nada es doméstico, y uno se esconde en taquillas", range(TYPE_COUNT).all(func(type): return not OFFICE.domestic({"type": type})) and OFFICE.hide_kind({"type": OFFICE.TOILETS}) == "locker")
@@ -315,7 +315,7 @@ const T_SHARES := "Cada pieza especial a la profundidad de su banda"
 const T_FREIGHT := "El montacargas de la planta 1 al fondo y la planta 0 con su paseo largo"
 const T_MUSTS := "Cada planta tiene lo que debe, salvo la sala de juntas donde no hay módulo grande"
 const T_ARCHIVE_HALL := "Un salón de archivo en la planta 1 si hay algún salón recto"
-const T_TOILETS := "Aseos en cada sector de 5 salas o más que tenga una sala libre junto a un pasillo"
+const T_TOILETS := "Aseos de los núcleos: dos o más por planta y ninguno suelto"
 const T_MOBILE := "Los archivos móviles solo tienen puertas en paredes opuestas"
 const T_DEPOT := "Con 4 y 5 supervivientes hay depósitos y ninguna planta pasa de las numeradas"
 const T_DEPTS := "Departamentos sin repetir, con SEGURIDAD y MANTENIMIENTO en su sector"
@@ -488,7 +488,7 @@ func floor_specials(m: Dictionary, tag: String) -> void:
 	var freight := share_of(m, int(m.refuges[1]))
 	if freight < 0.8: note(T_FREIGHT, "%s: montacargas a %.2f" % [tag, freight])
 	var walk := float(FLOOR.route_metres(m, int(m.entries[0])).get(int(m.refuges[0]), 0.0))
-	if walk < float(OFFICE.least_walks()[0]) * sqrt(float(m.areas[0])) - (0.5 if OFFICE.real_plan_on() else 0.0): note(T_FREIGHT, "%s: paseo %.1f" % [tag, walk])
+	if walk < float(OFFICE.least_walks()[0]) * sqrt(float(m.areas[0])) - 0.5: note(T_FREIGHT, "%s: paseo %.1f" % [tag, walk])
 
 ## What finish() promises: the musts, the archive salon, toilets by sector,
 ## the mobile archives, the depots and the departments.
@@ -498,7 +498,7 @@ func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
 		var musts: Dictionary = OFFICE.MUSTS[planta].duplicate()
 		# A real building's smaller planta of a floor for one keeps the half with
 		# its two cores: no room there for the archives' salons.
-		if OFFICE.real_plan_on() and float(m.areas[planta]) < float(m.areas.max()): musts.erase(OFFICE.ARCHIVE)
+		if float(m.areas[planta]) < float(m.areas.max()): musts.erase(OFFICE.ARCHIVE)
 		for t in musts:
 			var units := 0
 			var halls := {}
@@ -532,45 +532,16 @@ func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
 		if xs.size() == 1 or zs.size() == 1: straight_halls += 1
 		if int(hall[0].type) == OFFICE.ARCHIVE: archive_halls += 1
 	if straight_halls > 0 and archive_halls == 0: note(T_ARCHIVE_HALL, tag)
-	var sectors := {}
-	for room in m.rooms:
-		if int(room.type) == OFFICE.VOID or bool(room.corridor): continue
-		var key := "%d:%d" % [int(room.wing), int(room.sector)]
-		if not sectors.has(key): sectors[key] = []
-		sectors[key].append(room)
-	# Toilets open on a corridor (place_musts): a sector with no plain room on
-	# one has nowhere to put them.
-	# The rooms a must counts on stay (place_musts): its first units by lowest
-	# id, a salon as one.
-	var kept := {}
-	for planta in 3:
-		for t in OFFICE.MUSTS[planta]:
-			var units := {}
-			for room in of_type(m, planta, int(t)):
-				var unit := int(room.hall) if int(room.hall) >= 0 else -1 - int(room.id)
-				if not units.has(unit): units[unit] = []
-				units[unit].append(int(room.id))
-			var ordered: Array = units.values()
-			ordered.sort_custom(func(x, y): return int(x.min()) < int(y.min()))
-			for members in ordered.slice(0, int(OFFICE.MUSTS[planta][t])):
-				for id in members: kept[int(id)] = true
 	# In the real building the toilets are the cores' (planta_real.md 13.4): two
 	# side by side, never one alone, and a pair on every planta.
-	if OFFICE.real_plan_on():
-		# The spine's core is one row: its toilets are one room beside the core's
-		# other cell (a lift lobby, the air plant or the cleaners' store).
-		var beside: Array = [OFFICE.TOILETS, OFFICE.STORE, OFFICE.REFUGE, OFFICE.LANDING, OFFICE.LOBBY, OFFICE.AIR_PLANT] if String(m.plans[0].get("plan", "")) == "spine" and not bool(m.get("fallback", false)) else [OFFICE.TOILETS]
-		for planta in 3:
-			var toilets := of_type(m, planta, OFFICE.TOILETS)
-			if toilets.size() < 2: note(T_TOILETS, "%s: planta %d, %d aseos" % [tag, planta, toilets.size()])
-			for room in toilets:
-				if not [Vector2i(1, 0), Vector2i(-1, 0)].any(func(way): return FLOOR.beside(room, way) >= 0 and beside.has(int(m.rooms[FLOOR.beside(room, way)].type))): note(T_TOILETS, "%s: aseo suelto %d" % [tag, int(room.id)])
-		sectors = {}
-	for key in sectors:
-		var types: Array = sectors[key].map(func(room): return int(room.type))
-		if types.size() < 5 or types.has(OFFICE.TOILETS): continue
-		var plain: Array = sectors[key].filter(func(room): return String(room.kind) == "module" and not bool(room.service) and int(room.hall) < 0 and not specials.has(int(room.type)) and not kept.has(int(room.id)) and m.adjacency[int(room.id)].any(func(g): return bool(m.rooms[int(g)].corridor)))
-		if not plain.is_empty(): note(T_TOILETS, "%s: sector %s, %d candidatas" % [tag, key, plain.size()])
+	# The spine's core is one row: its toilets are one room beside the core's
+	# other cell (a lift lobby, the air plant or the cleaners' store).
+	var beside: Array = [OFFICE.TOILETS, OFFICE.STORE, OFFICE.REFUGE, OFFICE.LANDING, OFFICE.LOBBY, OFFICE.AIR_PLANT] if String(m.plans[0].get("plan", "")) == "spine" and not bool(m.get("fallback", false)) else [OFFICE.TOILETS]
+	for planta in 3:
+		var toilets := of_type(m, planta, OFFICE.TOILETS)
+		if toilets.size() < 2: note(T_TOILETS, "%s: planta %d, %d aseos" % [tag, planta, toilets.size()])
+		for room in toilets:
+			if not [Vector2i(1, 0), Vector2i(-1, 0)].any(func(way): return FLOOR.beside(room, way) >= 0 and beside.has(int(m.rooms[FLOOR.beside(room, way)].type))): note(T_TOILETS, "%s: aseo suelto %d" % [tag, int(room.id)])
 	for room in m.rooms:
 		if int(room.type) != OFFICE.MOBILE_ARCHIVE: continue
 		var walls := {}
@@ -1255,7 +1226,7 @@ func nave_checks() -> void:
 		for room in m.rooms:
 			var id := int(room.id)
 			var axis := String(room.get("nave_axis", ""))
-			if axis != "" and (int(room.wing) != 0 or int(room.hall) < 0 or (not OFFICE.real_plan_on() and nave.any(func(o): return int(o.hall) != int(room.hall)))): bad.append("%d: eje en %d" % [run_seed, id])
+			if axis != "" and (int(room.wing) != 0 or int(room.hall) < 0): bad.append("%d: eje en %d" % [run_seed, id])
 			var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
 			var open: Array = room.get("open_sides", [])
 			var strips: Array = []
@@ -1382,23 +1353,13 @@ func revival_clear(level, run_seed: int, bad: Array) -> int:
 	level.session.stage = was
 	return tried
 
-## A cell's sides are the office's: a module's both from MODULE_SIZES, a
-## crossing's both from LANE_WIDTHS, a lane's one from each.
+## A cell's sides are the real building's.
 static func sizes_fit(room: Dictionary) -> bool:
 	var x := float(room.span_x)
 	var z := float(room.span_z)
-	# The real building: every side a multiple of the 0.6 m tile, from the
-	# gallery's 2.4 to the structure's 7.2 (planta_real.md 13.2).
-	if OFFICE.real_plan_on(): return [x, z].all(func(side): return absf(snappedf(side, 0.6) - side) < 0.001 and side > 2.4 - 0.001 and side < OFFICE.BAY + 0.001)
-	match String(room.get("kind", "module")):
-		"module": return among(x, OFFICE.MODULE_SIZES) and among(z, OFFICE.MODULE_SIZES)
-		"cross": return among(x, OFFICE.LANE_WIDTHS) and among(z, OFFICE.LANE_WIDTHS)
-	return (among(x, OFFICE.LANE_WIDTHS) and among(z, OFFICE.MODULE_SIZES)) or (among(x, OFFICE.MODULE_SIZES) and among(z, OFFICE.LANE_WIDTHS))
-
-## Whether a length is one of these, within a millimetre (a lobby's span is
-## carried down the plantas as the difference of two edges).
-static func among(value: float, lengths: Array) -> bool:
-	return lengths.any(func(length): return absf(float(length) - value) < 0.001)
+	# Every side a multiple of the 0.6 m tile, from the gallery's 2.4 to the
+	# structure's 7.2, or the reception's bay of 9.6 (planta_real.md 13.2).
+	return [x, z].all(func(side): return absf(snappedf(side, 0.6) - side) < 0.001 and side > 2.4 - 0.001 and side < OFFICE.RECEPTION_BAY + 0.001)
 
 ## No middle dot or long dash in the office's texts (CLAUDE.md), looked for by
 ## their escapes so this file has neither.

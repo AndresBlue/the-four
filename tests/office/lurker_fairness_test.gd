@@ -409,7 +409,7 @@ func find_corridor() -> Dictionary:
 		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR: continue
 		var span := FLOOR.size_of(room)
 		# The real building's corridor cells are a bay long, 7.2 m at most.
-		if maxf(span.x, span.y) < (7.0 if OFFICE.real_plan_on() else 8.0) or not level.creature.shell.tray_of.has(int(room.id)): continue
+		if maxf(span.x, span.y) < 7.0 or not level.creature.shell.tray_of.has(int(room.id)): continue
 		if level.manifest.adjacency[int(room.id)].any(func(other): return off.has(int(other))): continue
 		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
 		return {"room": int(room.id), "centre": FLOOR.position_of(room), "along": along}
@@ -549,7 +549,7 @@ func mate_torch() -> void:
 	var bad: Array = []
 	# The real building's corridor cell is 7.2 m long: 4 m on is the next cell,
 	# past a fire door where a department ends; 3 m keeps the mate in this one.
-	var ahead := 3.0 if OFFICE.real_plan_on() else 4.0
+	var ahead := 3.0
 	for torch in [true, false]:
 		await set_up(true, false)
 		var other = mate((corridor.centre as Vector3) + along * ahead + side * 0.8, along)

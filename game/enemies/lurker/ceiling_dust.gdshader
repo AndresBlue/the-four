@@ -84,7 +84,9 @@ void vertex() {
 	// A streak only widens: its length is how far it moved.
 	VERTEX.x *= grow;
 	if (!axial) VERTEX.y *= grow;
-	thin = inversesqrt(grow) * edge;
+	// Hanging dust is thinned far less: at two pixels the falling dust's
+	// inversesqrt left it too faint to see in a torch's beam.
+	thin = (wrap > 0.0 ? pow(grow, -0.1) : inversesqrt(grow)) * edge;
 	spark = fract(sin(float(INSTANCE_ID) * 12.9898) * 43758.5453);
 }
 

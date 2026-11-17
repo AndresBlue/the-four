@@ -249,18 +249,26 @@ func crawl_case() -> void:
 		var half := FLOOR.size_of(r) * 0.5
 		for side: Vector2 in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
 			var out: Vector2 = Vector2(float(r.px), float(r.pz)) + side * (Vector2(half.x, half.y) * side.abs()).length() + side * 0.3
-			var other := FLOOR.room_at(level.manifest.rooms, Vector3(out.x, float(r.py) + 1.0, out.y))
-			if not other.is_empty() and shell.tray_of.has(int(other.id)): continue
-			# From the middle, into that side at 35 degrees off it.
-			await up_over(int(room), middle_of(int(room)))
 			var along: Vector2 = Vector2(-side.y, side.x)
+			# Shut along all its length (in the real building's plan a side may be
+			# half on a core, half on a room of hers), and long enough to slide on.
+			var length: float = (Vector2(half.y, half.x) * side.abs()).length()
+			if length < 3.0: continue
+			var shut := true
+			for k in range(-4, 5):
+				var probe: Vector2 = out + along * length * 0.95 * k / 4.0
+				var other := FLOOR.room_at(level.manifest.rooms, Vector3(probe.x, float(r.py) + 1.0, probe.y))
+				if not other.is_empty() and shell.tray_of.has(int(other.id)): shut = false
+			if not shut: continue
+			# From the middle, into that side at 35 degrees off it, while she is still along it.
+			await up_over(int(room), middle_of(int(room)))
 			var push: Vector2 = (side + along * 0.7).normalized()
 			face(Vector3(push.x, 0, push.y))
 			driver.axis = Vector2(0, -1)
 			var start := at()
 			var crossed := false
 			var gone := 0.0
-			for i in int(3.0 / DT):
+			for i in int(minf(3.0, length / 2.6) / DT):
 				await physics_frame
 				var p := at()
 				var here := FLOOR.room_at(level.manifest.rooms, Vector3(p.x, float(r.py) + 1.0, p.z))

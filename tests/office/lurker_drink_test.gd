@@ -81,7 +81,7 @@ func find_corridor() -> Dictionary:
 		var id := int(room.id)
 		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR or level.hotel.dark_ids.has(id): continue
 		var span := FLOOR.size_of(room)
-		if maxf(span.x, span.y) < (7.0 if OFFICE.real_plan_on() else 8.0) or not level.creature.shell.tray_of.has(id): continue
+		if maxf(span.x, span.y) < 7.0 or not level.creature.shell.tray_of.has(id): continue
 		if level.manifest.adjacency[id].any(func(other): return off.has(int(other))): continue
 		if level.point_protected(FLOOR.position_of(room)): continue
 		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
@@ -350,7 +350,7 @@ func contract(id: String) -> void:
 			other.setup(level, 2, "Prueba", 1)
 			level.add_child(other)
 			other.set_physics_process(false)
-			other.place((corridor.centre as Vector3) + along * (3.0 if OFFICE.real_plan_on() else 4.0) + Vector3(-along.z, 0, along.x) * 0.8, atan2(-along.x, -along.z))
+			other.place((corridor.centre as Vector3) + along * 3.0 + Vector3(-along.z, 0, along.x) * 0.8, atan2(-along.x, -along.z))
 			level.match_net.bodies[2] = other
 			level.session.participants[2] = level.session.Life.EXPLORING
 			other.torch.visible = true
