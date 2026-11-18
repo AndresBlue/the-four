@@ -20,6 +20,8 @@ licence (the maneuver room's door).
   heavy_door.wav   the maneuver door's motor    sef_hydraulic_lift.mp3, the whole of it (8.3 s)
   door_lock.wav    that door without power      sef_security_door_open_2.mp3: one beep of its
                                                 keypad, four times, one every 0.18 s
+  cam_click.wav    the security console's keys  made here: a relay's click
+  cam_switch.wav   a camera changed on it       made here: that click and a breath of static
 
 And the lies The Lurker tells (spec_f3_integration 4.3):
 
@@ -123,6 +125,21 @@ def fade(x, fin=0.004, fout=0.25):
     return x
 
 
+def cam_click():
+    """The security console's key (security_cams.gd), made here: a relay's click."""
+    t = np.arange(int(0.05 * RATE)) / RATE
+    return np.sin(2 * np.pi * 1900.0 * t) * np.exp(-t / 0.006)
+
+
+def cam_switch():
+    """A camera changed on it: that click and a fifth of a second of static dying away."""
+    n = int(0.2 * RATE)
+    out = np.random.default_rng(7).uniform(-1.0, 1.0, n) * np.exp(-np.arange(n) / RATE / 0.07) * 0.5
+    click = cam_click()
+    out[: len(click)] += click
+    return out
+
+
 def loop(x):
     """The last XFADE s laid over the first, equal power, and dropped: the end
     runs into the start."""
@@ -152,6 +169,8 @@ def main():
         write(copy, loop(x) if looped else fade(x), peak)
     write("heavy_door.wav", fade(cut(load(DOOR_MOTOR), -1, 0.0)), 0.5)
     write("door_lock.wav", door_lock(load(DOOR_PAD)), 0.35)
+    write("cam_click.wav", cam_click(), 0.3)
+    write("cam_switch.wav", cam_switch(), 0.35)
 
 
 if __name__ == "__main__":

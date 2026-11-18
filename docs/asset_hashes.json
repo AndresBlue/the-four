@@ -2706,5 +2706,13 @@
   "assets/audio/sfx/office/door_lock.wav": {
     "bytes": 69722,
     "sha256": "3bb0e282bcffc566f2dc8c25e20fd3574dbcfb22e8b23011e7143cdfbb051d5b"
+  },
+  "assets/audio/sfx/office/cam_click.wav": {
+    "bytes": 4454,
+    "sha256": "73702eca02c0fa29fc18840acd91b97c7a8b0be88a1a89ab057ff0439e36b9a0"
+  },
+  "assets/audio/sfx/office/cam_switch.wav": {
+    "bytes": 17684,
+    "sha256": "71ca75f415a5d24450cc9ec72d16fc21dcb6061c112f39702db45d7baf6a4e5c"
   }
 }

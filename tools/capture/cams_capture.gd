@@ -19,6 +19,11 @@ func look(from: Vector3, at: Vector3) -> void:
 	level.player.rotation.y = atan2(-flat.x, -flat.y)
 	level.player.camera.rotation.x = atan2(at.y - from.y, flat.length())
 
+## The console's pointer put on one of its buttons, by its id.
+func point_at(id: String) -> void:
+	for zone in level.objective(&"air").console.zones:
+		if String(zone.id) == id: level.objective(&"air").console.pointer = (zone.rect as Rect2).get_center()
+
 func shot(title: String, settle := 1.5) -> void:
 	var started := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - started < int(settle * 1000.0): await process_frame
@@ -70,13 +75,20 @@ func run() -> void:
 	var other := (vent + 1) % 8
 	air.console.show_cam(other)
 	await shot("52_camaras_otra_sala", 2.5)
+	# The static between two cameras, held still.
+	air.console.set_process(false)
+	air.console.screen.set_shader_parameter("burst", 0.55)
+	await shot("52b_estatica", 0.3)
+	air.console.set_process(true)
 	# Two rooms lit from the console: the other camera's and a corridor's.
 	level.match_net.use_office(&"air", "light", int(m.air.cams[other].room))
 	for room in m.rooms:
 		if bool(room.get("corridor", false)) and air.lightable(int(room.id)):
 			level.match_net.use_office(&"air", "light", int(room.id))
 			break
+	point_at("light")
 	await shot("53_camaras_luz", 2.5)
+	air.console.pointer = Vector2.INF
 	# The same room from the player's own camera at the security camera's place.
 	var cam_other: Dictionary = m.air.cams[other]
 	air.console.visible = false
@@ -98,6 +110,12 @@ func run() -> void:
 	level.match_net.use_office(&"air", "lock", vent)
 	await shot("56_camaras_ventilacion_abierta", 2.0)
 	lines.append("luces %d, abiertas %s" % [air.lights.size(), str(air.unlocked)])
+	# The plan, coming up and up, the pointer on a lit corridor.
+	air.console.act("plan")
+	await shot("57_plano_subiendo", 0.1)
+	await shot("58_plano", 1.5)
+	for room_id in air.lights: point_at("room:%d" % int(room_id))
+	await shot("59_plano_sobre_una_sala", 1.0)
 	var file := FileAccess.open(OUT + "/sesion.txt", FileAccess.WRITE)
 	file.store_string("\n".join(lines) + "\n")
 	quit(0)
