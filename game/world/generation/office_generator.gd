@@ -428,8 +428,11 @@ func pick_maneuver(f: Dictionary, alive: Dictionary, arrival: int, refuge: Dicti
 	var sector_of := func(local: int) -> int: return int(building.programme[laying].sectors.get(int(at(f, local).x), 0)) if real else -1
 	var taken: Array = [sector_of.call(arrival), sector_of.call(electrical), sector_of.call(int(refuge.room))]
 	var grouped := func(local: int) -> bool: return real and (building.programme[laying].groups.any(func(g): return g.members.has(local)) or not int(building.programme[laying].types.get(local, -1)) in [palette.OFFICE, palette.STORE, palette.MOBILE_ARCHIVE, palette.DEPOT])
-	var pool: Array = candidates(f, alive, arrival, refuge, shares, Vector2(0.0, 1.0), standby, true, [electrical], false, palette.MANEUVER).filter(func(entry): return int(entry.doors) == 1 and not grouped.call(int(entry.room)) and (not real or not taken.has(sector_of.call(int(entry.room)))))
+	var pool: Array = candidates(f, alive, arrival, refuge, shares, Vector2(0.0, 1.0), standby, true, [electrical], false, -1).filter(func(entry): return int(entry.doors) == 1 and not grouped.call(int(entry.room)) and (not real or not taken.has(sector_of.call(int(entry.room)))))
 	if pool.is_empty(): return -1
+	# A whole bay while one of them is left (palette.MANEUVER_BAND).
+	var big: Array = pool.filter(func(entry): return palette.in_band(palette.MANEUVER_BAND, at(f, int(entry.room))))
+	if not big.is_empty(): pool = big
 	for entry in pool: entry.weight = maxf(0.001, minf(float(to_board.get(int(entry.room), 0.0)), float(to_lift.get(int(entry.room), 0.0))))
 	pool.sort_custom(func(a, b): return float(a.weight) > float(b.weight) or (float(a.weight) == float(b.weight) and int(a.room) < int(b.room)))
 	if standby: return int(pool[0].room)

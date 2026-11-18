@@ -2,8 +2,8 @@ extends SceneTree
 ## Planta 2's new route in pictures (.claude/specs/cordura_y_edificio.md phase
 ## 6): the board with three sectors up and after a fourth trips them, the
 ## maneuver room's door without its sector's power and with it, its motor
-## half way and done, the room inside with the lift's lever, and that lever
-## pulled. As the game shows it (the tape and the torch on), no creature, at
+## half way and done, the room inside with the lift's lever, that lever
+## pulled, the room whole from its door and the door from inside. As the game shows it (the tape and the torch on), no creature, at
 ## Alto. With a window:
 ##   godot --path . --script res://tools/capture/maneuver_capture.gd --log-file <log> -- --automation --test-profile --silent [--seed=7]
 ## Writes evidence/planta/fase6/<n>_<what>.png and sesion.txt.
@@ -80,8 +80,9 @@ func run() -> void:
 	await shot("43_puerta_con_corriente")
 	told = power.apply("door", power.door_index(), -1, {}, true)
 	lines.append("con corriente, la puerta: %s" % str(told))
-	await shot("44_puerta_abriendose", 2.0)
-	await shot("45_puerta_abierta", 3.5)
+	await shot("44_puerta_abriendose", 3.0)
+	while not door.opened: await process_frame
+	await shot("45_puerta_abierta")
 	lines.append("abierta: %s, con llave: %s" % [str(door.opened), str(door.locked)])
 	# Inside: the lift's cabinet and its lever, from the door.
 	var spot: Dictionary = m.power.maneuver.lever
@@ -94,6 +95,22 @@ func run() -> void:
 	power.apply("lift", power.lift_index(), -1, {}, true)
 	await shot("47_palanca_bajada")
 	lines.append("montacargas suelto: %s" % str(power.freed))
+	# The room whole, from its doorway, and its door overhead, from inside.
+	var sill: Vector3 = door.doorway + Vector3(0, 1.6, 0)
+	look(sill - away * 0.5, sill - away * 4.0 + Vector3(0, 0.5, 0))
+	await shot("48_sala_desde_la_puerta")
+	look(sill - away * 3.6, sill + Vector3(0, 0.6, 0))
+	await shot("49_puerta_desde_dentro")
+	# Its two sides, from its middle: what its recipe put against its walls.
+	var middle: Vector3 = sill - away * 3.0
+	for side in 2:
+		look(middle, middle + door.along() * (3.0 if side == 0 else -3.0) - Vector3(0, 0.5, 0))
+		await shot("5%d_sala_lado_%d" % [side, side])
+	var kinds: Array = []
+	for item in m.rooms[power.maneuver_room].get("furniture", []): kinds.append(String(item.kind))
+	lines.append("muebles: %s" % ", ".join(kinds))
+	var room: Dictionary = m.rooms[power.maneuver_room]
+	lines.append("la sala: %.1f x %.1f m, %.2f de alto" % [float(room.span_x), float(room.span_z), float(room.height)])
 	var file := FileAccess.open(OUT + "/sesion.txt", FileAccess.WRITE)
 	file.store_string("\n".join(lines) + "\n")
 	quit(0)

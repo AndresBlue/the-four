@@ -9,7 +9,7 @@ extends RefCounted
 ## preloads it, and the generator and the validator load it headless.
 
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
-const VERSION := 6
+const VERSION := 7
 
 ## The real building's typologies (planta_real.md 13.7), a table each: its rows
 ## from the front wall to the back, [role, sizes] ("main" and "gallery" are
@@ -321,7 +321,7 @@ const RECIPES := [
 ## How tall a room is (height_of()): a false ceiling at 2.95 in every room
 ## that has one, the boardroom too (spec_rediseno 3.5), none where the slab
 ## is the ceiling (4.4).
-const HEIGHTS := [2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 4.4, 2.95, 2.95, 2.95]
+const HEIGHTS := [2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 4.4, 2.95, 2.95, 4.4]
 ## The hotel's: height_of() does not read it, a salon is as tall as its type.
 const HALL_HEIGHT := 4.8
 ## Rooms whose lamps are never out (may_be_dark()): the lit lobbies, the
@@ -522,6 +522,10 @@ const ELECTRICAL_DEPTH := Vector2(0.6, 0.85)
 ## The maneuver room is drawn from the best MANEUVER_TOP of the cells it may
 ## take, ranked by the shorter of its walks to the board and to the lift.
 const MANEUVER_TOP := 0.25
+## It is a whole bay where one is to be had, under the bare slab (the author,
+## 18 November 2026: big, as what a heavy motorised door is there to keep):
+## [short side at least, at most, long side at least, at most].
+const MANEUVER_BAND := [4.8, 0.0, 7.2, 0.0]
 const SECURITY_DEPTH := Vector2(0.25, 0.55)
 ## Metres over the planta's floor. duct: the trunk [width, height]; branch:
 ## the branches, bridges and loose links; main: the crawl duct's clear inside,
@@ -750,7 +754,8 @@ const ROOM_FURNITURE := {
 	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["sideboard", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["lounge", "side", 1, 1, 1], ["sideboard", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	WINDOW: [["filing", "run", 2, 2, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 3], ["cart_boxes", "spare", 1, 1, 1]],
 	ELECTRICAL: [["work_desk", "side", 1, 1, 1], ["shelving", "spare", 1, 1, 2], ["cart_boxes", "run", 2, 2, 1], ["work_table", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1]],
-	MANEUVER: [["shelving", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	# The lift's machines against its walls: what its door is there to keep.
+	MANEUVER: [["fan_unit", "wall", 1, 2, 1], ["fan_unit", "run", 1, 1, 1], ["work_table", "middle", 0, 1, 1], ["shelving", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1], ["filing", "spare", 1, 1, 2], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1]],
 	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["plant_floor", "run", 1, 1, 1], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["pigeonholes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["card_index", "spare", 1, 1, 1]],
 	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1], ["shelving", "spare", 1, 2, 1]],

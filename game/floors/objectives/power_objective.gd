@@ -4,8 +4,9 @@ extends "res://game/floors/objectives/objective.gd"
 ## has a lever per sector, up and down at will; the backup system takes BACKUP
 ## sectors at once and a lever more trips them all, the planta back to its
 ## emergency lights. The minuteros light their corridor for a while. The
-## maneuver room's door opens only with its sector's power, slowly on its
-## motor, and once started it ends open whatever the board does; the lever
+## maneuver room's door, a slab of steel, rises into the wall over it only with
+## its sector's power, slowly on its motor, and once started it ends open
+## whatever the board does; the lever
 ## inside frees the freight lift at once. Beside the board, its sign says what
 ## the backup takes. The board, its levers and the minuteros look as their
 ## reference (spec_rediseno 6.13, area 5: pieces/power_equipment.gd).
@@ -34,10 +35,14 @@ const LEVER_SWING := deg_to_rad(70.0)
 ## cabinet): one lit for each sector up.
 const BACKUP_LENS := Vector3(0.026, 0.026, 0.012)
 const BACKUP_LENS_Y := 1.66
-## The maneuver room's door: how long its motor takes. Its pilot over the
+## The maneuver room's door, a slab of steel that rises into the wall over it
+## (hotel_door.lift): how far up, just under its frame's head, and how long
+## its motor takes. Its pilot over the
 ## frame's head outside (objective.door_pilot_lenses()) is red without power,
 ## green with it.
-const DOOR_TIME := 4.5
+## (its recording's: the door settles on the motor's last clunk.)
+const DOOR_TIME := 7.2
+const DOOR_RISE := 2.62
 ## Its button is the whole leaf from the corridor (a box over it, just out):
 ## aimed anywhere at the door, E is the motor's, never the locked leaf's.
 const DOOR_BOX := Vector3(1.1, 2.2, 0.3)
@@ -179,8 +184,15 @@ func place_maneuver(m: Dictionary) -> void:
 		if Vector2(door.doorway.x - portal.x, door.doorway.z - portal.z).length() < 0.1 and absf(door.doorway.y - portal.y) < 1.0:
 			motor_door = door
 			break
-	# No hand opens it: only its motor, and nobody shuts it after.
-	if motor_door != null: motor_door.locked = true
+	# No hand opens it: only its motor, and nobody shuts it after. Its leaf is
+	# the steel slab, the floor's own (one, or one a side) put out of sight.
+	if motor_door != null:
+		motor_door.locked = true
+		motor_door.lift = DOOR_RISE
+		motor_door.lift_from = motor_door.position.y
+		for child in motor_door.get_children():
+			if child is MeshInstance3D and String(child.name).begins_with("Leaf"): child.visible = false
+		equipment(POWER_LOOK.blast_leaf(level.hotel, POWER_LOOK.BLAST_LEAF), Transform3D(Basis.IDENTITY, Vector3(FLOOR.LEAF_WIDTH * 0.5, 0, 0)), motor_door)
 	var normal := Basis(Vector3.UP, motor_door.closed_rotation).z if motor_door != null else Vector3.FORWARD
 	var away := normal * signf((FLOOR.position_of(outside) - portal).dot(normal))
 	var face_yaw := atan2(away.x, away.z)
@@ -384,9 +396,9 @@ func apply(action: String, index: int, _seat: int, data: Dictionary, quiet: bool
 	refresh_power()
 	return told
 
-## The door swung open on its motor over DOOR_TIME, locked still: nobody
-## shuts it again. Its tween is the leaf's own (hotel_door.motion), so the
-## host's settled state snaps a guest that runs behind.
+## The door raised on its motor over DOOR_TIME, locked still: nobody lowers
+## it again. Its tween is the leaf's own (hotel_door.motion), so the host's
+## settled state snaps a guest that runs behind.
 func run_motor(quiet: bool) -> void:
 	if motor_door == null: return
 	if not quiet: sound_at("heavy_door.wav", motor_door.doorway + Vector3(0, 1.5, 0), -8.0)
@@ -394,7 +406,7 @@ func run_motor(quiet: bool) -> void:
 	motor_door.moving = true
 	motor_door.collision_layer = motor_door.GHOST
 	var tween: Tween = motor_door.create_tween()
-	tween.tween_property(motor_door, "rotation:y", motor_door.closed_rotation + motor_door.open_turn, DOOR_TIME).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(motor_door, "position:y", motor_door.lift_from + motor_door.lift, DOOR_TIME).set_trans(Tween.TRANS_SINE)
 	motor_door.motion = tween
 	var door = motor_door
 	tween.finished.connect(func():

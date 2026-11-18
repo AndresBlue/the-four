@@ -287,7 +287,10 @@ func the_power(tag: String) -> void:
 	for i in 600:
 		await physics_frame
 		if power.motor_door.opened: break
-	check("%s: la puerta acaba abierta y nadie la cierra" % tag, power.motor_door.opened and power.motor_door.locked and not power.motor_door.toggle())
+	var door = power.motor_door
+	check("%s: la puerta acaba arriba, en el muro sobre su hueco, sin girar, y nadie la baja" % tag, door.opened and door.locked and not door.toggle() and is_equal_approx(door.position.y, door.lift_from + power.DOOR_RISE) and is_equal_approx(door.rotation.y, door.closed_rotation), "sube %.2f de %.2f" % [door.position.y - door.lift_from, power.DOOR_RISE])
+	var man_room: Dictionary = level.manifest.rooms[power.maneuver_room]
+	check("%s: la sala de maniobra, bajo el forjado" % tag, is_equal_approx(float(man_room.height), 4.4), "%.2f m, %.1f x %.1f" % [float(man_room.height), float(man_room.span_x), float(man_room.span_z)])
 	await use.call("lift", power.lift_index())
 	await frames(3)
 	check("%s: la palanca de dentro suelta el montacargas y el nivel 2 se cumple" % tag, power.freed and bool(session.goal.get("ready", false)) and level.ride_allowed(1, [player]), "suelto %s, meta %s, viaje %s, palabra «%s», a %.2f m" % [str(power.freed), str(session.goal.get("ready", false)), str(level.ride_allowed(1, [player])), power.word_of(power.usables[power.lift_index()], player.slot), player.global_position.distance_to(power.usables[power.lift_index()].global_position)])

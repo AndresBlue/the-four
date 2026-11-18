@@ -445,6 +445,7 @@ Hecha según 3.10, con un cambio sobre la propuesta: **los 250 m por tramo no ca
 
 **Dónde está**
 - **El tipo nuevo**, `office_palette.MANEUVER` (26, «Sala de maniobra»), en cada tabla por tipo. Lleva paredes de bloque, suelo de baldosa industrial, regletas que se encienden con su sector y puerta de acero. `office_palette.VERSION` pasa a 5.
+- **Después de la 1.17.0 (18 de noviembre, a petición del autor):** la puerta ya no gira: es una plancha de acero que sube al muro sobre su hueco en 7,2 s (`hotel_door.lift`, `power_equipment.blast_leaf()`, `power_objective.DOOR_RISE`), con el motor hidráulico que eligió el autor («Hydraulic Lift», entero) y tres pitidos de teclado sin corriente. La sala es un vano entero donde queda alguno (`MANEUVER_BAND`), de 4,4 m de alto, con dos o tres unidades `fan_unit`. `office_palette.VERSION` pasa a 7.
 - **El manifiesto:**
   - `power.maneuver`: `{room, door, outside, lever}`;
   - la puerta lleva `lock` `"motor"` y empieza cerrada;

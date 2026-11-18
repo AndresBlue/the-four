@@ -124,7 +124,10 @@ func hint_aimed(aimed) -> void:
 	elif aimed is HIDE: hints.aimed("hide")
 	elif aimed is COFFEE:
 		if level.coffee.can_drink(aimed): hints.aimed("coffee")
-	elif not hints.shown.has("door") and is_instance_valid(focused_door()): hints.aimed("door")
+	elif not hints.shown.has("door"):
+		# Not a locked one: no hand opens it.
+		var door = focused_door()
+		if is_instance_valid(door) and not door.locked: hints.aimed("door")
 
 func close_document() -> void:
 	# What was read went to the sheet: the key that opens it.
@@ -231,7 +234,8 @@ func door_behind():
 	var best_distance := DOOR_BEHIND_REACH
 	var here: Vector3 = level.player.global_position
 	for door in level.hotel.doors_near(here, DOOR_BEHIND_REACH):
-		if not door.opened or door.moving: continue
+		# Nor one no hand moves (a motor's, open for good).
+		if not door.opened or door.moving or door.locked: continue
 		var distance := Vector2(door.doorway.x - here.x, door.doorway.z - here.z).length()
 		# Not the one on the planta above or below, straight overhead.
 		if absf(door.doorway.y - here.y) > 2.0: continue

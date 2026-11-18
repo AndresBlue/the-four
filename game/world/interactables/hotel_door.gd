@@ -30,6 +30,11 @@ var closed_rotation := 0.0
 var open_turn := OPEN_TURN
 var doorway := Vector3.ZERO
 var motion: Tween
+## A leaf that rises into the wall over its doorway instead of swinging (the
+## offices' maneuver room, power_objective.gd): how far up (0: a hinged leaf)
+## and its height shut. Only its motor moves it: locked, toggle() is refused.
+var lift := 0.0
+var lift_from := 0.0
 
 ## The leaf is solid only at rest and with nobody inside it. While it swings
 ## it is a ghost to bodies -- it still hides what is behind it from sight and
@@ -91,7 +96,8 @@ func swing_to(target: bool, slow: bool, forceful: bool) -> void:
 ## Snaps to a state decided elsewhere (the host's door after its swing).
 func set_state(open: bool) -> void:
 	if is_instance_valid(motion): motion.kill()
-	rotation.y = closed_rotation + (open_turn if open else 0.0)
+	if lift > 0.0: position.y = lift_from + (lift if open else 0.0)
+	else: rotation.y = closed_rotation + (open_turn if open else 0.0)
 	opened = open
 	moving = false
 	# Solid again once nobody stands in the leaf (see _physics_process).
@@ -134,7 +140,8 @@ func leaf_line(open := true) -> Array:
 
 func open_immediately() -> void:
 	if is_instance_valid(motion): motion.kill()
-	rotation.y = closed_rotation + open_turn
+	if lift > 0.0: position.y = lift_from + lift
+	else: rotation.y = closed_rotation + open_turn
 	opened = true
 	moving = false
 	# Wherever it was left, it turns solid only once it holds nobody.

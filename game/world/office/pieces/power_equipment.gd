@@ -18,6 +18,8 @@ const SWITCH := Vector3(0.1, 0.14, 0.05)
 const SWITCH_LENS := Vector3(0.024, 0.024, 0.012)
 const SWITCH_LENS_Y := 0.018
 const SWITCH_FACE := 0.028
+## The maneuver room's leaf: the floor's own leaf's width and height, thicker.
+const BLAST_LEAF := Vector3(1.2, 2.58, 0.12)
 ## The zone plates' height on the board and their face off the wall, in
 ## power_objective.gd's board frame (origin on the wall, +Z out).
 const PLATE_Y := 1.85
@@ -100,6 +102,28 @@ static func make_power_board(builder: Node3D, size: Vector3, zones: int) -> Arra
 		KIT.block(p, "black", Vector3(rx, 0.3 + k * 0.03, zf + 0.001), Vector3(minf(0.2, rw - 0.08), 0.012, 0.002))
 	var meta := {"wall": true, "mount": 0.0, "text_plate": [Vector3(0.0, 2.25, zf + 0.005), Vector2(0.66, 0.1), Vector3(0.0, 0.0, 1.0)]}
 	return KIT.finish(builder, p, "power_board_%d" % n, size, meta)
+
+## The maneuver room's door: a slab of dark steel that rises into the wall
+## over it, framed and barred on both faces, riveted, with a red band at the
+## height of a hand and a rubber foot. No handle: only its motor moves it.
+static func blast_leaf(builder: Node3D, size: Vector3) -> ArrayMesh:
+	return KIT.cached(builder, KIT.key_of("blast_leaf", size), func() -> ArrayMesh: return make_blast_leaf(builder, size))
+
+static func make_blast_leaf(builder: Node3D, size: Vector3) -> ArrayMesh:
+	var p := KIT.begin()
+	var w := size.x
+	var h := size.y
+	var d := size.z
+	KIT.block(p, "steel_dark", Vector3(0.0, h / 2.0, 0.0), Vector3(w, h, d - 0.03), 0.006)
+	for s: float in [-1.0, 1.0]:
+		var z: float = s * (d / 2.0 - 0.0075)
+		for x: float in [-w / 2.0 + 0.04, w / 2.0 - 0.04]:
+			KIT.block(p, "steel_dark", Vector3(x, h / 2.0, z), Vector3(0.08, h, 0.015), 0.003)
+			for k in 6: KIT.cylinder(p, "metal", Vector3(x, 0.25 + k * 0.42, s * (d / 2.0 - 0.003)), 0.012, 0.006, 8, KIT.along_z())
+		for y: float in [0.5, 1.5, 2.3]: KIT.block(p, "metal", Vector3(0.0, y, z), Vector3(w - 0.16, 0.07, 0.015), 0.003)
+		KIT.block(p, "paint_red", Vector3(0.0, 1.05, z), Vector3(w - 0.16, 0.12, 0.012))
+	KIT.block(p, "black", Vector3(0.0, 0.02, 0.0), Vector3(w, 0.04, d), 0.004)
+	return KIT.finish(builder, p, "blast_leaf", size)
 
 ## The collector and the conduits of a board, up the wall to the ceiling.
 static func board_conduits(builder: Node3D, size: Vector3) -> ArrayMesh:

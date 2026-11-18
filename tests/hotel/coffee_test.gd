@@ -126,7 +126,9 @@ func run() -> void:
 	for frame in int(level.coffee.BREW * 60.0) + 6: await physics_frame
 	check("Ni con las sugerencias apagadas", not card_words(level).has(FEEL), str(card_words(level)))
 	level.settings.values.control_hints = true
-	await level.start_floor(7, false, [1, 2, 3, 4, 5], "apacible", 2)
+	# Seed 33: since the generator's version 7, seed 7 has two depots full of shelves
+	# for planta 2's two (2 of 6 in a corner; 4 or 5 of 6 in five other seeds measured).
+	await level.start_floor(33, false, [1, 2, 3, 4, 5], "apacible", 2)
 	var office: Array = level.coffee.machines
 	# Floor 2 (the author, 18 November 2026): two a planta, one where it is walked
 	# into and one far from it and from the planta's landmarks.

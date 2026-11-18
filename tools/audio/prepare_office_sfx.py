@@ -17,9 +17,9 @@ licence (the maneuver room's door).
   hatch.wav        the hatch's latches          bsb_0773_metal_filing_cabinet.wav
   crawl_1..2.wav   a knee on sheet metal        the two Ev-Dawg heater vent hits (Pixabay)
   ladder.wav       a ladder climbed             pixabay_76052_ladder_aluminum_erik90.mp3
-  heavy_door.wav   the maneuver door's motor    sef_hydraulic_lift.mp3: its run and its stop, 4.5 s
-  door_lock.wav    that door without power      sef_buzzing_electronics.mp3 and sef_locking_door_knob.mp3:
-                                                a short hum of its lock and its bolt holding
+  heavy_door.wav   the maneuver door's motor    sef_hydraulic_lift.mp3, the whole of it (8.3 s)
+  door_lock.wav    that door without power      sef_security_door_open_2.mp3: one beep of its
+                                                keypad, three times
 
 And the lies The Lurker tells (spec_f3_integration 4.3):
 
@@ -80,8 +80,7 @@ CLIPS = [
 ## The maneuver room's door (Sound Effects Factory's free licence: use in games
 ## and editing allowed, no attribution asked, the originals not passed on).
 DOOR_MOTOR = BUILDING / "maneuver_door_motor/sef_hydraulic_lift.mp3"
-DOOR_KNOB = BUILDING / "maneuver_door_lock/sef_locking_door_knob.mp3"
-DOOR_BUZZ = BUILDING / "maneuver_door_lock/sef_buzzing_electronics.mp3"
+DOOR_PAD = BUILDING / "maneuver_door_lock/sef_security_door_open_2.mp3"
 
 
 def load(path):
@@ -105,47 +104,12 @@ def cut(x, start, keep):
     return x[first:end]
 
 
-def door_motor(x):
-    """The hydraulic lift's run and its stop without the seconds between, for a
-    door that takes 4.5 s: its first 3.5 s crossfaded over a quarter of a
-    second into the stretch that ends on its clunk (6.3 to 7.6 s)."""
-    n = int(0.25 * RATE)
-    head = x[: int(3.5 * RATE)]
-    tail = x[int(6.3 * RATE): int(7.6 * RATE)]
-    t = np.linspace(0, 1, n)
-    return np.concatenate([head[:-n], head[-n:] * np.sqrt(1 - t) + tail[:n] * np.sqrt(t), tail[n:]])
-
-
-def lowpass(x, hz):
-    """What is under `hz`, rolled off gently above it."""
-    spec = np.fft.rfft(x)
-    spec *= 1.0 / (1.0 + (np.fft.rfftfreq(len(x), 1.0 / RATE) / hz) ** 4)
-    return np.fft.irfft(spec, len(x))
-
-
-def hum(buzz, seconds):
-    """A short hum of an electric lock: a steady stretch of the buzz, its
-    crackle taken off."""
-    x = lowpass(buzz[int(8.0 * RATE): int((8.0 + seconds) * RATE)], 1800.0)
-    return fade(x / (np.max(np.abs(x)) or 1.0), 0.008, 0.05)
-
-
-def bolt(knob):
-    """The knob's bolt alone: from its first sound, 0.45 s."""
-    x = cut(knob, -1, 0.45)
-    return fade(x / (np.max(np.abs(x)) or 1.0), 0.004, 0.12)
-
-
-def door_lock(buzz, knob, kind="hum_bolt"):
-    """The door without power, quiet: "hum_bolt", its lock humming a moment
-    and its bolt holding (the one the game plays); "bolt", the bolt alone;
-    "two_hums", two short hums."""
-    gap = np.zeros(int(0.05 * RATE))
-    if kind == "bolt":
-        return bolt(knob)
-    if kind == "two_hums":
-        return np.concatenate([hum(buzz, 0.09), np.zeros(int(0.07 * RATE)), hum(buzz, 0.09)])
-    return np.concatenate([hum(buzz, 0.16) * 0.6, gap, bolt(knob)])
+def door_lock(pad):
+    """An electric lock that will not open: one beep of the keypad (its third,
+    2.15 to 2.45 s) three times, 0.13 s apart."""
+    beep = fade(pad[int(2.15 * RATE): int(2.45 * RATE)], 0.004, 0.04)
+    gap = np.zeros(int(0.13 * RATE))
+    return np.concatenate([beep, gap, beep, gap, beep])
 
 
 def fade(x, fin=0.004, fout=0.25):
@@ -184,8 +148,8 @@ def main():
     for original, copy, peak, start, keep, looped in CLIPS:
         x = cut(load(original), start, keep)
         write(copy, loop(x) if looped else fade(x), peak)
-    write("heavy_door.wav", fade(door_motor(load(DOOR_MOTOR))), 0.5)
-    write("door_lock.wav", door_lock(load(DOOR_BUZZ), load(DOOR_KNOB)), 0.4)
+    write("heavy_door.wav", fade(cut(load(DOOR_MOTOR), -1, 0.0)), 0.5)
+    write("door_lock.wav", door_lock(load(DOOR_PAD)), 0.35)
 
 
 if __name__ == "__main__":

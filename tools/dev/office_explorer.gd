@@ -27,7 +27,7 @@ const CORRIDOR_PULL := 0.8
 const TYPE_HOLD := 5.0 + 1.2
 const CAPSULE_SPEED := 6.0
 const CARD_HOLDS := 1.5 + 0.5
-const MANEUVER_HOLDS := 4.5 + 1.0
+const MANEUVER_HOLDS := 7.2 + 1.0
 const CAMS_HOLD := 20.0 + 2.0 + 2.4
 const CRAWL := 1.2
 

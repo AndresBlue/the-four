@@ -115,7 +115,7 @@ func palette_tables() -> void:
 			var room := {"type": type, "wing": wing}
 			if not OFFICE.floor_finish(room) in OFFICE.FINISHES or not OFFICE.wall_material(room) in OFFICE.WALLS or not OFFICE.lamp_of(room) in OFFICE.LAMPS: unknown.append("%d en la planta %d" % [type, wing])
 			if not OFFICE.hard_floor(room): soft.append(Vector2i(type, wing))
-	check("Sin falso techo solo el pasillo de servicio, la sala de climatización y la climatizadora", open_ceilings == [12, 22, 23], str(open_ceilings))
+	check("Sin falso techo solo el pasillo de servicio, la sala de climatización, la climatizadora y la sala de maniobra", open_ceilings == [12, 22, 23, 26], str(open_ceilings))
 	check("Cada tipo en cada planta tiene suelo, paredes, lámpara y conjunto conocidos", unknown.is_empty(), str(unknown))
 	var finishes: Array = range(TYPE_COUNT).map(func(type): return OFFICE.floor_finish({"type": type, "wing": 0}))
 	check("El suelo de cada tipo es el de la tabla 1.2", finishes == FINISHES_12, str(finishes))
@@ -301,7 +301,7 @@ func kind_checks() -> void:
 	var made = (load(KIND.CREATURE) as PackedScene).instantiate()
 	check("Su criatura se carga y es una criatura del contrato", made != null and made is CREATURE)
 	if made != null: made.free()
-	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 6", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 6)
+	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 7", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 7)
 	check("Sus etapas se llaman niveles; las del hotel, sectores", KIND.title_of(2) == "NIVEL 2" and HOTEL_KIND.title_of(2) == "SECTOR 2")
 
 # --- Generador ---------------------------------------------------------------
