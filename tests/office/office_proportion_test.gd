@@ -230,6 +230,7 @@ func run() -> void:
 	var tables := 0
 	var near_seated := 0
 	var strays: Array = []
+	var blocked_board: Array = []
 	for seed_value in SEEDS:
 		var m: Dictionary = GEN.new().generate(int(seed_value), 2)
 		if m.is_empty() or bool(m.get("fallback", false)):
@@ -249,6 +250,11 @@ func run() -> void:
 			var main: Array = things.filter(func(thing): return String(thing.what) == "board" or String(thing.what) == "handler" or (MAIN_KINDS.get(name_of, []) as Array).has(String(thing.what)))
 			if name_of in ["electrico", "climatizacion"] or MAIN_KINDS.has(name_of): widths[name_of].append(width_in_frame(camera, framed, main))
 		walk_most = maxf(walk_most, float(FLOOR.route_metres(m, int(m.power.room)).get(int(m.refuges[1]), INF)))
+		# The board's 2.6 m and the step to use it free (1.10.1: a filing cabinet before the lift's lever).
+		var el: Dictionary = m.rooms[int(m.power.room)]
+		var before := LAYOUT.wall_rect(el, String(m.power.board.wall), float(m.power.board.along), 1.3, LAYOUT.FIXTURE_CLEAR.y)
+		for thing in things_of(m, el):
+			if String(thing.what) != "board" and (thing.rect as Rect2).grow(-0.001).intersects(before): blocked_board.append("%d: %s" % [int(seed_value), String(thing.what)])
 		var tops := [0, 0, 0]
 		# Only where document_placement.choose() would leave a paper: past its `least`.
 		var reach_of := {}
@@ -301,6 +307,7 @@ func run() -> void:
 	check("Los tramos juntan piezas distintas en la mitad de las salas o más", joinable > 0 and joined * 2 >= joinable, "%d de %d" % [joined, joinable])
 	check("Las salas de juntas con mesa llevan silla del lado cercano: el 80 % o más", tables > 0 and near_seated * 5 >= tables * 4, "%d de %d" % [near_seated, tables])
 	check("Ningún despacho fuera de banda sobre el conducto principal de la tercera planta", strays.is_empty(), str(strays.slice(0, 5)))
+	check("Nada delante del tablero eléctrico", blocked_board.is_empty(), str(blocked_board.slice(0, 5)))
 	var unmeasured: Array = []
 	for recipe in OFFICE.RECIPES:
 		for kind in recipe:

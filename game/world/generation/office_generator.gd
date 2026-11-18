@@ -24,6 +24,7 @@ const STAND_OUT := 0.6        # the typist's feet, out from the desk's point
 const TABLE_OFFSET := 1.55    # a meeting table's footprint, from the boardroom's centre (office_props)
 const TABLE_WALK := 0.66     # free each long side of it: a capsule's way (office_validator)
 const BOARDROOM_DOOR := 1.5   # the real building's boardroom doors, off their walls' middles (hang_doors())
+const BOARD_HALF := 1.3       # the power board's half width (power_equipment.BOARD), its front kept clear
 const DESKS_MOST := 8         # free-standing items per cell
 ## The band a duct shortcut keeps against the walk (1c's validator has its own).
 const SHORTCUT_MIN := 0.55
@@ -1397,9 +1398,9 @@ func furnish_power(job: Dictionary) -> String:
 	var board := {}
 	for wall in far_walls(el_room):
 		for along in [0.0, -1.8, 1.8]:
-			if spot_free(job, el_room, String(wall), along, 0.9):
+			if spot_free(job, el_room, String(wall), along, BOARD_HALF):
 				board = wall_spot(el_room, String(wall), along, py)
-				register(job, el, String(wall), along, 0.9)
+				register(job, el, String(wall), along, BOARD_HALF)
 				break
 		if not board.is_empty(): break
 	if board.is_empty(): return "board"
@@ -1660,7 +1661,11 @@ func furnish_sockets(job: Dictionary) -> String:
 			keep_clear.append(job.hatch_square)
 			keep_clear.append(job.unit_box)
 		var props: Array = []
+		var open: Array = room.get("open_sides", [])
 		var clear := func(prop: Dictionary) -> bool:
+			# A socket by an open side (a salon's seam, the reception's annex) is mid-room, no wall behind it.
+			var c := LAYOUT.corner_of(int(prop.slot))
+			if open.has(LAYOUT.wall_of(Vector2i(int(c.x), 0))) or open.has(LAYOUT.wall_of(Vector2i(0, int(c.y)))): return false
 			var corner: Rect2 = palette.corner_rect(String(prop.kind), sockets[int(prop.slot)], int(prop.rotation))
 			return not keep_clear.any(func(r): return corner.intersects(r))
 		for prop in room.props:

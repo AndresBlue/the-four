@@ -89,7 +89,7 @@ func run() -> void:
 	feel.pressed(duck, pad_settings)
 	check("Salvo si se pide mantenerlo", not feel.wants("crouch", pad_settings))
 	pad_settings.values.pad_crouch_toggle = true
-	check("Un botón se puede cambiar", pad_settings.bind_pad("interact", JOY_BUTTON_RIGHT_STICK) and int(pad_settings.pad_bindings.interact) == JOY_BUTTON_RIGHT_STICK and InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_RIGHT_STICK))
+	check("Un botón se puede cambiar", pad_settings.bind_pad("interact", JOY_BUTTON_DPAD_UP) and int(pad_settings.pad_bindings.interact) == JOY_BUTTON_DPAD_UP and InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_DPAD_UP))
 	check("Pero no al de menú ni a uno que ya hace otra cosa", not pad_settings.bind_pad("interact", JOY_BUTTON_START) and not pad_settings.bind_pad("interact", int(pad_settings.pad_bindings.crouch)))
 	# The menus have to be usable with a pad alone: this project's ui_accept
 	# came with no pad button at all, so the cross moved the highlight and

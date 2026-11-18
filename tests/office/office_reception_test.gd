@@ -3,7 +3,8 @@ extends SceneTree
 ## planta its bay's cell and its cross's stub toward the end, one room of 9 m or
 ## more along, its counter in the first and its wait down the annex; and no
 ## other planta's room in its column grows past the structure's bay (the
-## freight lift B and its lobby back to 7.2), seeds 7 and 33 among them.
+## freight lift B and its lobby back to 7.2), seeds 7 and 33 among them; no
+## corner piece on a socket by an open side, the reception's coat racks first.
 const GEN := preload("res://game/world/generation/office_generator.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const RUNS := [[7, 2], [33, 2], [21, 2], [1, 2], [2, 3], [5, 1], [12, 1], [44, 4]]
@@ -21,6 +22,7 @@ func run() -> void:
 	var grown: Array = []
 	var pieces: Array = []
 	var invalid: Array = []
+	var loose: Array = []
 	for each in RUNS:
 		var tag := "%d/%d" % [int(each[0]), int(each[1])]
 		var generator = GEN.new()
@@ -43,6 +45,13 @@ func run() -> void:
 		var all: Array = []
 		for r in hall: all.append_array(kinds.call(r))
 		if not kinds.call(start).has("reception_counter_l") or annex.is_empty() or not kinds.call(annex[0]).has("waiting_row_4") or all.count("reception_counter_l") != 1 or all.count("waiting_row_4") != 1: pieces.append("%s %s / %s" % [tag, str(kinds.call(start)), str(annex.map(func(r): return kinds.call(r)))])
+		# No corner piece (the reception's coat racks, 1.10.1) on a socket by an open
+		# side: there it stands mid-room with no wall behind it.
+		for r in m.rooms:
+			var open: Array = r.get("open_sides", [])
+			for p in r.get("props", []):
+				var c := Vector2i(-1 if int(p.slot) % 2 == 0 else 1, -1 if int(p.slot) < 2 else 1)
+				if open.has("west" if c.x < 0 else "east") or open.has("north" if c.y < 0 else "south"): loose.append("%s sala %d%s %s" % [tag, int(r.id), " (recepción)" if int(r.type) == OFFICE.RECEPTION else "", String(p.kind)])
 		# The other plantas' rooms in the reception's column and its stub's: none over the bay.
 		for r in m.rooms:
 			if int(r.wing) == 0 or int(r.type) == OFFICE.VOID or absi(int(r.x) - int(start.x)) > 1: continue
@@ -51,4 +60,5 @@ func run() -> void:
 	check("La recepción mide 9 m o más en su lado largo", short.is_empty(), str(short))
 	check("Un mostrador, en la celda de la recepción, y una espera, en su anexo", pieces.is_empty(), str(pieces))
 	check("Ninguna sala de otra planta en la columna de la recepción pasa del vano de 7,2", grown.is_empty(), str(grown.slice(0, 8)))
+	check("Ningún perchero ni mueble de esquina sin pared detrás (la recepción y toda sala abierta)", loose.is_empty(), str(loose.slice(0, 8)))
 	quit(1 if failed > 0 else 0)
