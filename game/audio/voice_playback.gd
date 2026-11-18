@@ -12,6 +12,8 @@ const HOLD_MS := 155
 ## On the radio a pause shorter than this is the same call: a talker keeps the
 ## key down through a sentence, so no beeps between phrases, only the hiss.
 const OVER_MS := 700
+## Blocks late this long are a pause, not jitter.
+const PAUSE_MS := 150
 const OPEN := 1.0 - exp(-TAU * 7200.0 / CODEC.RATE)
 const MUFFLED := 1.0 - exp(-TAU * 1150.0 / CODEC.RATE)
 const DC := 1.0 - exp(-TAU * 95.0 / CODEC.RATE)
@@ -152,8 +154,9 @@ func update(now: int, route: Vector4) -> void:
 			output.push_buffer(render(PackedFloat32Array(), route))
 			continue
 		if queue.is_empty():
-			# A pause in the call, not late packets: the open carrier keeps hissing.
-			if carrier and now - last_packet > WAIT_MS:
+			# A pause in the call, not late packets (the sender's hang time is
+			# longer than PAUSE_MS): the open carrier keeps hissing.
+			if carrier and now - last_packet > PAUSE_MS:
 				output.push_buffer(render(PackedFloat32Array(), route))
 				continue
 			break

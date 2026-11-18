@@ -1409,7 +1409,7 @@ func frighten(at: Vector3) -> void:
 		var ear: Vector3 = body.camera.global_position
 		if FLOOR.planta_of(ear.y) != FLOOR.planta_of(at.y) or ear.distance_to(at) > SHRIEK_FRIGHT: continue
 		if audio.occluded(at, get_rid(), ear): continue
-		mind.fright(body, mind.SANITY_SHRIEK)
+		mind.fright(body, float(MIND.shriek))
 
 ## Her shriek, at her face, for everybody.
 func scream(point: Vector3) -> void:
@@ -1552,6 +1552,44 @@ func cue_over(cue_id: int, _outcome: String) -> void:
 ## warned again within SAME_PREY s of their last warning (lurker_versus.md 7.4).
 const RELEASE_GAP := 0.5
 const SAME_PREY := 4.0
+## Her wait from one warning to the next, whoever on (the author, 18 November
+## 2026): ATTACK_WAIT.x s with one survivor on her planta, down to
+## ATTACK_WAIT.y with five, so "you cover me, I use this" does not beat her and
+## nobody alone is hounded.
+const ATTACK_WAIT := Vector2(5.0, 1.25)
+## What she costs a mind, read by sanity.gd (.claude/specs/cordura_y_edificio.md
+## 3.1): no mind comes back in the light; seeing her, her looking back and her
+## peek, one fright per `rest` s; a warning turned away costs `parried`, less
+## each time on the same survivor (× `repeat`, never under `repeat_least`, a
+## step back every `repeat_back` s), so she goes from one to another; a lone
+## survivor pays `alone` of everything she costs. A mind gone (0) is bare to
+## her: its own look and torch neither stop, frighten nor save
+## (SIGHT.spent()). Points of a meter of 100.
+const MIND := {"light_heals": false, "spent_bare": true, "glimpse": 1.5, "stare": 3.5, "peek": 6.0, "shriek": 3.0, "rest": 12.0,
+	"parried": 8.0, "repeat": 0.8, "repeat_least": 0.4, "repeat_back": 20.0, "alone": 0.6}
+
+## Her wait between warnings with `team` survivors alive on her planta.
+static func attack_wait(team: int) -> float:
+	return lerpf(ATTACK_WAIT.x, ATTACK_WAIT.y, clampf(float(team - 1) / 4.0, 0.0, 1.0))
+
+## Seat -> [steps of `repeat` earned, brain clock of the last]: what a warning
+## turned away costs that survivor next.
+var parries := {}
+
+## What a warning turned away now costs `seat` (and counts it).
+func parry_cost(seat: int) -> float:
+	var row: Array = parries.get(seat, [0.0, -INF])
+	var steps := parry_steps(float(row[0]), brain.clock - float(row[1]))
+	parries[seat] = [steps + 1.0, brain.clock]
+	return parried_cost(steps)
+
+## The steps a survivor has earned, `since` s after their last parry.
+static func parry_steps(earned: float, since: float) -> float:
+	return maxf(0.0, earned - floorf(since / float(MIND.repeat_back)))
+
+## A parry's cost after `steps` on the same survivor.
+static func parried_cost(steps: float) -> float:
+	return float(MIND.parried) * maxf(float(MIND.repeat_least), pow(float(MIND.repeat), steps))
 ## Degrees the host grants a victim's claim beyond its own cones (OFICINAS
 ## 11.6): the victim saw its own view, the host has it late.
 const CLAIM_MARGIN := 15.0
@@ -1592,6 +1630,7 @@ func judge(delta: float) -> void:
 	senses.clicks = []
 	apply_claim(p)
 	watch_prey(p, delta)
+	warning.gap = attack_wait(int(p.team))
 	if entry.is_empty():
 		judge_light(p, delta)
 		return
@@ -1599,7 +1638,11 @@ func judge(delta: float) -> void:
 	if verdict == &"": return
 	if verdict != &"due":
 		brain.cue_ended.emit(entry)
-		if verdict == &"saved" and String(entry.reason) in ["linterna", "mirada"]: scare_off(String(entry.reason) == "linterna", int(entry.by), p.face)
+		if verdict == &"saved":
+			var mind = level.get("sanity")
+			var victim = senses.body_of(int(entry.seat))
+			if mind != null and mind.has_method("fright") and victim != null: mind.fright(victim, parry_cost(int(entry.seat)))
+			if String(entry.reason) in ["linterna", "mirada"]: scare_off(String(entry.reason) == "linterna", int(entry.by), p.face)
 		return
 	var v = p.victim
 	warning.take(brain.clock)
@@ -1831,8 +1874,8 @@ func scared_here(flash: bool, from: Vector3, seat: int, seconds: float) -> void:
 
 ## Her peek (lurker_versus.md 7), on the machine in charge: whoever has her
 ## at the edge of their view (SIGHT.beside_view()) and would make her out as
-## their mind does (sanity.sight_of_creature()'s light and reach) loses as
-## much as meeting her eyes, once in PEEK_EVERY s at most. No warning sound.
+## their mind does (sanity.sight_of_creature()'s light and reach) loses
+## MIND.peek, once in PEEK_EVERY s at most. No warning sound.
 func judge_peek() -> void:
 	var mind = level.get("sanity") if level != null else null
 	if brain == null or mind == null or not mind.has_method("fright") or not in_charge_here() or grace > 0.0 or bool(view().in_duct): return
@@ -1849,7 +1892,7 @@ func judge_peek() -> void:
 		if gap > mind.SANITY_SEEN or (not lit_face and not torch and gap > 6.0): continue
 		if not SIGHT.beside_view(one.camera, face) or not SIGHT.clear(level, eye, face, [get_rid(), one.get_rid()]): continue
 		peeked[seat] = brain.clock
-		mind.fright(one, mind.SANITY_STARE)
+		mind.fright(one, float(MIND.peek))
 
 ## The victim's machine says it heard warning `cue_id` (match_net.cue_heard):
 ## in the ledger, how long after its start the machine in charge knew.

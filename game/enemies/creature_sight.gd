@@ -48,6 +48,17 @@ static func alive(level, body) -> bool:
 	if session == null or not "slot" in body: return true
 	return session.participants.get(int(body.slot), session.Life.DEAD) != session.Life.DEAD
 
+## A mind gone (sanity 0, the body marked) where the floor's creature says such
+## a look is nothing to it (creature.MIND.spent_bare, The Lurker's: the author,
+## 18 November 2026): their eyes and their torch neither stop, frighten nor
+## save. The hotel's creature has no such rule.
+static func spent(level, body) -> bool:
+	if not is_instance_valid(body) or not bool(body.get("burnt")): return false
+	var creature = level.get("creature")
+	if not is_instance_valid(creature): return false
+	var mind = creature.get("MIND")
+	return mind is Dictionary and bool(mind.get("spent_bare", false)) and (not level.has_method("rule") or int(level.rule("sanity")) == 1)
+
 ## Any survivor but this machine's own player: its view reaches here late.
 ## Bots (bot_body.gd extends remote_player.gd) get the same margin: on the
 ## side of more saves.
@@ -73,7 +84,7 @@ static func clear(level, from: Vector3, to: Vector3, exclude: Array) -> bool:
 ## `dot`, a clear ray from the camera. The Locust's watched(), point for point.
 static func watched(level, target: Vector3, exclude: Array, reach := WATCH_REACH, dot := WATCH_DOT) -> bool:
 	for body in level.survivors():
-		if not is_instance_valid(body) or not level.survivor_active(body) or not "camera" in body or not is_instance_valid(body.camera): continue
+		if not is_instance_valid(body) or not level.survivor_active(body) or not "camera" in body or not is_instance_valid(body.camera) or spent(level, body): continue
 		var eye: Vector3 = body.camera.global_position
 		var towards: Vector3 = target - eye
 		var gap := towards.length()
@@ -86,7 +97,7 @@ static func watched(level, target: Vector3, exclude: Array, reach := WATCH_REACH
 ## within TORCH_FACE_ANGLE, within TORCH_REACH, through nothing. No least
 ## distance: a torch on her face a metre away counts most of all.
 static func torch_covers(level, body, face: Vector3, exclude: Array) -> bool:
-	if not alive(level, body) or bool(body.get("hidden")): return false
+	if not alive(level, body) or bool(body.get("hidden")) or spent(level, body): return false
 	if not "torch" in body or not is_instance_valid(body.torch) or not body.torch.visible or torch_cold(body): return false
 	var eye: Vector3 = body.camera.global_position
 	var to := face - eye
@@ -117,7 +128,7 @@ static func regards(level, body, face: Vector3, exclude: Array, lit_face: bool) 
 
 ## One body's look at her face, one ray: {"regards": bool, "torch": bool}.
 static func look_of(level, body, face: Vector3, exclude: Array, lit_face: bool) -> Dictionary:
-	if not alive(level, body) or bool(body.get("hidden")): return {"regards": false, "torch": false}
+	if not alive(level, body) or bool(body.get("hidden")) or spent(level, body): return {"regards": false, "torch": false}
 	var torch_on: bool = "torch" in body and is_instance_valid(body.torch) and body.torch.visible and not torch_cold(body)
 	var cone := REGARD_REMOTE if is_remote(level, body) else REGARD_LOCAL
 	return look_from(level, body.camera.global_transform, torch_on, face, exclude + [body.get_rid()], lit_face, cone, TORCH_FACE_ANGLE)

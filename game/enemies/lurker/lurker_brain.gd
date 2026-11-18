@@ -867,7 +867,7 @@ func cue_ready(p) -> bool:
 func cue_allowed(p, v) -> bool:
 	return bool(v.seen) and bool(v.fair) and not bool(v.hidden) \
 		and not bool(p.in_duct) and not bool(p.off_limits) and float(v.distance) >= CUE_RANGE.x and float(v.distance) <= CUE_RANGE.y \
-		and bool(v.behind) and p.regarded_by.is_empty() and p.torch_by.is_empty() and (lit_takes or not bool(v.lit)) \
+		and (bool(v.behind) or bool(v.spent)) and p.regarded_by.is_empty() and p.torch_by.is_empty() and (lit_takes or not bool(v.lit) or bool(v.spent)) \
 		and warning.can_start(clock) and clock >= cue_after and not drink_spent()
 
 ## Her one attempt of a blackout made: a warning begun since her shriek, while

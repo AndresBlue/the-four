@@ -128,9 +128,23 @@ func run() -> void:
 	level.settings.values.control_hints = true
 	await level.start_floor(7, false, [1, 2, 3, 4, 5], "apacible", 2)
 	var office: Array = level.coffee.machines
-	check("El piso 2 de cinco supervivientes, el más grande, tiene 5", office.size() == 5, str(office.size()))
-	var palette = level.FLOOR.palette(level.manifest)
-	check("Alguna en una sala de descanso", office.any(func(one): return int(level.FLOOR.room_at(level.manifest.rooms, one.global_position).get("type", -1)) == palette.BREAK_ROOM))
+	# Floor 2 (the author, 18 November 2026): two a planta, one where it is walked
+	# into and one far from it and from the planta's landmarks.
+	check("El piso 2 tiene dos por planta", office.size() == 6 and range(3).all(func(p: int) -> bool: return office.filter(func(one): return level.FLOOR.planta_of(one.global_position.y) == p).size() == 2), str(office.map(func(one): return level.FLOOR.planta_of(one.global_position.y))))
+	var by_door := []
+	var far_enough := true
+	for p in 3:
+		var entry: int = level.FLOOR.entry_of(level.manifest, p)
+		var metres: Dictionary = level.FLOOR.route_metres(level.manifest, entry)
+		var here: Array = office.filter(func(one): return level.FLOOR.planta_of(one.global_position.y) == p)
+		var ways: Array = here.map(func(one): return float(metres.get(int(level.FLOOR.room_at(level.manifest.rooms, one.global_position).get("id", -1)), INF)))
+		ways.sort()
+		by_door.append(ways)
+		# The near one in the way in or the room beside it (the reception's annex is 18 m off its middle); the far one past half the planta's farthest room.
+		var farthest: float = metres.values().max()
+		if ways.size() < 2 or float(ways[0]) > 20.0 or float(ways[1]) < farthest * 0.5: far_enough = false
+	check("En cada planta, una en la llegada y otra lejos de ella", far_enough, str(by_door))
+	check("Beber el café dice que te sientes mejor", level.coffee.FELT == "Te sientes mejor...")
 	check("Ninguna delante del ascensor de la recepción ni de otro", clear_of_lifts(level, office))
 	check("Lo que cuelga de las paredes del piso 2 está anotado", level.hotel.hung.size() > 50, str(level.hotel.hung.size()))
 	var office_gaps := corner_gaps(level, office)

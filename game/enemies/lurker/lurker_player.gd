@@ -188,6 +188,9 @@ var charge := 0.0
 ## seat -> clock of her last attack on it; until when the host keeps her
 ## waiting after a flash; when she was last sent off.
 var attacked := {}
+## Her last attack on anybody: the host makes her wait lurker.attack_wait()
+## between two, by how many are alive on her planta.
+var last_attack := -INF
 var flashed_until := -INF
 var fled_at := -INF
 ## Whence she was sent off, until she is in (INF none).
@@ -666,6 +669,14 @@ func markable(one, at: Vector3, here: int) -> bool:
 	var feet: Vector3 = one.global_position
 	return FLOOR.planta_of(feet.y + 1.0) == here and Vector2(feet.x - at.x, feet.z - at.z).length() <= PREY_REACH
 
+## Survivors alive and in play on her planta, at least one (lurker_senses.team_here()).
+func team_here() -> int:
+	var here := planta()
+	var count := 0
+	for one in level.survivors():
+		if is_instance_valid(one) and SIGHT.alive(level, one) and level.survivor_active(one) and FLOOR.planta_of(one.global_position.y + 1.0) == here: count += 1
+	return maxi(1, count)
+
 func body_of(seat: int):
 	for one in level.survivors():
 		if is_instance_valid(one) and "slot" in one and int(one.slot) == seat: return one
@@ -698,6 +709,8 @@ func judge_prey(one) -> Dictionary:
 	if clock < flashed_until: waits.append((flashed_until - clock) / FLASH_WAIT)
 	var since := clock - float(attacked.get(seat, -INF))
 	if since < SAME_PREY: waits.append(1.0 - since / SAME_PREY)
+	var gap: float = creature.attack_wait(team_here())
+	if clock - last_attack < gap: waits.append(1.0 - (clock - last_attack) / gap)
 	if creature.cue or not attack.is_empty() or not trip.is_empty() or not creature.motion.transit.is_empty(): waits.append(1.0)
 	# Quiet after a take near it (lurker_brain.sated_on()): known only where she is judged.
 	var brain = creature.brain
@@ -728,7 +741,7 @@ func judge_prey(one) -> Dictionary:
 			out.why = "light"
 			out.from = body.torch.global_position
 			return out
-	if not creature.brain.lit_takes and SIGHT.lit_point(level, eye):
+	if not creature.brain.lit_takes and SIGHT.lit_point(level, eye) and not SIGHT.spent(level, one):
 		out.why = "light"
 		out.room = int(FLOOR.room_at(level.manifest.rooms, eye).get("id", -1))
 		return out
@@ -742,7 +755,7 @@ func judge_prey(one) -> Dictionary:
 ## The eye of whoever would see `face` (as SIGHT.watched() counts it), INF none.
 func watcher(face: Vector3, exclude: Array) -> Vector3:
 	for body in level.survivors():
-		if not is_instance_valid(body) or not level.survivor_active(body) or not "camera" in body or not is_instance_valid(body.camera): continue
+		if not is_instance_valid(body) or not level.survivor_active(body) or not "camera" in body or not is_instance_valid(body.camera) or SIGHT.spent(level, body): continue
 		var eye: Vector3 = body.camera.global_position
 		var towards: Vector3 = face - eye
 		var gap := towards.length()
@@ -779,6 +792,7 @@ func find_drop(one) -> Dictionary:
 func attack_now() -> void:
 	if prey < 0 or not bool(prey_info.get("ok", false)): return
 	attacked[prey] = clock
+	last_attack = clock
 	struck = prey
 	if creature.motion.plenum:
 		attack = {"phase": "crawl", "seat": prey, "drop": prey_info.drop, "clock": 0.0}

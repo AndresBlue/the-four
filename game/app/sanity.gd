@@ -98,8 +98,9 @@ func tick(delta: float) -> void:
 
 ## Her shriek heard close by (the Lurker's, spec_f3_integration 3.7).
 const SANITY_SHRIEK := 6.0
-## A fright that is not a sight of the creature: like a sight, one per
-## SANITY_SIGHT_REST, and only what it costs over what that rest has paid.
+## A fright that is not a sight of the creature: like a sight, one per rest
+## (the creature's, rules()), and only what it costs over what that rest has
+## paid; a lone survivor pays the creature's `alone` share of it.
 func fright(body: Node3D, cost: float) -> void:
 	if level.rule("sanity") != 1: return
 	var local: bool = body == level.player
@@ -107,14 +108,11 @@ func fright(body: Node3D, cost: float) -> void:
 	var value: float = level.player.sanity if local else float(mind.sanity)
 	var rest: float = sight_rest if local else float(mind.rest)
 	var paid: float = sight_paid if local else float(mind.get("paid", 0.0))
-	if rest <= 0.0:
-		rest = SANITY_SIGHT_REST
-		paid = cost
-		value = maxf(0.0, value - cost)
-	elif cost > paid:
-		value = maxf(0.0, value - (cost - paid))
-		paid = cost
-	else: return
+	var paying := pay(value, rest, paid, cost * alone_share(), float(rules().get("rest", SANITY_SIGHT_REST)))
+	if paying.x == value and paying.z == paid: return
+	value = paying.x
+	rest = paying.y
+	paid = paying.z
 	if local:
 		level.player.sanity = value
 		sight_rest = rest
@@ -129,6 +127,7 @@ func wear(body: Node3D, delta: float) -> void:
 	var rest: float = sight_rest if local else float(mind.rest)
 	var paid: float = sight_paid if local else float(mind.get("paid", 0.0))
 	var lit := lit_at(body.global_position)
+	var own := rules()
 	# The room plays without it: nothing wears a mind down, in the dark or at
 	# the sight of the creature.
 	var spent: bool = level.rule("sanity") == 1
@@ -137,20 +136,19 @@ func wear(body: Node3D, delta: float) -> void:
 		var rate := SANITY_DARK
 		if not body.hidden and body.torch.visible: rate *= SANITY_TORCH
 		value = maxf(0.0, value - rate * delta)
-	else: value = minf(100.0, value + SANITY_LIGHT * delta)
+	# The Lurker's floor gives nothing back in the light: only a cup does
+	# (coffee.gd; the author, 18 November 2026).
+	elif bool(own.get("light_heals", true)): value = minf(100.0, value + SANITY_LIGHT * delta)
 	# A long look at it is one fright, not one a frame; and a glimpse that
 	# turns into its eyes on you is the bigger fright, charged once.
 	rest = maxf(0.0, rest - delta)
 	var sight := sight_of_creature(body, lit) if spent else 0
 	if sight > 0:
-		var cost: float = SANITY_STARE if sight == 2 else SANITY_GLIMPSE
-		if rest <= 0.0:
-			rest = SANITY_SIGHT_REST
-			paid = cost
-			value = maxf(0.0, value - cost)
-		elif cost > paid:
-			value = maxf(0.0, value - (cost - paid))
-			paid = cost
+		var cost: float = float(own.get("stare", SANITY_STARE)) if sight == 2 else float(own.get("glimpse", SANITY_GLIMPSE))
+		var paying := pay(value, rest, paid, cost * alone_share(), float(own.get("rest", SANITY_SIGHT_REST)))
+		value = paying.x
+		rest = paying.y
+		paid = paying.z
 	if body.burnt and value >= SANITY_BACK: body.set_burnt(false)
 	elif not body.burnt and value <= 0.0: body.set_burnt(true)
 	if local:
@@ -158,6 +156,32 @@ func wear(body: Node3D, delta: float) -> void:
 		sight_rest = rest
 		sight_paid = paid
 	else: minds[int(body.slot)] = {"sanity": value, "rest": rest, "paid": paid}
+
+## One fright on a mind (value, rest left, paid in that rest): a fresh rest
+## pays all of `cost`; inside a rest only what it costs over what was paid.
+## (value, rest, paid) after it.
+static func pay(value: float, rest: float, paid: float, cost: float, rest_length: float) -> Vector3:
+	if rest <= 0.0: return Vector3(maxf(0.0, value - cost), rest_length, cost)
+	if cost > paid: return Vector3(maxf(0.0, value - (cost - paid)), rest, cost)
+	return Vector3(value, rest, paid)
+
+## What the floor's creature costs a mind (creature.MIND: The Lurker's), or {}
+## for the hotel's, which keeps these constants.
+func rules() -> Dictionary:
+	var creature = level.get("creature")
+	if not is_instance_valid(creature): return {}
+	var own = creature.get("MIND")
+	return own if own is Dictionary else {}
+
+## The share of a fright a lone survivor pays (the creature's `alone`; 1 with
+## company or on the hotel).
+func alone_share() -> float:
+	var own := rules()
+	if not own.has("alone"): return 1.0
+	var alive := 0
+	for body in level.survivors():
+		if int(level.session.participants.get(int(body.slot), level.session.Life.DEAD)) != level.session.Life.DEAD: alive += 1
+	return float(own.alone) if alive <= 1 else 1.0
 
 ## What the authority tells everybody: seat -> [meter, gone out].
 func pack() -> Dictionary:

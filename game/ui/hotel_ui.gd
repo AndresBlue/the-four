@@ -142,6 +142,7 @@ var voice_poll := 0.0
 const VOICE_MARK := 28.0
 const OSD := preload("res://game/presentation/camcorder_osd.gd")
 var flash_label: Label
+var flash_steady := false
 ## The keypad overlay of the last door.
 var lock_panel: Control
 var progress: ProgressBar
@@ -2318,9 +2319,12 @@ func hide_transit() -> void:
 	if is_instance_valid(transit): transit.queue_free()
 	transit = null
 
-func flash(words: String, seconds := 2.5) -> void:
+## Words in the middle for a while: blinking out over their last second, or,
+## `steady`, fading (what is said calmly, the coffee's).
+func flash(words: String, seconds := 2.5, steady := false) -> void:
 	flash_label.text = words
 	flash_time = seconds
+	flash_steady = steady
 
 ## The picture of what is written over the snow, as big as the screen and
 ## laid out as the screen is: the same lettering in the same places.
@@ -2378,7 +2382,7 @@ func _process(delta: float) -> void:
 		loading_label.text = "EL HOTEL ESTÁ TOMANDO FORMA" + ".".repeat(int(clock * 3.0) % 4)
 	if flash_time > 0:
 		flash_time -= delta
-		flash_label.modulate.a = 1.0 if flash_time > 1.0 or fposmod(flash_time, 0.4) < 0.25 else 0.0
+		flash_label.modulate.a = clampf(flash_time, 0.0, 1.0) if flash_steady else 1.0 if flash_time > 1.0 or fposmod(flash_time, 0.4) < 0.25 else 0.0
 		if flash_time <= 0:
 			flash_label.text = ""
 			flash_label.remove_theme_color_override("font_color")

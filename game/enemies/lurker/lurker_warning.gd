@@ -52,8 +52,14 @@ var next_id := 1
 ## seat -> s, set by tests only; wins over the net (match_net.latency_of()).
 var latency_for := {}
 
-func can_start(_clock: float) -> bool:
-	return active.is_empty()
+## The least s from one warning's start to the next, whoever it is on (her
+## wait between attacks by how many play: lurker.attack_wait()); 0 none. And
+## when the last began.
+var gap := 0.0
+var last_start := -INF
+
+func can_start(clock: float) -> bool:
+	return active.is_empty() and clock - last_start >= gap - EPS
 
 ## Begins a warning behind `seat` now (from above it when `above`); the entry,
 ## also kept in `active`.
@@ -65,6 +71,7 @@ func start(seat: int, clock: float, window: float, latency: float, point: Vector
 	next_id += 1
 	ledger.append(entry)
 	active = entry
+	last_start = clock
 	return entry
 
 ## Every tick while a warning runs, before anything else the brain does, with
@@ -78,7 +85,7 @@ func check(clock: float, v, p, lit_takes: bool) -> StringName:
 	if v == null: return close(clock, "aborted", -1, "fuera")
 	if not bool(v.fair): return close(clock, "aborted", -1, "protegida" if bool(v.protected) else "fuera")
 	if bool(v.hidden): return close(clock, "aborted", -1, "escondida")
-	if bool(v.lit) and not lit_takes: return close(clock, "aborted", -1, "con luz")
+	if bool(v.lit) and not lit_takes and v.get("spent") != true: return close(clock, "aborted", -1, "con luz")
 	if bool(p.off_limits): return close(clock, "aborted", -1, "protegida")
 	var torch_by: Array = p.torch_by
 	var regarded_by: Array = p.regarded_by

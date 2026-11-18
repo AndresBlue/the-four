@@ -390,6 +390,7 @@ func part_a() -> void:
 	await dark_turn()
 	await lit_cases()
 	await mate_torch()
+	await spent_minds()
 	await mate_latency()
 	await drunk_torch()
 	await deep_look()
@@ -439,6 +440,8 @@ func set_up(dark: bool, torch: bool) -> void:
 	# A fresh approach: neither the calm after a fright nor after a take.
 	lurker.brain.spurned = {}
 	lurker.brain.sated_until = -INF
+	# Her wait between attacks (lurker.attack_wait()) belongs to a hunt, not to a case.
+	lurker.warning.last_start = -INF
 	if not level.executions.execution.is_empty(): level.release_execution()
 	level.hotel.set_room_power(int(corridor.room), not dark)
 	var centre: Vector3 = corridor.centre
@@ -565,6 +568,49 @@ func mate_torch() -> void:
 		drop_mate(other)
 		await physics_frame
 	check("Parte A: la linterna de un compañero en su cara la salva; su mirada a oscuras, no", bad.is_empty(), str(bad))
+
+## A mind gone (sanity 0, the author, 18 November 2026): its own torch on her
+## face and its look in the light save nothing; a teammate's torch with a mind
+## still saves it; a teammate gone saves nothing either.
+func spent_minds() -> void:
+	var bad: Array = []
+	var player = level.player
+	for lit in [false, true]:
+		await set_up(not lit, not lit)
+		player.sanity = 0.0
+		player.set_burnt(true)
+		var turned := [false]
+		var entry := await run_cue(6.0, func(brain):
+			var active: Dictionary = lurker.warning.active
+			if not turned[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.3:
+				turned[0] = true
+				aim_at(lurker.face_point()))
+		if entry.is_empty() or String(entry.outcome) != "taken" or not turned[0]: bad.append(["con luz" if lit else "linterna propia", entry])
+	check("Parte A: a cordura 0, ni su linterna en la cara ni mirarla con luz la salvan", bad.is_empty(), str(bad))
+	bad = []
+	var along: Vector3 = corridor.along
+	var side := Vector3(-along.z, 0, along.x)
+	for mate_spent in [false, true]:
+		await set_up(true, false)
+		player.sanity = 0.0
+		player.set_burnt(true)
+		var other = mate((corridor.centre as Vector3) + along * 3.0 + side * 0.8, along)
+		other.torch.visible = true
+		other.set_burnt(mate_spent)
+		var aimed := [false]
+		var entry := await run_cue(6.0, func(brain):
+			var active: Dictionary = lurker.warning.active
+			if not aimed[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.5:
+				aimed[0] = true
+				other.camera.look_at(lurker.face_point()))
+		if not mate_spent and (entry.is_empty() or String(entry.outcome) != "saved" or int(entry.by) != 2): bad.append(["compañero con cordura", entry])
+		if mate_spent and (entry.is_empty() or String(entry.outcome) != "taken"): bad.append(["compañero a 0", entry])
+		other.set_burnt(false)
+		drop_mate(other)
+		await physics_frame
+	player.set_burnt(false)
+	player.sanity = 100.0
+	check("Parte A: a cordura 0 la salva la linterna de un compañero con cordura; la de uno a 0, no", bad.is_empty(), str(bad))
 
 ## The victim's own latency is added to their window, capped; a victim who
 ## leaves during it ends the warning.

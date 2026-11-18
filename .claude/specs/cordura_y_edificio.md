@@ -276,6 +276,23 @@ Empieza cuando el autor diga qué queda y qué sale del anexo A.
 
 - **Conclusión:** cabe, así que no hace falta montar las plantas de una en una. La pasada de área 1 de esta prueba salió a 2560 × 1369 y no se compara.
 
+## Estado de la fase 1 (18 de noviembre de 2026)
+
+Hecha según 3.1 a 3.3, con dos cambios sobre la propuesta tras simular la economía (`tests/office/lurker_mind_test.gd`):
+- **Cifras finales:** verla cuesta 1,5; que te mire, 3,5; un susto cada 12 s (no 8); su asomo, 6; su chillido, 3. Quien juega solo paga el 60 % (no el 75 %): con el 75 %, solo y bajo presión seguida, la cordura acababa a los 5 minutos justos.
+- **Dónde:**
+  - las cifras, en `lurker.gd` (`MIND`, `ATTACK_WAIT`, `attack_wait()`, `parried_cost()`);
+  - la regla sin luz y los costes, en `sanity.gd` (`rules()`, `pay()`, `alone_share()`);
+  - la mente gastada, en `creature_sight.spent()`, que quita su mirada y su linterna de `watched()`, `torch_covers()` y `look_of()`; `lurker_brain.cue_allowed()` la avisa aunque la mire, y `lurker_warning.check()` no aborta por la luz;
+  - la espera entre avisos, en `lurker_warning.can_start()` (`gap`, `last_start`); quien la lleva la ve en su tecla (`lurker_player.judge_prey()`);
+  - el café, en `coffee.place_offices()` y `hotel_ui.flash(..., steady)`.
+- **Pruebas:**
+  - `lurker_fairness_test`: dos casos nuevos, a 0 ni su linterna ni la luz la salvan; la linterna de un compañero con cordura sí, la de uno a 0 no;
+  - `lurker_mind_test` (nueva);
+  - `coffee_test`: dos por planta, una en la llegada y otra lejos;
+  - `lurker_stalk_test` reinicia la espera entre casos.
+- **Sin comprobar en una partida:** el ritmo real, con la IA y en Versus.
+
 ## 5. Riesgos
 
 - **El coste del edificio grande** no se conoce hasta la fase 0. Puede obligar a montar las plantas de una en una.

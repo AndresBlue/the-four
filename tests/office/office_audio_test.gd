@@ -370,7 +370,8 @@ func shriek_and_car() -> void:
 	audio.caption_text = ""
 	lurker.on_event("scare", [int(level.player.slot), "linterna", at])
 	var worn: bool = level.rule("sanity") == 1
-	var cost: float = level.sanity.SANITY_SHRIEK
+	# Hers (lurker.MIND), a lone survivor's share of it.
+	var cost: float = float(lurker.MIND.shriek) * level.sanity.alone_share()
 	check("Su chillido cerca lleva su subtítulo y le cuesta a la cordura", audio.caption_text == "[Un chillido]" and absf(level.player.sanity - (80.0 - cost if worn else 80.0)) < 0.01, "%s %.2f" % [audio.caption_text, level.player.sanity])
 	var lifts = level.get("lifts")
 	if lifts == null:

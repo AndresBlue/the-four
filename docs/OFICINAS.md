@@ -46,7 +46,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
   - Cumple «se la oye antes de verla» y «medio segundo limpio».
   - Con subtítulos, sale también como subtítulo.
 - **No abre puertas.** Una puerta cerrada le corta el paso y la obliga a ir por los ductos. Cerrar puertas sirve, pero no salva.
-- **Nunca coge a quien la está mirando en la luz**, ni a nadie en el vestíbulo del montacargas o dentro de él.
+- **Nunca coge a quien la está mirando en la luz**, ni a nadie en el vestíbulo del montacargas o dentro de él. **Salvo a quien tiene la cordura a 0** (el autor, 18 de noviembre de 2026; sección 5, «La cordura en las oficinas»): su propia mirada y su propia linterna ya no cuentan para ella, ni para salvarse ni para espantarla. Le salvan correr y la linterna o la mirada de un compañero que conserve cordura.
 - **Las luces tiemblan cuando se mueve cerca.** Su tinta bebe la luz: las lámparas de la sala bajan y tiemblan **a la vez**, y el zumbido de los fluorescentes baja de tono.
   - Es distinto del tubo que falla solo, que parpadea a su aire.
   - **Quieta un segundo, dejan de temblar y siguen bajas**: la señal no desaparece, solo deja de llamar la atención.
@@ -475,7 +475,23 @@ En Apacible, más asomos y menos capturas: miedo sin castigo.
 
 ---
 
-## 5. Alucinaciones: el piso que miente
+## 5. La cordura y las alucinaciones: el piso que miente
+
+### La cordura en las oficinas (el autor, 18 de noviembre de 2026)
+
+Un jugador que miraba al techo todo el rato era inmune a ella. Ahora la cordura es lo que se gasta en mirarla, y solo se recupera con café (`.claude/specs/cordura_y_edificio.md` §3.1 a 3.3; las cifras, en `lurker.gd`, `MIND`):
+
+- **La luz ya no la devuelve.** Solo el café (dos máquinas por planta: una en la llegada y otra en la sala corriente más lejana de la llegada y de los hitos; una taza por superviviente y máquina; al notarse sale «Te sientes mejor...») y el cambio de planta.
+- **Lo que cuesta,** de un medidor de 100, un susto cada 12 s como mucho (dentro de ese descanso solo se paga lo que un susto mayor añade):
+  - verla, 1,5; que te mire, 3,5; su asomo, 6; su chillido cerca, 3;
+  - un aviso de la espalda parado (girarse con luz, alumbrarla, correr), 8 a la víctima, y cada vez que se repite sobre la misma, × 0,8 (nunca menos de 3,2); se recupera un escalón cada 20 s sin que la ataque;
+  - la oscuridad, como siempre: 100 en 7,5 min, con la linterna 2,5 veces más despacio;
+  - quien juega solo paga el 60 % de lo que cuesta ella.
+- **A 0** queda expuesta (arriba, el contrato).
+- **Su espera entre ataques,** a quien sea: 5 s con un superviviente vivo en su planta, 4,06 con dos, 3,13 con tres, 2,19 con cuatro y 1,25 con cinco. Vale para quien la lleva en Versus y es el suelo de la IA.
+- `lurker_mind_test` simula la presión seguida: solo, parándolo todo y viéndola sin parar, la cordura dura más de 5 minutos; uno de cinco, más de 3; en 10 minutos se acaba.
+
+### Las alucinaciones
 
 Con la cordura de siempre (oculta, local, solo en la máquina de cada uno), pero con contenido de ella. Por debajo de 60 empiezan: una mentira cada 29 a 55 s con la cordura en 60, cada 9 a 17 s con la cordura en 0 (`sanity.gd`, `HALLUCINATION_WAIT`); su cara, con un descanso de 40 a 90 s que baja hasta 14 a 31 s. LORE.md dice «mucha alucinación». Ninguna cambia el juego de ella: no tocan la luz de las salas, ni su cerebro, ni la red.
 
@@ -550,7 +566,8 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
 - **El fogonazo y la huida:** una linterna sin beber en la cara la ciega: la imagen se satura y vuelve en unos 2,5 s, huye sola por la salida más cercana y no puede atacar ni beber en 6 s. Huyendo, la imagen se cierra por los bordes y la cámara sube con ella al plénum. Es lo único que la mueve sin que lo pida el jugador, junto con el cruce de planta.
 - **Habilidades:**
   - **Beber la luz:** abajo, en la sala en la que está. La sala a oscuras 6 s y las linternas de dentro apagadas, que vuelven a la tercera pulsación y nunca antes de 1 s. 25 s entre dos y 45 s por sala; nunca salas de hito, vestíbulos ni refugios. Desde el plénum el anfitrión no la deja.
-  - **Asomarse:** abajo. Baja la cordura de quien la ve, una vez cada 10 s por persona. Sin sonido de aviso.
+  - **Asomarse:** abajo. Baja 6 de cordura a quien la ve, una vez cada 10 s por persona. Sin sonido de aviso.
+  - **Su espera entre ataques** depende de cuántos supervivientes viven en su planta (sección 5, «La cordura en las oficinas»).
   - **El parpadeo:** las lámparas cercanas tiemblan y el haz de una linterna cercana titila mientras se mueve.
 - **Sus controles en pantalla:** al pie, como las sugerencias de controles de las primeras partidas: cada tecla en su tecla dibujada y el nombre de la acción al lado, «Atacar», «Bajar» o «Subir», «Mantén Shift Sigilo», «Ductos», «Beber la luz» y «Asomarse»; lo que no se puede hacer ahora, apagado; una espera, vaciándose sobre la propia tecla. En la red de ductos, «Ir» y «Volver»; viajando, nada.
 - **Teclas:** moverse con WASD o el stick izquierdo; mirar con el ratón o el stick derecho; atacar, clic izquierdo (gatillo derecho); bajar y subir, Espacio (A); sigilo, mantener Mayúsculas (LB); ductos, E (X); beber, clic derecho (gatillo izquierdo); asomarse, F (Y); acercar y alejar la cámara, la rueda o Z (RB).

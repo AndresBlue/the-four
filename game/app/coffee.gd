@@ -7,7 +7,9 @@ extends RefCounted
 ## over a second, and the picture says so (nothing is written since 16
 ## November 2026: the author wants no explaining while a floor is played). The
 ## machine that runs the floor keeps every mind (sanity.gd), so the cup is
-## asked of it (match_net.drink_coffee()).
+## asked of it (match_net.drink_coffee()). In the offices (the author, 18
+## November 2026) they are the only way a mind comes back: two a planta
+## (place_offices()), and the cup says "Te sientes mejor..." when it is felt.
 ##
 ## Placed from the built floor and the seed, the same on every machine, and
 ## nothing of it in the manifest: the hotel's (manifest_golden_test) stays.
@@ -17,6 +19,8 @@ const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 ## Seconds from the cup to feeling it, and that it takes the mind to come back.
 const BREW := 2.5
 const EASE := 1.0
+## What the offices say when it is felt.
+const FELT := "Te sientes mejor..."
 ## What it sounds like making it: for now the copier's hum, cut short.
 const SOUND := "res://assets/audio/sfx/office/copier.wav"
 ## Its back this far from the wall's line, and free this much to each side;
@@ -72,6 +76,9 @@ func place() -> void:
 	var count := 3 if size < 0.75 else 4 if size < 1.1 else 5
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([int(manifest.get("seed", 0)), "coffee"])
+	if FLOOR.palette(manifest).get_script_constant_map().has("BREAK_ROOM"):
+		place_offices(manifest, rng)
+		return
 	# By planta, best first; the plantas take turns, so each one has its own.
 	var by_wing := {}
 	for room in candidates(manifest): by_wing.get_or_add(int(room.get("wing", 0)), []).append(room)
@@ -87,13 +94,66 @@ func place() -> void:
 			if by_wing.values().all(func(rest): return rest.is_empty()): break
 			continue
 		var spot := free_spot(list.pop_front(), rng)
-		if spot.is_empty(): continue
-		var machine := MACHINE.new()
-		machine.name = "Coffee_%d" % machines.size()
-		machine.position = spot.position
-		machine.rotation.y = spot.yaw
-		level.hotel.add_child(machine)
-		machines.append(machine)
+		if not spot.is_empty(): put(spot)
+
+func put(spot: Dictionary) -> void:
+	var machine := MACHINE.new()
+	machine.name = "Coffee_%d" % machines.size()
+	machine.position = spot.position
+	machine.rotation.y = spot.yaw
+	level.hotel.add_child(machine)
+	machines.append(machine)
+
+## The offices (the author, 18 November 2026: no mind comes back in the light
+## there, only with a cup): two a planta, one where it is walked into and one
+## in the room farthest by the doors from that and from its landmarks, a
+## corner of the plan away from everything that matters.
+func place_offices(manifest: Dictionary, rng: RandomNumberGenerator) -> void:
+	var rooms: Array = candidates(manifest)
+	for planta in FLOOR.PLANTAS:
+		var entry := FLOOR.entry_of(manifest, planta)
+		var from_entry := FLOOR.route_metres(manifest, entry)
+		# The way in first, else the room nearest it that takes one.
+		var near: Array = rooms.filter(func(room): return int(room.get("wing", -1)) == planta and from_entry.has(int(room.id)))
+		near.sort_custom(func(a, b): return float(from_entry[int(a.id)]) < float(from_entry[int(b.id)]))
+		var arrival: Array = [manifest.rooms[entry]] if entry >= 0 and entry < manifest.rooms.size() else []
+		for room in arrival + near:
+			var spot := free_spot(room, rng)
+			if spot.is_empty(): continue
+			put(spot)
+			break
+		var away: Array = [from_entry]
+		for landmark in landmarks(manifest, planta): away.append(FLOOR.route_metres(manifest, landmark))
+		var far: Array = near.filter(func(room): return not is_landmark(manifest, int(room.id)))
+		var score := func(room: Dictionary) -> float:
+			var least := INF
+			for metres: Dictionary in away: least = minf(least, float(metres.get(int(room.id), 0.0)))
+			return least
+		far.sort_custom(func(a, b): return score.call(a) > score.call(b))
+		for room in far:
+			var spot := free_spot(room, rng)
+			if spot.is_empty(): continue
+			put(spot)
+			break
+
+## A planta's rooms that matter: its errand's and its way out.
+func landmarks(manifest: Dictionary, planta: int) -> Array:
+	var out: Array = []
+	var refuges: Array = manifest.get("refuges", [])
+	if planta < refuges.size(): out.append(int(refuges[planta]))
+	match planta:
+		0: out.append(int(manifest.get("mail", {}).get("window", -1)))
+		1: out.append(int(manifest.get("power", {}).get("room", -1)))
+		2:
+			var air: Dictionary = manifest.get("air", {})
+			out.append(int(air.get("security", {}).get("room", -1)))
+			out.append(int(air.get("room", -1)))
+	return out.filter(func(id): return id >= 0)
+
+func is_landmark(manifest: Dictionary, id: int) -> bool:
+	for planta in FLOOR.PLANTAS:
+		if landmarks(manifest, planta).has(id) or FLOOR.entry_of(manifest, planta) == id: return true
+	return false
 
 ## The rooms a machine may go in, best first.
 func candidates(manifest: Dictionary) -> Array:
@@ -288,6 +348,8 @@ func tick(delta: float) -> void:
 		if brewing < 0.0:
 			easing = 0.0
 			eased_from = level.player.sanity
+			# Where it is the only way back, the cup says so (the author, 18 November 2026).
+			if FLOOR.palette(level.manifest).get_script_constant_map().has("BREAK_ROOM"): level.ui.flash(FELT, 3.0, true)
 	if easing >= 0.0:
 		easing += delta
 		# A guest eases its own picture; the host's meter catches it up.

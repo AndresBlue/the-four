@@ -33,6 +33,9 @@ class Seen extends RefCounted:
 	var fair := false
 	var protected := false
 	var remote := false
+	## Their mind gone where that bares them (SIGHT.spent()): their look does not
+	## stop a warning, whichever way they face.
+	var spent := false
 	## s added to their window: their machine's round trip (tests may set it).
 	var latency := 0.0
 	## Her face to their eye; whether she is behind or above them out of
@@ -423,6 +426,7 @@ func seen_of(one, p, clock: float):
 	s.fair = level.survivor_active(one) and (session == null or session.participants.get(s.seat, -1) == session.Life.EXPLORING)
 	s.protected = level.point_protected(s.point) or (level.lifts != null and level.lifts.riding.has(s.seat)) or (level.get("untouchable") != null and level.untouchable.has(s.seat))
 	s.remote = SIGHT.is_remote(level, one)
+	s.spent = SIGHT.spent(level, one)
 	s.latency = float(body.warning.latency_for.get(s.seat, net_latency(s.seat)))
 	s.distance = (p.face as Vector3).distance_to(s.eye)
 	s.behind = SIGHT.behind_of(s.eye, s.view, p.face)

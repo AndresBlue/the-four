@@ -152,6 +152,8 @@ func fresh() -> void:
 	lurker.release_at = -INF
 	lurker.drunk = {}
 	driver.attacked = {}
+	driver.last_attack = -INF
+	lurker.warning.last_start = -INF
 	driver.flashed_until = -INF
 	driver.view.immune_until = -INF
 	survivor.torch_dim = 1.0
@@ -315,7 +317,7 @@ func cases() -> void:
 	var first: float = float(lurker.peeked.get(seat, -1.0))
 	driver.asked[&"lurker_peek"] = true
 	await wait(0.1)
-	check("Asomarse, abajo, al borde de su vista le baja la cordura, una vez en 10 s y sin el sonido del aviso", first >= 0.0 and survivor.sanity < sane - 5.0 and float(lurker.peeked.get(seat, -1.0)) == first and lurker.warning.active.is_empty(), "%.1f -> %.1f, %.2f" % [sane, survivor.sanity, first])
+	check("Asomarse, abajo, al borde de su vista le baja la cordura, una vez en 10 s y sin el sonido del aviso", first >= 0.0 and survivor.sanity < sane - 1.0 and float(lurker.peeked.get(seat, -1.0)) == first and lurker.warning.active.is_empty(), "%.1f -> %.1f, %.2f" % [sane, survivor.sanity, first])
 	# --- Sent off half way down the tile of her attack: no ceiling under her to
 	# bolt from; once on the one below, back up by herself.
 	fresh()
