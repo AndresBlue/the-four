@@ -690,7 +690,7 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
   - en el ducto, sus restos;
   - y en el resto del piso, **restos del personal** donde los dejó la brecha.
   - Quién era sigue abierto en LORE.md.
-- Los documentos siguen la regla del hotel: dos por piso, como mucho uno por planta. El paso a 24 documentos con cuatro por piso sigue en PLAN.md.
+- Las oficinas todavía no tienen documentos. En el hotel son veinticuatro y salen seis por piso, como mucho dos por planta (18 de noviembre de 2026).
 
 ---
 

@@ -5,6 +5,8 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
+const FORM := preload("res://game/ui/hotel_form.gd")
+const RULED := preload("res://game/ui/ruled_paper.gd")
 var level
 var checks: Array = []
 var failed := 0
@@ -70,13 +72,46 @@ func prop_under(spot: Dictionary) -> String:
 
 func documents_placed(documents: Array) -> bool:
 	var plantas := {}
+	var rooms := {}
 	for document in documents:
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, document.global_position)
-		if room.is_empty() or level.manifest.refuges.has(int(room.id)) or plantas.has(int(room.wing)): return false
-		plantas[int(room.wing)] = true
+		if room.is_empty() or level.manifest.refuges.has(int(room.id)) or rooms.has(int(room.id)): return false
+		plantas[int(room.wing)] = int(plantas.get(int(room.wing), 0)) + 1
+		rooms[int(room.id)] = true
+		if int(plantas[int(room.wing)]) > PLACEMENT.PER_PLANTA: return false
 		var metres := FLOOR.route_metres(level.manifest, FLOOR.entry_of(level.manifest, int(room.wing)))
 		if float(metres.get(int(room.id), 0.0)) < PLACEMENT.MIN_FROM_START: return false
 	return true
+
+## Every document of the archive fits on its paper: what runs past the last
+## ruled line is not typed at all, and nothing is said where it is cut.
+func documents_fit() -> bool:
+	var fits := true
+	for item in CATALOG.ENTRIES:
+		var body := String(item.body)
+		var lines := Array(body.split("\n"))
+		var used := 0
+		var room := 0
+		if item.has("form"):
+			var form := FORM.new()
+			var data: Dictionary = (item.form as Dictionary).duplicate()
+			data["lines"] = lines
+			form.form = data
+			var rows: Array = data.get("rows", [])
+			used = form.typed_lines().size() + (rows.size() + 1 if not rows.is_empty() else 0)
+			room = FORM.RULED
+			form.free()
+		else:
+			var paper := RULED.new()
+			paper.setup(String(item.paper), lines)
+			used = paper.written.size()
+			room = (RULED.PAPERS[String(item.paper)].lines as Array).size()
+			paper.free()
+		var text := body + String(item.title) + String(item.header) + str(item.get("form", {}))
+		if used > room or text.contains(char(0xb7)) or text.contains(char(0x2014)):
+			print("  %s: %d de %d líneas" % [item.id, used, room])
+			fits = false
+	return fits
 
 ## The director's rules, played out on its own clock: quiet when it has
 ## nothing to direct, leads that never point at the player, phases that rest
@@ -203,15 +238,18 @@ func run() -> void:
 	# On a top, or shut in a suitcase (document_placement.HOLDERS).
 	var documents := get_nodes_in_group("hotel_documents")
 	var shut: Array = level.containers.filter(func(piece): return not piece.document.is_empty())
-	check("Dos documentos por piso", documents.size() + shut.size() == PLACEMENT.PER_FLOOR)
+	check("Seis documentos por piso", documents.size() + shut.size() == PLACEMENT.PER_FLOOR)
 	var again := PLACEMENT.choose(level.manifest, "locust", level.hotel.containers)
 	check("Colocación reproducible por semilla", again.size() == PLACEMENT.PER_FLOOR and again.all(func(spot): return (int(spot.container) >= 0 and level.containers[int(spot.container)].document == spot.entry) or documents.any(func(d): return d.entry_id == spot.entry and d.position.is_equal_approx(spot.position))))
-	check("Documentos bien dentro de su planta, uno por planta y en ningún refugio", documents_placed(documents + shut))
+	check("Documentos bien dentro de su planta, dos por planta como mucho, uno por sala y en ningún refugio", documents_placed(documents + shut))
 	# Measured from the floor of their own planta: the plantas are stacked.
 	check("Documentos sobre muebles, no en el suelo", documents.all(func(d): return d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) > 0.6 and d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) < 0.9))
 	check("Ni en la mesilla del teléfono, y si no, en una maleta y con su papel a la vista", again.all(func(spot): return int(spot.container) >= 0 or prop_under(spot) != "phone") and shut.all(func(piece): return piece.kind == "luggage" and is_instance_valid(piece.note) and piece.digit < 0))
 	var entries: Array = documents.map(func(d): return d.entry_id) + shut.map(func(piece): return piece.document)
-	check("Documentos distintos entre sí", entries.size() == 2 and entries[0] != entries[1])
+	var different := {}
+	for id in entries: different[id] = true
+	check("Documentos distintos entre sí", entries.size() == PLACEMENT.PER_FLOOR and different.size() == entries.size())
+	check("Cada documento cabe en su papel, sin punto medio ni guion largo", documents_fit())
 	var document = documents[0]
 	# Walked up to from the middle of the room and looked at, the way it is
 	# read in a game. A document lies on a piece of furniture and furniture
@@ -260,6 +298,12 @@ func run() -> void:
 	fresh.load_record()
 	check("Una sesión nueva carga lo descubierto", fresh.has(document.entry_id))
 	fresh.free()
+	# Typed as written: each entry of a notebook on a line of its own (until
+	# 18 November 2026 the letter and the notebook ran theirs together).
+	level.ui.show_document(CATALOG.entry("locust_guard"))
+	var notebook: Array = level.ui.reading.get_children().filter(func(node): return node.get_script() == RULED)
+	check("La libreta y la carta, con sus renglones como se escribieron", not notebook.is_empty() and ["02:40", "02:55", "03:10"].all(func(hour): return notebook[0].written.any(func(line): return String(line).begins_with(hour))))
+	level.ui.hide_document()
 	# A document shut in a suitcase (document_placement.HOLDERS) is read the
 	# moment the suitcase is gone through, by whoever does, and its paper
 	# leaves with them; the suitcase opens its lid with only the paper heard.

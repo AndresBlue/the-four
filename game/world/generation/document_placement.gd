@@ -1,8 +1,10 @@
 extends RefCounted
 ## Where a floor's documents lie: on tables, desks and nightstands, or shut in
 ## a suitcase lying on the floor (the author's word, 21 October 2026: never
-## on the nightstand with the telephone), one to a planta at most, well in
-## from where that planta is walked into, never in a refuge or a lift lobby.
+## on the nightstand with the telephone), well in from where that planta is
+## walked into, never in a refuge or a lift lobby. Six a floor of the
+## hotel's twenty-four (the author, 18 November 2026), two to a planta at
+## most and one to a room.
 ## Deterministic per seed and independent of the map generator's own random
 ## sequence.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -16,7 +18,8 @@ const SURFACES := {"table": 0.84, "desk": 0.84, "nightstand": 0.84}
 ## 2026; hint_placement keeps to it too, with the hints in it).
 const HOLDERS := ["luggage"]
 const SHUT_IN := 0.25
-const PER_FLOOR := 2
+const PER_FLOOR := 6
+const PER_PLANTA := 2
 ## How far in a document has to be, walking from the planta's entrance: this
 ## many metres, or this share of the way to its farthest room if that is more.
 const MIN_FROM_START := 25.0
@@ -68,14 +71,16 @@ static func choose(manifest: Dictionary, creature: String, containers: Array = [
 		order[i] = order[j]
 		order[j] = swap
 	var result: Array = []
-	var used := {}
+	var in_planta := {}
+	var rooms := {}
 	for attempt in (spots.size() + shut.size()) * 2:
 		if result.size() >= mini(PER_FLOOR, entries.size()) or (spots.is_empty() and shut.is_empty()): break
 		var pool: Array = shut if spots.is_empty() or (not shut.is_empty() and rng.randf() < SHUT_IN) else spots
 		var spot: Dictionary = pool[rng.randi_range(0, pool.size() - 1)]
 		pool.erase(spot)
-		if used.has(spot.planta): continue
-		used[spot.planta] = true
+		if int(in_planta.get(spot.planta, 0)) >= PER_PLANTA or rooms.has(spot.room): continue
+		in_planta[spot.planta] = int(in_planta.get(spot.planta, 0)) + 1
+		rooms[spot.room] = true
 		spot["entry"] = entries[order[result.size()]].id
 		result.append(spot)
 		if int(spot.container) >= 0: shut.clear()

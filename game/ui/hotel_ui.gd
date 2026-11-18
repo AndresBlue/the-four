@@ -670,7 +670,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			var count: int = discoveries.found.size() if discoveries != null else 0
 			label(column, "DOCUMENTOS  %d / %d" % [count, CATALOG.TOTAL], 20).add_theme_color_override("font_color", STYLE.AMBER)
 			spacer(column, 10)
-			# All sixteen, numbered, down one strip: what has been read opens
+			# All of them, numbered, down one strip: what has been read opens
 			# as its file (show_dossier), the rest stays dark.
 			side.visible = false
 			column.custom_minimum_size.x = 760
@@ -1508,8 +1508,7 @@ func show_document(item: Dictionary) -> void:
 		return
 	if item.has("paper"):
 		var ruled := RULED.new()
-		ruled.setup(String(item.paper), Array(String(item.body).split("
-")), false, false, String(item.id).hash() % 1000)
+		ruled.setup(String(item.paper), Array(String(item.body).split("\n")), false, false, String(item.id).hash() % 1000)
 		hold_paper(ruled, ruled.card, [String(item.title).to_upper(), String(item.header)])
 		return
 	var center := CenterContainer.new()

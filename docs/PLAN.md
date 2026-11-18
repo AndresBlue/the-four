@@ -734,8 +734,6 @@ pueda jugar entero sin tocar el teclado.
   (apartado 4). Por decidir al hacerlo: qué objetos de los que ya hay pasan a
   ser físicos, cómo se sincronizan en red y cuánto oye la criatura.
 
-- **Veinticuatro documentos de lore** (el autor, 22 de octubre de 2026): hasta tener 24 en el hotel, con **cuatro por piso, siempre** (hoy son cuatro en todo el piso 1 y salen dos por piso). Lo dejó para después. Anotar en Beads cuando `bd` vuelva a funcionar.
-
 - `four-vlz.12` **Volver a generar el tráiler** (`docs/TRAILER.md`): sus títulos quemados aún llevan punto medio y guion largo; el código ya no (20 de octubre de 2026).
 
 - **Lo que quedó de la reconstrucción de The Lurker** (11 de noviembre de 2026; [LURKER.md](LURKER.md) y [OFICINAS.md](OFICINAS.md), sección 4; bead `four-1dl`).

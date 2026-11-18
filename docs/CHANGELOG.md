@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.16.0](#1160--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Veinte documentos nuevos en el hotel, veinticuatro en total, y salen seis por partida. |
 | [1.15.0](#1150--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La planta 2 se cruza tres veces: tres sectores en el cuadro, una puerta motorizada y la palanca del montacargas en su sala. |
 | [1.14.0](#1140--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La pantalla de quien lleva a The Lurker, rehecha: el disco del ataque y la cordura de cada uno en color. |
 | [1.13.0](#1130--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Las oficinas, dos veces y media más grandes, sin códigos de sala y con la ventanilla al fondo. |
@@ -86,6 +87,26 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.16.0 — 18 de noviembre de 2026
+
+*Veinte documentos nuevos en el hotel, veinticuatro en total, y salen seis por partida.*
+
+Commits `c74abe13`…`v1.16.0`.
+
+### Novedades
+
+- **Veinte documentos nuevos en el hotel:** la circular de la propiedad, el libro de la centralita, la queja de la 214, las normas que nadie firmó, el estado de habitaciones de la gobernanta, el informe del técnico de televisores, la carta de un botones, las rondas de la planta segunda, la hoja de alguien que bajó, la nota de la cafetera, el parte del botiquín, los objetos perdidos, las cintas de seguridad, el parte de carpintería, la carta del director a la propiedad, el plan de evacuación, la carta de una madre, lo que un huésped sabe de él, la revisión del ascensor de servicio y el acuse de recibo del archivo. Entre impresos del hotel, cartas y libretas, cuentan la fachada y lo que se intuía debajo, y dan pistas de cómo se juega.
+- **Seis documentos por partida**, como mucho dos por planta y uno por sala (antes, dos por piso y uno por planta).
+- **El Archivo tiene treinta y seis huecos:** los veinticuatro del hotel y cuatro para cada uno de los otros pisos.
+
+### Arreglos
+
+- **La carta y la libreta respetan sus renglones:** desde el 22 de octubre de 2026 juntaban todo lo escrito en un solo bloque, sin saltos de línea ni párrafos.
+
+### Para desarrollar
+
+- `loop_test` comprueba que cada documento cabe en su papel y no lleva punto medio ni guion largo, y que la libreta deja cada entrada en su línea.
 
 ## 1.15.0 — 18 de noviembre de 2026
 
