@@ -15,9 +15,9 @@ extends SceneTree
 ## planta 3 in the dark, her keys and moves on a pad's events, and the flash
 ## and the calibration with reduced effects. The 1.9.0 shots of down in a
 ## room and of the attack lead the sheet, as they were.
-## evidence/versus/pulido/*.png, sesion.txt and hoja.png.
+## evidence/versus/doble/*.png, sesion.txt and hoja.png.
 ##   godot --path . --script res://tools/dev/lurker_hunt_drive.gd -- --bots-hunt --floor=2 --bots=3 --seed=81 --test-profile
-const OUT := "res://evidence/versus/pulido/"
+const OUT := "res://evidence/versus/doble/"
 const BEFORE := "res://evidence/versus/presentacion/"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
