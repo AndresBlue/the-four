@@ -1206,7 +1206,6 @@ func perch_above(spot: Dictionary, body, seat: int) -> bool:
 	var lurker = level.creature
 	var stand := victim_stand(spot)
 	var p: Vector3 = stand - (spot.along as Vector3) * 1.5
-	lurker.driver.trip = {}
 	lurker.driver.attack = {}
 	lurker.driver.to_plenum(p + Vector3(0, 1.0, 0), int(spot.room))
 	var to: Vector3 = body.global_position + Vector3(0, 1.1, 0) - lurker.motion.anchor()
@@ -1304,6 +1303,9 @@ func drink_host(spot: Dictionary) -> void:
 	var victim := seat_named("Víctima")
 	check("Bebe el pasillo de la víctima: lo juzga el anfitrión", lurker.drinks.size() == 1 and int(lurker.drinks[0].room) == room and Array(lurker.drinks[0].seats).has(victim), str(lurker.drinks))
 	check("Y lo devuelve a los %d s" % int(lurker.VERSUS_DARK), absf(dark - lurker.VERSUS_DARK) <= 0.4, "%.2f s" % dark)
+	# Every room touching it that may be dark goes with it (the author's 3 x 3).
+	var touching: Array = lurker.touching(room).filter(func(r: int) -> bool: return lurker.may_snuff(r, 0.0, false))
+	check("Y con él las salas que lo tocan", not lurker.drinks.is_empty() and not touching.is_empty() and touching.all(func(r: int) -> bool: return Array(lurker.drinks[0].get("more", [])).has(r)), "%s %s" % [str(touching), str(lurker.drinks)])
 	check("La linterna apagada de la víctima vuelve en el anfitrión", await wait_for(func(): return not lurker.dead_torches.has(victim), 10.0))
 	check("Rechaza beber una sala de hito y en su espera", await wait_for(func(): return int(lurker.drinks_refused) >= 2, 10.0) and lurker.drinks.size() == 1, "%d %s" % [int(lurker.drinks_refused), str(lurker.drinks)])
 

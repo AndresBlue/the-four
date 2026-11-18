@@ -82,7 +82,7 @@ func run() -> void:
 	await crawl_part()
 	await lit_part()
 	await busy_part()
-	await duct_part()
+	await double_part()
 	await down_part()
 	await noise_part()
 	await prey_part()
@@ -297,49 +297,23 @@ func busy_part() -> void:
 	await shot("05_objetivo_en_uso")
 	park(bots[0])
 
-func duct_part() -> void:
-	var ducts = lurker.ducts
-	var best := -1
-	var nearest := INF
-	for e in ducts.exits.size():
-		if not driver.travel_exit(e) or int(ducts.node_wings[int(ducts.exits[e].node)]) != 0: continue
-		var d := Vector2((ducts.exits[e].position as Vector3).x - at().x, (ducts.exits[e].position as Vector3).z - at().z).length()
-		if d < nearest:
-			nearest = d
-			best = e
-	if best < 0: return
-	var exit: Dictionary = ducts.exits[best]
-	driver.to_plenum((exit.position as Vector3) + Vector3(2.5, 0, 0), int(exit.room))
-	await wait(0.3)
-	await turn_to((exit.position as Vector3) - at())
-	await crawl_to(exit.position, 4.0, 1.2)
+## Her double (the Doppelganger that took the place of her ducts): E over a
+## room leaves it in the corner nearest her.
+func double_part() -> void:
+	var rooms: Array = her_rooms()
+	if rooms.is_empty(): return
+	var room := int(rooms[0][0])
+	driver.to_plenum(FLOOR.position_of(level.manifest.rooms[room]) + Vector3(0, 1.0, 0), room)
 	await wait(0.4)
-	note("junto a la rejilla %d: la toma %s" % [best, str(driver.entrance() == best)])
-	await shot("06_entrada_ducto")
+	lurker.double_at = -INF
+	driver.doubled_at = -INF
 	await tap(KEY_E)
 	await wait(0.5)
+	note("E sobre la sala %d: dobles %d, rechazados %d" % [room, lurker.doubles.doubles.size(), lurker.doubles_refused])
 	await tilt_to(-0.55)
-	await shot("07_red_ductos")
-	var far := -1
-	for entry in driver.trip.get("targets", []):
-		if float(entry[1]) > 15.0 and float(entry[1]) < 45.0: far = int(entry[0])
-	if far >= 0: await turn_to((ducts.exits[far].position as Vector3) - (exit.position as Vector3))
-	await wait(0.3)
-	note("elegida la salida %d (%s)" % [int(driver.trip.get("pick", -1)), "la lejana" if int(driver.trip.get("pick", -1)) == far else "otra"])
-	await shot("08_salida_elegida")
-	var started := clock
-	await click(MOUSE_BUTTON_LEFT)
-	for i in 600:
-		await tick()
-		if driver.trip_done() >= 0.45: break
-	var metres := float(driver.trip.get("length", 0.0))
-	await shot("09_viaje")
-	for i in 900:
-		if driver.trip.is_empty(): break
-		await tick()
-	note("viaje de %.1f m en %.1f s; sale %s" % [metres, clock - started, "al plénum" if lurker.motion.plenum else "a su galería"])
+	await shot("06_doble")
 	await wait(0.4)
-	await shot("10_llegada")
+	await shot("07_doble_tecla")
 
 func down_part() -> void:
 	var dark: Array = her_rooms().filter(func(r: Array) -> bool: return lurker.ducts.room_tiles.has(int(r[0])))
@@ -537,7 +511,7 @@ func gallery_part() -> void:
 	var m = lurker.motion
 	for i in 4:
 		await wait(0.25)
-		note("  W: %.2f m/s (ritmo %.2f), empuje %s, tramos %d, ráfagas %s, aviso %s, huida %s, ataque %s, viaje %s" % [m.speed, m.pace, str(m.free_way), m.legs.size(), str(m.in_bursts()), str(lurker.cue), str(m.bolting), str(driver.attack), str(driver.trip.get("phase", ""))])
+		note("  W: %.2f m/s (ritmo %.2f), empuje %s, tramos %d, ráfagas %s, aviso %s, huida %s, ataque %s, cruce %s" % [m.speed, m.pace, str(m.free_way), m.legs.size(), str(m.in_bursts()), str(lurker.cue), str(m.bolting), str(driver.attack), str(lurker.motion.transit.get("phase", ""))])
 	key(KEY_W, false)
 	await wait(0.3)
 	note("por la galería: %.2f m en 1 s, galería %s" % [Vector2(at().x - from.x, at().z - from.z).length(), str(driver.gallery())])
@@ -632,29 +606,15 @@ func pad_part() -> void:
 	await pad_tap(JOY_BUTTON_A)
 	await wait(1.2)
 	note("A otra vez: arriba %s" % str(driver.up()))
-	var grille := duct_near()
-	if grille >= 0: driver.to_plenum((lurker.ducts.exits[grille].position as Vector3) + Vector3(1.5, 1, 0), int(lurker.ducts.exits[grille].room))
-	await wait(0.4)
+	lurker.double_at = -INF
+	driver.doubled_at = -INF
+	var made: int = lurker.doubles.doubles.size()
 	await pad_tap(JOY_BUTTON_X)
 	await wait(0.4)
-	note("X junto a una rejilla: ductos %s" % String(driver.trip.get("phase", "-")))
-	await shot("28_mando_ductos")
-	await pad_tap(JOY_BUTTON_A)
-	await wait(0.4)
+	note("X: doble %s" % str(lurker.doubles.doubles.size() > made))
+	await shot("28_mando_doble")
 	note("teclas con mando: %s" % str(driver.view.rows().map(func(row: Array) -> Array: return row[0])))
 	level.hints.pad_said = false
-
-## The nearest way into the ducts of planta 1 to her, -1 none.
-func duct_near() -> int:
-	var best := -1
-	var nearest := INF
-	for e in lurker.ducts.exits.size():
-		if not driver.travel_exit(e) or int(lurker.ducts.node_wings[int(lurker.ducts.exits[e].node)]) != 0: continue
-		var d := Vector2((lurker.ducts.exits[e].position as Vector3).x - at().x, (lurker.ducts.exits[e].position as Vector3).z - at().z).length()
-		if d < nearest:
-			nearest = d
-			best = e
-	return best
 
 ## Reduced effects: the flash half as far and steady, and the calibration
 ## never holds the picture.

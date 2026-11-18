@@ -834,17 +834,18 @@ func request_drink() -> void:
 	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
 	if is_instance_valid(level.creature): level.creature.judge_drink()
 
-## Versus (lurker_versus.md 13): who drives her goes along the ducts to way
-## out `e`. The host judges it (lurker.judge_duct()) and answers the driver.
-func lurker_duct(e: int) -> void:
+## Versus (the author's Doppelganger, 18 November 2026): who drives her
+## leaves her double. The host judges it (lurker.judge_double()) and tells
+## every machine through her events.
+func lurker_double() -> void:
 	if in_charge():
-		if is_instance_valid(level.creature): level.creature.judge_duct(e)
-	elif local_is_locust(): request_duct.rpc_id(1, e)
+		if is_instance_valid(level.creature): level.creature.judge_double()
+	elif local_is_locust(): request_double.rpc_id(1)
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_duct(e: int) -> void:
+func request_double() -> void:
 	if not net.is_host or multiplayer.get_remote_sender_id() != locust_peer(): return
-	if is_instance_valid(level.creature): level.creature.judge_duct(e)
+	if is_instance_valid(level.creature): level.creature.judge_double()
 
 ## A moment of hers the host tells (lurker.tell_all()) also to the guest that
 ## drives her, whose copy is no puppet and takes nothing from

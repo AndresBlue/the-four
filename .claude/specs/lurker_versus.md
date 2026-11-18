@@ -486,7 +486,7 @@ El contrato del aviso de la espalda y sus ventanas, el fogonazo y la linterna be
 - **C2** (cambia la C): tercera persona por encima de ella en el plénum; a sus ojos solo cuando baja.
 - **E2** (cambia la E): se mueve por el plénum, no por bandas, dinteles y canales; los sitios de acecho de la fase 3 pasan a ser las salidas para bajar.
 
-### 13.7 Los ductos como atajo (añadido del autor, 16 de noviembre)
+### 13.7 Los ductos como atajo (añadido del autor, 16 de noviembre; quitado por el autor el 18 de noviembre: su tecla es ahora el Doppelgänger, `.claude/specs/cordura_y_edificio.md`)
 El autor: «Para el sistema de ductos estaría bueno que queden recalcados dónde están las entradas y salidas, y cuando entres a uno puedas salir por otro a elección como lo hace el Locust con las TVs. Algo minimalista pero funcional, para hacer un movimiento rápido entre habitaciones lejanas. Lo de los ductos funcionaría como los TPs pero no instantáneo. Similar a los ductos de ventilación de Among Us, con tiempo de recorrido sí.»
 - Entradas y salidas de la red de su planta, marcadas con un icono propio; la más cercana, resaltada con su tecla.
 - Entrar abre un selector como el de las teles de The Locust: se elige una salida alcanzable (apuntar y confirmar, o pasar de una a otra).

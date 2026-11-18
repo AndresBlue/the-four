@@ -9,11 +9,9 @@ extends SceneTree
 ## ducts by herself; from one department into the next over the ceiling (no
 ## fire walls there); pushed into a core or the building's edge at a slant she
 ## slides along it. On each planta: down by a tile into the room, her camera
-## behind her and off her, and back up; into the
-## ducts by a grille, the way out most where she looks picked, along them at
-## her trip's pace (and no sooner than 1 s), up into the plenum where it comes
-## out, and another trip refused within its wait; in again and back out where
-## she went in. evidence/versus/rehecho/conductor.json and conductor.txt.
+## behind her and off her, and back up; her double left in a corner of the
+## room under her, and another refused within its wait.
+## evidence/versus/rehecho/conductor.json and conductor.txt.
 ##   godot --headless --fixed-fps 60 --path . --script res://tests/office/lurker_player_test.gd -- --automation --test-profile --silent [--seed=81]
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
@@ -64,7 +62,7 @@ func run() -> void:
 	for planta in 3:
 		lines.append("--- planta %d" % (planta + 1))
 		await down_case(planta)
-		await trip_case(planta)
+		await double_case(planta)
 	var file := FileAccess.open(OUT + "conductor.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"seed": seed_value, "checks": checks}, "\t"))
 	var text := FileAccess.open(OUT + "conductor.txt", FileAccess.WRITE)
@@ -99,7 +97,6 @@ func flat(p: Vector3) -> Vector2: return Vector2(p.x, p.z)
 ## Into the plenum over a plan point of a room.
 func up_over(room: int, p: Vector2) -> void:
 	var r: Dictionary = level.manifest.rooms[room]
-	driver.trip = {}
 	driver.attack = {}
 	driver.to_plenum(Vector3(p.x, float(r.py) + 1.0, p.y), room)
 	for i in 3: await physics_frame
@@ -311,63 +308,41 @@ func down_case(planta: int) -> void:
 	var back: bool = await until(func() -> bool: return lurker.motion.plenum, 3.0)
 	check("P%d baja por la placa a la sala %d con la cámara detrás de ella, y vuelve a subir al plénum" % [planta + 1, room], down and eyes and back and driver.mode == "above", "abajo %s, ojos %s, placa abierta %s, arriba %s" % [down, eyes, tile_open, back])
 
-## Into the ducts by a grille near her, the far way out she looks at picked,
-## along at the trip's pace, up where it comes out; another refused in its
-## wait; in and back out where she went in.
-func trip_case(planta: int) -> void:
-	var ducts = lurker.ducts
-	var pick := []
-	for e in ducts.exits.size():
-		if not driver.travel_exit(e) or int(ducts.node_wings[int(ducts.exits[e].node)]) != planta: continue
-		var metres: PackedFloat64Array = ducts.distances_from(int(ducts.exits[e].node))
-		for o in ducts.exits.size():
-			if o == e or not driver.travel_exit(o) or metres[int(ducts.exits[o].node)] == INF: continue
-			var d := flat(ducts.exits[o].position).distance_to(flat(ducts.exits[e].position))
-			if d > 15.0 and d < 40.0:
-				pick = [e, o, metres[int(ducts.exits[o].node)]]
-				break
-		if not pick.is_empty(): break
-	if pick.is_empty():
-		check("P%d ductos: una entrada con una salida lejana" % [planta + 1], false)
+## Her double (the author's Doppelganger, 18 November 2026, which took the
+## place of her ducts): over a room, her key leaves one upside down in the
+## corner of it nearest her, under its ceiling; another is refused within
+## DOUBLE_EVERY; past it, another.
+func double_case(planta: int) -> void:
+	var room := -1
+	for r in level.manifest.rooms:
+		var id := int(r.id)
+		if int(r.get("wing", -1)) == planta and shell.tray_of.has(id) and OFFICE.false_ceiling(r) and not bool(r.get("corridor", false)) and int(r.type) != OFFICE.LOBBY and not level.point_protected(FLOOR.position_of(r)) and not level.off_limits_rooms().has(id):
+			room = id
+			break
+	if room < 0:
+		check("P%d doble: una sala con techo" % [planta + 1], false)
 		return
-	var e := int(pick[0])
-	var target := int(pick[1])
-	var exit: Dictionary = ducts.exits[e]
-	await up_over(int(exit.room), flat(exit.position))
-	driver.trip_ready_at = 0.0
-	var near: int = driver.entrance()
-	await press(&"lurker_enter")
-	var picking: bool = String(driver.trip.get("phase", "")) == "pick" and driver.mode == "ducts"
-	face((ducts.exits[target].position as Vector3) - (exit.position as Vector3))
-	await physics_frame
-	var picked: int = int(driver.trip.get("pick", -1))
-	# Turned to it: the one most where she looks may be another on the same line; that one is hers.
-	target = picked
-	var started := Time.get_ticks_msec()
-	await press(&"lurker_enter")
-	var going: bool = await until(func() -> bool: return String(driver.trip.get("phase", "")) == "go", 1.0)
-	var length := float(driver.trip.get("length", 0.0))
-	var frames := Engine.get_physics_frames()
-	var arrived: bool = await until(func() -> bool: return driver.trip.is_empty() and driver.up(), 30.0)
-	var seconds := (Engine.get_physics_frames() - frames) * DT
-	var expected := maxf(length / PLAYER.TRIP_SPEED, PLAYER.TRIP_LEAST)
-	var where: int = int(FLOOR.room_at(level.manifest.rooms, Vector3(at().x, FLOOR.planta_y(planta) + 1.0, at().z)).get("id", -1))
-	check("P%d ducto: entra por la rejilla %d y elige la salida que mira (%d)" % [planta + 1, e, target], near == e and picking and picked >= 0, "cerca %d, eligiendo %s, elegida %d" % [near, picking, picked])
-	check("P%d y viaja por la red (%.1f m) en %.1f s (esperado %.1f s, nunca menos de 1 s) y sale al plénum de su sala" % [planta + 1, length, seconds, expected], going and arrived and seconds >= PLAYER.TRIP_LEAST - 0.05 and seconds <= expected + 1.2 and flat(at()).distance_to(flat(ducts.exits[target].position)) < 2.5, "sala %d (la de la salida %d); %d ms de reloj" % [where, int(ducts.exits[target].room), Time.get_ticks_msec() - started])
-	var again: int = driver.entrance()
-	check("P%d otro viaje no antes de su espera" % [planta + 1], again < 0 or not await enter_refused())
-	# Back to where she came in: in, then turned back.
-	driver.trip_ready_at = 0.0
-	lurker.trip_at = -INF
-	if driver.entrance() >= 0:
-		var from: Vector3 = at()
-		await press(&"lurker_enter")
-		var in_again: bool = String(driver.trip.get("phase", "")) == "pick"
-		await press(&"lurker_drop")
-		var out: bool = await until(func() -> bool: return driver.up() and driver.trip.is_empty(), 1.0)
-		check("P%d entra y se vuelve atrás: sale donde entró" % [planta + 1], in_again and out and flat(at()).distance_to(flat(from)) < 3.0, "%s %s %.2f m; viaje %s, cámara %s, plénum %s, techo %s, ducto %s, tramos %d, salida %s" % [in_again, out, flat(at()).distance_to(flat(from)), str(driver.trip.get("phase", "")), driver.mode, lurker.motion.plenum, lurker.motion.surface(), lurker.motion.in_duct, lurker.motion.legs.size(), str(ducts.exits[e].kind)])
-
-## An enter asked within the wait: no trip begins.
-func enter_refused() -> bool:
-	await press(&"lurker_enter")
-	return driver.trip.is_empty()
+	await up_over(room, middle_of(room))
+	lurker.double_at = -INF
+	driver.doubled_at = -INF
+	var before: int = lurker.doubles.doubles.size()
+	await press(&"lurker_double")
+	var made: bool = await until(func() -> bool: return lurker.doubles.doubles.size() == before + 1, 1.0)
+	var id: int = lurker.doubles.doubles.keys().max() if made else -1
+	var r: Dictionary = level.manifest.rooms[room]
+	var head: Vector3 = lurker.doubles.head_of(id) if made else Vector3.INF
+	var inside: bool = made and FLOOR.room_at(level.manifest.rooms, Vector3(head.x, float(r.py) + 1.0, head.z)).get("id", -1) == room
+	var top := float(r.py) + float(r.height)
+	var high: bool = made and head.y > top - 1.0 and head.y < top
+	var half := FLOOR.size_of(r) * 0.5
+	var cornered: bool = made and absf(absf(head.x - float(r.px)) - half.x) < 1.2 and absf(absf(head.z - float(r.pz)) - half.y) < 1.2
+	check("P%d deja su doble en una esquina de la sala %d, colgada bajo el techo" % [planta + 1, room], made and inside and high and cornered, "hecho %s, dentro %s, alto %s (%.2f, techo %.2f), esquina %s" % [made, inside, high, head.y if made else 0.0, top, cornered])
+	var refused: int = lurker.doubles_refused
+	driver.doubled_at = -INF
+	await press(&"lurker_double")
+	check("P%d otro no antes de 10 s" % [planta + 1], lurker.doubles_refused == refused + 1 and lurker.doubles.doubles.size() == before + 1, "%d %d" % [lurker.doubles_refused, lurker.doubles.doubles.size()])
+	lurker.double_at = -INF
+	driver.doubled_at = -INF
+	await press(&"lurker_double")
+	check("P%d pasada la espera, otro" % [planta + 1], await until(func() -> bool: return lurker.doubles.doubles.size() == before + 2, 1.0))
+	lurker.doubles.clear()

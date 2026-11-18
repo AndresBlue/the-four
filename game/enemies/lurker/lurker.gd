@@ -126,6 +126,9 @@ const SPARK := 0.2
 ## and when each room was last given back. snuff_time: tune()'s seconds of
 ## stalking before it (0 never); the rest of her numbers are tuning's drink_*.
 var deep_room := -1
+## The rooms round it drunk with it (a person's drink: every room touching
+## hers, the author's 3 x 3, 18 November 2026).
+var deep_more: Array = []
 var deep_until := INF
 var warn_room := -1
 var warn_until := 0.0
@@ -141,12 +144,15 @@ const DEEP := 1.0
 const DEEP_RISE := 5.0
 const DEEP_FALL := 1.0
 const DEEP_AGAIN := 45.0
+## Two rooms whose edges are this near touch (their wall between).
+const TOUCH := 0.4
 const WARN_LOW := 0.7
 const DEEP_WOBBLE := 0.12
 ## A person's drink (versus, lurker_versus.md 8): dark this long, this long
-## between two, no warning this long after it.
+## between two (the author, 18 November 2026: every 10 s, the room and every
+## room touching it), no warning this long after it.
 const VERSUS_DARK := 6.0
-const VERSUS_EVERY := 25.0
+const VERSUS_EVERY := 10.0
 const VERSUS_CUE := 1.5
 ## Her shriek as she drinks (tools/audio/prepare_lurker_drink.py), the hiss of
 ## her warning, their captions within CAPTION_NEAR.
@@ -235,6 +241,10 @@ func _ready() -> void:
 		voice.setup(self)
 		if is_instance_valid(level.get("world_audio")) and level.world_audio.has_method("ensure_duct_bus"): level.world_audio.ensure_duct_bus()
 	if visual != null and visual.has_signal("footfall"): visual.footfall.connect(voice.footfall)
+	if level != null:
+		doubles = DOUBLES.new()
+		add_child(doubles)
+		doubles.setup(self)
 	body_shape = get_node_or_null("BodyShape")
 	if body_shape != null: shape_rest = body_shape.position
 	if level != null: rng.seed = hash([int(level.manifest.get("seed", 0)), "lurker"])
@@ -987,7 +997,7 @@ func watch_systems(delta: float, face: Vector3) -> void:
 	if room >= 0 and level.get("hotel") != null:
 		var lit_now: bool = level.hotel.lit(room)
 		# Her own drink given back is not somebody lighting it (G8).
-		var hers: bool = room == deep_room or float(drained.get(room, 0.0)) > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE
+		var hers: bool = room == deep_room or deep_more.has(room) or float(drained.get(room, 0.0)) > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE
 		if room_was_lit.has(room) and not bool(room_was_lit[room]) and lit_now and not hers: brain.on_room_lit(face)
 		room_was_lit = {room: lit_now}
 	var wing: int = clampi(motion.wing(), 0, ducts.closed_wings.size() - 1)
@@ -1361,10 +1371,14 @@ func hallucinations() -> Variant: return load("res://game/app/hallucinations/lur
 ##           near it frightened where minds are kept, and the torches of
 ##           `seats` drunk for `seconds` (G1; the last two may be missing)
 ##   "tile"  [room, tile_x, tile_y, open, from_below]: a tile she went through
-##   "snuff" [room]: the room she drinks dark (G8), -1 when she gives it back
+##   "snuff" [room, more]: the room she drinks dark (G8) and those round it
+##           drunk with it, -1 when she gives them back
 ##   "warn"  [room]: its lamps going down before she drinks it, -1 no more
-##   "drink" [room, seats, at]: her shriek at `at`, the room dark ("snuff")
-##           and the torches of `seats` put out, not drunk (lurker_versus.md 8)
+##   "drink" [room, seats, at, more]: her shriek at `at`, the room and `more`
+##           dark ("snuff") and the torches of `seats` put out, not drunk
+##           (lurker_versus.md 8)
+##   "double" [id, "set", room, point, yaw] | [id, "pounce", seat] |
+##           [id, "flee", seat] | [id, "gone"]: her doubles (lurker_doubles.gd)
 ##   "torch" [seat, "back" | "spark"]: a torch she put out lights again, or
 ##           only sparks (H1); "scare" carries, sixth, the seats put out
 ## Her going into and out of a grille is heard on every machine from her
@@ -1386,16 +1400,16 @@ func on_event(kind: String, data: Array) -> void:
 			if data.size() >= 2: torch_event(int(data[0]), String(data[1]))
 		"snuff":
 			deep_room = int(data[0]) if data.size() >= 1 else -1
+			deep_more = data[1] if data.size() >= 2 and deep_room >= 0 else []
 		"warn":
 			warn_room = int(data[0]) if data.size() >= 1 else -1
 			if warn_room >= 0: drink_sound(WARN_SOUND, FLOOR.position_of(level.manifest.rooms[warn_room]) + Vector3(0, 2.4, 0), WARN_GAIN, WARN_CAPTION)
 		"drink":
-			if data.size() >= 3: drunk_room(int(data[0]), data[1], data[2])
+			if data.size() >= 3: drunk_room(int(data[0]), data[1], data[2], data[3] if data.size() >= 4 else [])
 		"tile":
 			if ducts != null and data.size() == 5: turn_tile(int(data[0]), Vector2i(int(data[1]), int(data[2])), bool(data[3]), bool(data[4]))
-		# The host's answer to her trip along the ducts (judge_duct()), to her driver.
-		"duct":
-			if control == "player" and driver != null and data.size() == 2: driver.duct_answer(int(data[0]), bool(data[1]))
+		"double":
+			if doubles != null: doubles.on_event(data)
 
 ## Her shriek frightens the minds near it (on the authority, where minds
 ## are kept): on her planta, within SHRIEK_FRIGHT and with a clear line.
@@ -1566,7 +1580,13 @@ const ATTACK_WAIT := Vector2(5.0, 1.25)
 ## her: its own look and torch neither stop, frighten nor save
 ## (SIGHT.spent()). Points of a meter of 100.
 const MIND := {"light_heals": false, "spent_bare": true, "glimpse": 1.5, "stare": 3.5, "peek": 6.0, "shriek": 3.0, "rest": 12.0,
-	"parried": 8.0, "repeat": 0.8, "repeat_least": 0.4, "repeat_back": 20.0, "alone": 0.6}
+	"parried": 8.0, "repeat": 0.8, "repeat_least": 0.4, "repeat_back": 20.0, "alone": 0.6, "double": 30.0, "double_seen": 5.0}
+## Her doubles (lurker_doubles.gd): one every DOUBLE_EVERY s at most.
+const DOUBLE_EVERY := 10.0
+const DOUBLES := preload("res://game/enemies/lurker/lurker_doubles.gd")
+var doubles
+var double_at := -INF
+var doubles_refused := 0
 
 ## Her wait between warnings with `team` survivors alive on her planta.
 static func attack_wait(team: int) -> float:
@@ -1578,10 +1598,18 @@ var parries := {}
 
 ## What a warning turned away now costs `seat` (and counts it).
 func parry_cost(seat: int) -> float:
+	return charge_of(seat, float(MIND.parried))
+
+## What her double's leap now costs `seat`: the same steps as her parries.
+func double_cost(seat: int) -> float:
+	return charge_of(seat, float(MIND.double))
+
+## `base` on `seat` after the steps it has earned (and counts one more).
+func charge_of(seat: int, base: float) -> float:
 	var row: Array = parries.get(seat, [0.0, -INF])
 	var steps := parry_steps(float(row[0]), brain.clock - float(row[1]))
 	parries[seat] = [steps + 1.0, brain.clock]
-	return parried_cost(steps)
+	return base * parried_cost(steps) / float(MIND.parried)
 
 ## The steps a survivor has earned, `since` s after their last parry.
 static func parry_steps(earned: float, since: float) -> float:
@@ -1630,6 +1658,7 @@ func judge(delta: float) -> void:
 	senses.clicks = []
 	apply_claim(p)
 	watch_prey(p, delta)
+	if doubles != null and grace <= 0.0: doubles.judge(delta)
 	warning.gap = attack_wait(int(p.team))
 	if entry.is_empty():
 		judge_light(p, delta)
@@ -1719,10 +1748,6 @@ const CHARGE_KEEP := 1.5
 ## not while its look is within LOOK_OFF (cosine) of her.
 const WATCH_REACH := 20.0
 const LOOK_OFF := 0.8
-## Her trips along the ducts (13, the author's vents): at most one every TRIP_GAP s.
-const TRIP_GAP := 4.0
-var trip_at := -INF
-var trips_refused := 0
 var up_at := -INF
 ## A torch not drunk on her face this long on end blinds her (4.3); her
 ## warning and her drink wait FLASH_WAIT s after; nothing is judged of the
@@ -1801,25 +1826,27 @@ func sneaking() -> bool:
 	if control == "puppet": return net_flags & Flag.SNEAK != 0
 	return control == "player" and driver != null and driver.sneaking and motion != null and motion.plenum
 
-## Her driver asks to go along the ducts to way out `e` (lurker_versus.md 13,
-## the author's vents), judged on the machine in charge: a way of hers on her
-## planta, reached along the ducts from where she is in them, and TRIP_GAP s
-## since her last. The answer goes to whoever drives her.
-func judge_duct(e: int) -> bool:
-	if brain == null or control == "ai" or not in_charge_here(): return false
+## Her driver leaves her double (match_net.lurker_double(); the author's
+## Doppelganger, 18 November 2026), judged on the machine in charge: out of
+## her grace and her crossing, DOUBLE_EVERY s since the last, in a corner of
+## the room she is in or over that takes one (not protected, not off limits,
+## never a lobby); past MOST alive, the oldest goes. Whether she left one.
+func judge_double() -> bool:
+	if brain == null or control == "ai" or not in_charge_here() or doubles == null: return false
 	var clock: float = brain.clock
-	var near: int = net_near if control == "puppet" else motion.near_node
-	var ok := false
-	if e >= 0 and e < ducts.exits.size() and grace <= 0.0 and not in_transit() and clock - trip_at >= TRIP_GAP and near >= 0:
-		var exit: Dictionary = ducts.exits[e]
-		var node := int(exit.node)
-		ok = String(exit.kind) not in ["hatch", "tile"] and node >= 0 and shell.tray_of.has(int(exit.room)) and ducts.node_wings[node] == ducts.node_wings[near] \
-			and ducts.closed_wings[ducts.node_wings[node]] == 0 and float(ducts.shortest(near, node).length) < INF
-	if ok: trip_at = clock
-	else: trips_refused += 1
-	if control == "player" and driver != null: driver.duct_answer(e, ok)
-	elif level.get("match_net") != null: level.match_net.driver_event("duct", [e, ok])
-	return ok
+	var room := room_of_point(face_point())
+	var spot: Dictionary = {}
+	if grace <= 0.0 and not in_transit() and clock - double_at >= DOUBLE_EVERY and room >= 0 and int(level.manifest.rooms[room].type) != OFFICE.LOBBY:
+		if not (level.has_method("off_limits_rooms") and level.off_limits_rooms().has(room)): spot = doubles.corner_of(room, face_point())
+	if spot.is_empty():
+		doubles_refused += 1
+		return false
+	double_at = clock
+	if doubles.doubles.size() >= doubles.MOST:
+		var oldest: int = doubles.doubles.keys().min()
+		tell_all("double", [oldest, "gone"])
+	tell_all("double", [int(doubles.next_id), "set", room, spot.point, float(spot.yaw)])
+	return true
 
 ## Out of a warning, her mind's two rules of the light (4.3): a torch not
 ## drunk on her face BEAM_FLASH s on end blinds her; a look at her face sends
@@ -2012,11 +2039,12 @@ func _process(delta: float) -> void:
 	for r in drained: rooms[r] = true
 	for r in drain_targets: rooms[r] = true
 	if deep_room >= 0: rooms[deep_room] = true
+	for r in deep_more: rooms[int(r)] = true
 	if warn_room >= 0: rooms[warn_room] = true
 	var line := float(hotel.LIT_DRAIN)
 	var trembling: bool = not reduced and still_time < SETTLE
 	for r in rooms:
-		var deep: bool = int(r) == deep_room
+		var deep: bool = int(r) == deep_room or deep_more.has(int(r))
 		var warned: bool = int(r) == warn_room and not deep
 		var was := float(drained.get(r, 0.0))
 		var target: float = DEEP if deep else maxf(float(drain_targets.get(r, 0.0)), WARN_LOW if warned else 0.0)
@@ -2187,13 +2215,29 @@ func drink_fair(room: int, seat: int, clock: float) -> bool:
 ## A room she may drink dark: one that may be dark at all (never a landmark's,
 ## a lobby nor a refuge), not protected nor off limits, and not given back in
 ## the last DEEP_AGAIN s.
-func may_snuff(room: int, clock: float) -> bool:
+func may_snuff(room: int, clock: float, again := true) -> bool:
 	var data: Dictionary = level.manifest.rooms[room]
 	if not OFFICE.may_be_dark(data) or level.point_protected(FLOOR.position_of(data)): return false
 	if level.has_method("off_limits_rooms") and level.off_limits_rooms().has(room): return false
-	return clock - float(snuffed.get(room, -INF)) >= DEEP_AGAIN
+	# A person's drink comes round every VERSUS_EVERY, the same rooms or not.
+	return not again or clock - float(snuffed.get(room, -INF)) >= DEEP_AGAIN
 
-## Her drinks: how many, and each {at, room, seats, dark, lit} (her clock;
+## The rooms of her planta touching `room`, by a wall or a corner: the ring of
+## her 3 x 3.
+func touching(room: int) -> Array:
+	var rooms: Array = level.manifest.rooms
+	var here: Dictionary = rooms[room]
+	var at := FLOOR.position_of(here)
+	var half := FLOOR.size_of(here) * 0.5
+	var out: Array = []
+	for other in rooms:
+		if int(other.id) == room or FLOOR.is_void(other) or int(other.get("wing", -1)) != int(here.get("wing", -2)): continue
+		var there := FLOOR.position_of(other)
+		var reach := half + FLOOR.size_of(other) * 0.5 + Vector2(TOUCH, TOUCH)
+		if absf(there.x - at.x) <= reach.x and absf(there.z - at.z) <= reach.y: out.append(int(other.id))
+	return out
+
+## Her drinks: how many, and each {at, room, seats, dark, lit, more} (her clock;
 ## lit: the room was, not only a torch in it), for the tests and the bots'
 ## count; a person's asks refused.
 var drinks: Array = []
@@ -2202,17 +2246,19 @@ var drinks_refused := 0
 ## Drinks `room` dark for `seconds` on the machine in charge (her mind's, or a
 ## person's judged here): her shriek, the torches of everybody in it put out,
 ## no warning for `gap` s, and her mind told (`seat`: whom she was after).
-func drink(room: int, seconds: float, gap: float, seat := -1) -> void:
+func drink(room: int, seconds: float, gap: float, seat := -1, more: Array = []) -> void:
 	var clock: float = brain.clock
 	var seats: Array = []
 	for one in level.survivors():
-		if is_instance_valid(one) and "slot" in one and SIGHT.alive(level, one) and room_of_point(one.camera.global_position) == room: seats.append(int(one.slot))
+		if not is_instance_valid(one) or not "slot" in one or not SIGHT.alive(level, one): continue
+		var theirs := room_of_point(one.camera.global_position)
+		if theirs == room or more.has(theirs): seats.append(int(one.slot))
 	last_drink = clock
 	snuff_clock = 0.0
 	snuff_aim = -1
 	brain.on_drank(seat, gap, seconds if control == "ai" else 0.0)
-	drinks.append({"at": clock, "room": room, "seats": seats, "dark": seconds, "lit": bool(level.hotel.lit(room))})
-	tell_all("drink", [room, seats, face_point()])
+	drinks.append({"at": clock, "room": room, "seats": seats, "dark": seconds, "lit": bool(level.hotel.lit(room)), "more": more})
+	tell_all("drink", [room, seats, face_point(), more])
 	deep_until = clock + seconds
 
 ## Her drink of a room, on every machine from her "drink" event: her shriek
@@ -2220,8 +2266,9 @@ func drink(room: int, seconds: float, gap: float, seat := -1) -> void:
 ## music), the room dark at once, and the torches of `seats` out, switched
 ## off (this machine's own player's here; a bot's by its own hand,
 ## bot_threat_lurker.relight()), not drunk: back by RELIGHT_ONS.
-func drunk_room(room: int, seats: Array, at: Vector3) -> void:
+func drunk_room(room: int, seats: Array, at: Vector3, more: Array = []) -> void:
 	deep_room = room
+	deep_more = more
 	warn_room = -1
 	deep_until = INF
 	drink_sound(DRINK_SOUND, at, DRINK_GAIN, DRINK_CAPTION)
@@ -2242,18 +2289,20 @@ func drink_sound(path: String, at: Vector3, gain: float, caption: String) -> voi
 	audio.play_at(path, at, gain)
 	if audio.has_method("show_caption") and audio.listener_position().distance_to(at) <= CAPTION_NEAR: audio.show_caption(caption, false)
 
-## Her driver drinks the room she is in (match_net.lurker_drink();
-## lurker_versus.md 8), judged on the machine in charge: one she may drink
-## (may_snuff()), her face out of a hidden duct, no warning running nor a room
-## of hers dark, and not within VERSUS_EVERY of the last. Whether she drank.
+## Her driver drinks the room she is in or over (match_net.lurker_drink();
+## lurker_versus.md 8) and every room touching it that may be dark, judged on
+## the machine in charge: one she may drink (may_snuff(), never refused for a
+## drink of the same room before), her face out of a hidden duct, no warning
+## running nor a room of hers dark, and not within VERSUS_EVERY of the last.
+## Whether she drank.
 func judge_drink() -> bool:
 	if brain == null or control == "ai" or not in_charge_here(): return false
 	var clock: float = brain.clock
 	# From the plenum she drinks the room under her (lurker_versus.md 13.1);
 	# from inside a duct, none.
 	var room := -1 if in_network_duct() and not in_plenum() else room_of_point(face_point())
-	if grace <= 0.0 and not in_transit() and room >= 0 and deep_room < 0 and warning.active.is_empty() and clock - last_drink >= VERSUS_EVERY and may_snuff(room, clock):
-		drink(room, VERSUS_DARK, VERSUS_CUE)
+	if grace <= 0.0 and not in_transit() and room >= 0 and deep_room < 0 and warning.active.is_empty() and clock - last_drink >= VERSUS_EVERY and may_snuff(room, clock, false):
+		drink(room, VERSUS_DARK, VERSUS_CUE, -1, touching(room).filter(func(r: int) -> bool: return may_snuff(r, clock, false)))
 		return true
 	drinks_refused += 1
 	return false
@@ -2267,7 +2316,7 @@ func lit_out() -> void:
 	var room := -1 if in_network_duct() else room_of_point(face_point())
 	if room < 0 or level.get("hotel") == null: return
 	var now: bool = level.hotel.lit(room)
-	var hers: bool = room == deep_room or float(drained.get(room, 0.0)) > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE
+	var hers: bool = room == deep_room or deep_more.has(room) or float(drained.get(room, 0.0)) > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE
 	if lit_was.has(room) and not bool(lit_was[room]) and now and not hers and brain != null: scare_off(false, -1, face_point())
 	lit_was = {room: now}
 
@@ -2282,11 +2331,13 @@ func tell_all(kind: String, data: Array) -> void:
 ## machine. (Her drink is drink(); this is its dark, for the tools and tests.)
 func snuff(room: int, _seat := -1) -> void:
 	var clock: float = brain.clock if brain != null else 0.0
-	if room < 0 and deep_room >= 0: snuffed[deep_room] = clock
+	if room < 0 and deep_room >= 0:
+		snuffed[deep_room] = clock
+		for r in deep_more: snuffed[int(r)] = clock
 	deep_until = INF
 	snuff_clock = 0.0
 	snuff_aim = -1
-	tell_all("snuff", [room])
+	tell_all("snuff", [room, []])
 
 ## Every room she drank given back at once (a stage given back, a floor continued).
 func undrain() -> void:
@@ -2295,6 +2346,8 @@ func undrain() -> void:
 	drained = {}
 	drain_targets = {}
 	draining = false
+	if doubles != null: doubles.clear()
 	deep_room = -1
+	deep_more = []
 	deep_until = INF
 	warn_room = -1

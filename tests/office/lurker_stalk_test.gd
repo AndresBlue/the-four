@@ -131,7 +131,6 @@ func turn_to_her(off := 0.0) -> void:
 func over(back: float) -> void:
 	var feet: Vector3 = survivor.global_position
 	var p: Vector3 = feet - (spot.way as Vector3) * back
-	driver.trip = {}
 	driver.attack = {}
 	driver.to_plenum(Vector3(p.x, float(spot.py) + 1.0, p.z), int(spot.room))
 	aim()
@@ -346,6 +345,10 @@ func cases() -> void:
 		await wait(float(counting.window) + 1.5)
 		check("Echada por una linterna a media cuenta: el aviso se cancela, sin captura, y vuelve al plénum", String(counting.outcome) == "aborted" and String(counting.reason) == "echada" and level.execution.is_empty() and lurker.warning.active.is_empty() and driver.up(), "%s; %s" % [str(counting), " / ".join(lurker.debug_lines())])
 	else: check("El aviso para echarla a media cuenta", false, "%s %s" % [str(last()), str(info())])
+	# --- Her double (the author's Doppelganger, 18 November 2026): walked into
+	# unseen in the dark it leaps and costs a mind a lot; made out in the light
+	# it bolts and costs a little; it takes nobody.
+	await doubles_case()
 	# --- Its back to her: taken at her due time, with its warning.
 	fresh()
 	level.hotel.set_room_power(int(spot.room), false)
@@ -359,6 +362,45 @@ func cases() -> void:
 	var taken_entry: Dictionary = last()
 	var taken: bool = await until(func() -> bool: return String(taken_entry.outcome) != "active", 3.0)
 	check("Coge a quien da la espalda, al vencer el plazo, con su ventana de 1,2 s", taken and String(taken_entry.outcome) == "taken" and float(taken_entry.take_at) >= float(taken_entry.due) - WARNING.EPS and not level.execution.is_empty() and is_equal_approx(float(taken_entry.window), 1.2), str(taken_entry))
+
+func doubles_case() -> void:
+	var room := int(spot.room)
+	var mind = level.sanity
+	for lit in [false, true]:
+		fresh()
+		level.hotel.set_room_power(room, lit)
+		stand(0.0)
+		var corner: Dictionary = lurker.doubles.corner_of(room, survivor.global_position + (spot.way as Vector3) * 3.0)
+		var id: int = lurker.doubles.next_id
+		lurker.tell_all("double", [id, "set", room, corner.point, float(corner.yaw)])
+		await wait(0.1)
+		var head: Vector3 = lurker.doubles.head_of(id)
+		survivor.sanity = 100.0
+		mind.sight_rest = 0.0
+		mind.sight_paid = 0.0
+		var pounces: int = lurker.doubles.pounces
+		var bolts: int = lurker.doubles.bolts
+		var flat := Vector3(head.x, float(spot.py), head.z)
+		if lit:
+			# Six metres off, looking at it in the light.
+			var off: Vector3 = (Vector3(survivor.global_position.x, flat.y, survivor.global_position.z) - flat).normalized()
+			survivor.global_position = flat + off * 6.0
+			var to: Vector3 = head - survivor.camera.global_position
+			survivor.rotation.y = atan2(-to.x, -to.z)
+			survivor.camera.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+			var gone: bool = await until(func() -> bool: return lurker.doubles.bolts > bolts, 1.5)
+			check("Su doble, visto con luz, huye al techo y baja un poco la cordura, sin saltar", gone and lurker.doubles.pounces == pounces and survivor.sanity < 100.0 and survivor.sanity > 90.0, "huye %s, saltos %d, cordura %.1f" % [gone, lurker.doubles.pounces - pounces, survivor.sanity])
+		else:
+			# Walking under it in the dark, its back to it.
+			var away: Vector3 = (spot.way as Vector3)
+			survivor.global_position = flat + away * 1.0
+			survivor.rotation.y = atan2(-away.x, -away.z)
+			survivor.camera.rotation.x = 0.0
+			var leapt: bool = await until(func() -> bool: return lurker.doubles.pounces > pounces, 1.5)
+			await wait(lurker.doubles.POUNCE_TIME + 0.2)
+			check("Su doble salta a quien pasa bajo él sin verlo: le baja mucho la cordura y no lo coge", leapt and survivor.sanity <= 100.0 - 10.0 and level.execution.is_empty() and not lurker.doubles.doubles.has(id), "salta %s, cordura %.1f, captura %s" % [leapt, survivor.sanity, not level.execution.is_empty()])
+		lurker.doubles.clear()
+	level.hotel.set_room_power(room, false)
 
 func PLAYER_CRAWL() -> float: return float(driver.CRAWL_REACH)
 

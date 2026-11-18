@@ -22,13 +22,10 @@ extends Node
 ## under her into the room, and back up. The
 ## attack (lurker_release) on her marked prey (the survivor nearest the middle
 ## of her view) crawls to the tile behind it, drops and asks the host for her
-## warning (match_net.lurker_release(), judged as ever). lurker_enter by a
-## grille or a gap of the ducts takes her into them and lays out the ways out
-## of their network, to pick one by looking at it, as The Locust picks a set:
-## lurker_enter (or the attack's button) asks the host for the trip
-## (match_net.lurker_duct()),
-## which she makes along the ducts at TRIP_SPEED, heard in them; lurker_drop
-## turns back. Blinded or looked at in the light, the host sends her off
+## warning (match_net.lurker_release(), judged as ever). lurker_double leaves
+## her double lying in wait in a corner of the room she is in or over
+## (match_net.lurker_double(), the author's Doppelganger of 18 November 2026,
+## which replaced her trips along the ducts). Blinded or looked at in the light, the host sends her off
 ## (scared()): her body bolts in and comes up in the plenum; sent off half way
 ## through a tile, she bolts once she is on the ceiling it takes her to.
 const MOTION := preload("res://game/enemies/lurker/lurker_motion.gd")
@@ -55,8 +52,7 @@ const CLIMB_RATE := 3.0
 ## planta's floor, where the camera was, and the floor hears and draws from
 ## it. Changing between over her and down in a room takes BLEND s. It looks
 ## LEAD metres ahead of her and LOOK_DOWN under her, so she is low in the
-## picture and what she goes to is in its middle, not under her. Along the
-## ducts it turns to her way at TRIP_TURN. FOV over the ceiling, narrower than
+## picture and what she goes to is in its middle, not under her. FOV over the ceiling, narrower than
 ## down in a room (FOV_DOWN), so a survivor under her reads at a glance.
 const DISTANCE := 4.0
 const LEAD := 5.0
@@ -83,7 +79,6 @@ const STRIKE_SIDE := 1.1
 const STRIKE_UNDER := 0.5
 const CAMERA_CLEAR := 0.25
 const CAMERA_MASK := 1 | 8 | 128
-const TRIP_TURN := 4.0
 const ZOOM := Vector2(3.5, 9.0)
 const ZOOM_STEPS := [4.0, 6.0, 8.0]
 const ZOOM_WHEEL := 0.35
@@ -92,16 +87,6 @@ const TILT := Vector2(-1.4, -0.5)
 const BLEND := 0.35
 ## Through a tile she squeezes this fast (her motion's bolt pace).
 const SQUEEZE := 2.5
-## Her trip along the ducts: this pace, never shorter than TRIP_LEAST s;
-## another only TRIP_GAP s after (the host's lurker.TRIP_GAP); a way in within
-## ENTER_REACH of her; ways out nearer than TRIP_NEAR to the one she went in
-## by are not offered. An unanswered ask is given up after ASK_WAIT.
-const TRIP_SPEED := 9.0
-const TRIP_LEAST := 1.0
-const TRIP_GAP := 4.0
-const ENTER_REACH := 3.0
-const TRIP_NEAR := 3.0
-const ASK_WAIT := 2.0
 ## Her prey: whom she sees through the ceiling (13.6 A2) within PREY_REACH, the
 ## one nearest the middle of her view within PREY_CONE (cosine). Its marker is
 ## worked out every MARK_EVERY.
@@ -156,7 +141,6 @@ var focus_to := Vector3.INF
 var blend_from := Transform3D.IDENTITY
 var blend_left := 0.0
 var drawn := Transform3D.IDENTITY
-var trip_was := Vector3.INF
 ## Down: the side the camera sits on (1 her right, -1 her left), picked on the
 ## way down; how far it frames her prey (0..1), and whose (seat, -1 none: kept
 ## through her warning and her take, after her attack is over).
@@ -197,10 +181,8 @@ var fled_at := -INF
 var fled_from := Vector3.INF
 ## Her attack under way: {phase ("crawl", "drop", "land", "wait"), seat, drop, clock}.
 var attack := {}
-## Her trip along the ducts: {phase ("pick", "ask", "go"), from, pick, targets
-## [[exit, metres]], clock}; when the next may begin.
-var trip := {}
-var trip_ready_at := 0.0
+## When she last left her double (the host keeps her waiting lurker.DOUBLE_EVERY).
+var doubled_at := -INF
 var pose_clock := 0.0
 ## Room -> its plenum node (the ducts' nearest when it has none).
 var plenum_nodes := {}
@@ -274,7 +256,7 @@ func drive(delta: float) -> void:
 		var acting := can_act()
 		axis = Input.get_vector("left", "right", "forward", "backward") if acting else Vector2.ZERO
 		sneak_held = acting and InputMap.has_action(&"lurker_sneak") and Input.is_action_pressed(&"lurker_sneak")
-		for action in [&"lurker_enter", &"lurker_drop", &"lurker_peek", &"lurker_release", &"lurker_drink", &"lurker_zoom"]:
+		for action in [&"lurker_double", &"lurker_drop", &"lurker_peek", &"lurker_release", &"lurker_drink", &"lurker_zoom"]:
 			if acting and InputMap.has_action(action) and Input.is_action_just_pressed(action): asked[action] = true
 	# The pad's zoom steps out, and from the farthest back to the nearest.
 	if asked.has(&"lurker_zoom"):
@@ -288,7 +270,6 @@ func drive(delta: float) -> void:
 	motion.steering = true
 	motion.free_face = forward()
 	motion.free_way = Vector3.ZERO
-	motion.trip_speed = float(trip.get("speed", 0.0)) if String(trip.get("phase", "")) == "go" else 0.0
 	if motion.legs.is_empty() and motion.bolting and not motion.in_duct: motion.bolting = false
 	pose_clock -= delta
 	if pose_clock <= 0.0 and creature.intent_clip in ["peek", "scare"]: creature.intent_clip = ""
@@ -299,10 +280,8 @@ func drive(delta: float) -> void:
 		started = true
 		to_plenum(motion.anchor(), motion.room())
 	if crossing:
-		trip = {}
 		attack = {}
 		sneaking = false
-	elif not trip.is_empty(): trip_step()
 	# Out of the ducts after a bolt (or a test's placing): up into her plenum.
 	elif motion.in_duct and not motion.plenum and motion.legs.is_empty(): to_plenum(motion.duct_point, int(creature.ducts.exits[motion.mouth_exit].room) if motion.mouth_exit >= 0 else -1)
 	elif raise_when_out and motion.surface() and motion.legs.is_empty():
@@ -325,7 +304,7 @@ func drive(delta: float) -> void:
 		mark_prey()
 	watch_charge(delta)
 	if not attack.is_empty(): attack_step(delta)
-	elif crossing or not trip.is_empty(): pass
+	elif crossing: pass
 	elif motion.plenum: plenum_step(delta, free)
 	elif motion.surface() and motion.legs.is_empty(): surface_step(free)
 	if not motion.plenum: sneaking = false
@@ -345,9 +324,6 @@ func _physics_process(delta: float) -> void:
 	var was := mode
 	mode = camera_mode()
 	var at := focus()
-	if String(trip.get("phase", "")) == "go" and trip_was != Vector3.INF and Vector2(at.x - trip_was.x, at.z - trip_was.z).length() > 1e-3:
-		yaw = lerp_angle(yaw, atan2(-(at.x - trip_was.x), -(at.z - trip_was.z)), 1.0 - exp(-TRIP_TURN * delta))
-	trip_was = at
 	if mode == "down" and was != "down":
 		pitch = DOWN_START
 		side = roomier_side(at)
@@ -362,7 +338,7 @@ func _physics_process(delta: float) -> void:
 
 func camera_mode() -> String:
 	var motion = creature.motion
-	if not motion.transit.is_empty() or not trip.is_empty(): return "ducts"
+	if not motion.transit.is_empty(): return "ducts"
 	var squeezing: bool = not motion.legs.is_empty() and String(motion.legs[0].kind) == "squeeze"
 	if motion.plenum or squeezing or String(attack.get("phase", "")) in ["crawl", "drop"]: return "above"
 	# In a duct on her way up (a bolt's end): over her.
@@ -555,7 +531,7 @@ func plenum_step(delta: float, free: bool) -> void:
 	if not free: return
 	if asked.has(&"lurker_release"): attack_now()
 	elif asked.has(&"lurker_drop"): go_down()
-	elif asked.has(&"lurker_enter"): start_trip()
+	elif asked.has(&"lurker_double"): double()
 
 ## On a ceiling with no order running: down in a room, or over a gallery.
 func surface_step(free: bool) -> void:
@@ -572,7 +548,7 @@ func surface_step(free: bool) -> void:
 	if asked.has(&"lurker_release"): attack_now()
 	if asked.has(&"lurker_drink"): level.match_net.lurker_drink()
 	if asked.has(&"lurker_peek") and not on_gallery: peek()
-	if asked.has(&"lurker_enter") and on_gallery: start_trip()
+	if asked.has(&"lurker_double"): double()
 	if asked.has(&"lurker_drop"):
 		if on_gallery or (motion.state.lowered and not OFFICE.false_ceiling(level.manifest.rooms[motion.room()])): motion.drop(not motion.state.lowered)
 		else: go_up()
@@ -711,7 +687,7 @@ func judge_prey(one) -> Dictionary:
 	if since < SAME_PREY: waits.append(1.0 - since / SAME_PREY)
 	var gap: float = creature.attack_wait(team_here())
 	if clock - last_attack < gap: waits.append(1.0 - (clock - last_attack) / gap)
-	if creature.cue or not attack.is_empty() or not trip.is_empty() or not creature.motion.transit.is_empty(): waits.append(1.0)
+	if creature.cue or not attack.is_empty() or not creature.motion.transit.is_empty(): waits.append(1.0)
 	# Quiet after a take near it (lurker_brain.sated_on()): known only where she is judged.
 	var brain = creature.brain
 	if creature.in_charge_here() and brain.clock < brain.sated_until and brain.sated_point != Vector3.INF and (one.global_position as Vector3).distance_to(brain.sated_point) < brain.SATED_NEAR: waits.append((brain.sated_until - brain.clock) / maxf(brain.sated, 0.1))
@@ -836,132 +812,17 @@ func look_at_point(point: Vector3) -> void:
 	yaw = atan2(-to.x, -to.z)
 	pitch = clampf(atan2(to.y, Vector2(to.x, to.z).length()), DOWN_PITCH.x, DOWN_PITCH.y)
 
-# --- Along the ducts (the author's vents) -------------------------------------------
-
-## The way in of the ducts nearest her within ENTER_REACH, -1 none.
-func entrance() -> int:
-	if not up() or not trip.is_empty() or clock < trip_ready_at: return -1
-	var at: Vector3 = creature.motion.anchor()
-	var best := -1
-	var nearest := ENTER_REACH
-	for e in creature.ducts.exits.size():
-		var exit: Dictionary = creature.ducts.exits[e]
-		if not travel_exit(e) or int(creature.ducts.node_wings[int(exit.node)]) != planta(): continue
-		var d := Vector2((exit.position as Vector3).x - at.x, (exit.position as Vector3).z - at.z).length()
-		if d < nearest:
-			nearest = d
-			best = e
-	return best
-
-## A grille or a gap of her network (no tile, no hatch) of a room of hers.
-func travel_exit(e: int) -> bool:
-	var exit: Dictionary = creature.ducts.exits[e]
-	return String(exit.kind) not in ["tile", "hatch"] and usable(e)
-
-## In by the way in near her, the ways out of the network laid out to pick.
-func start_trip() -> bool:
-	var e := entrance()
-	if e < 0: return false
-	var ducts = creature.ducts
-	var node := int(ducts.exits[e].node)
-	var metres: PackedFloat64Array = ducts.distances_from(node)
-	# One way out a room (the nearest its middle): a room is what she picks.
-	var by_room := {}
-	for other in ducts.exits.size():
-		if other == e or not travel_exit(other): continue
-		var n := int(ducts.exits[other].node)
-		if ducts.node_wings[n] != ducts.node_wings[node] or metres[n] == INF: continue
-		var at: Vector3 = ducts.exits[other].position
-		if (at - (ducts.exits[e].position as Vector3)).length() < TRIP_NEAR: continue
-		var room := int(ducts.exits[other].room)
-		var middle := FLOOR.position_of(level.manifest.rooms[room])
-		var off := Vector2(at.x - middle.x, at.z - middle.z).length()
-		if not by_room.has(room) or off < float(by_room[room][2]): by_room[room] = [other, metres[n], off]
-	var targets: Array = by_room.values().map(func(entry: Array) -> Array: return [entry[0], entry[1]])
-	if targets.is_empty(): return false
-	creature.motion.place_in_duct(node)
-	creature.motion.mouth_exit = e
-	velocity = Vector2.ZERO
-	trip = {"phase": "pick", "from": e, "pick": -1, "targets": targets, "clock": 0.0}
-	pick_target()
-	return true
-
-## The way out most where she looks, as The Locust picks a set
-## (locust_player.update_channels()): the one nearest the middle of her
-## picture, from her camera as the mouse has it; the nearer of two alike.
-func pick_target() -> void:
-	var eye := camera_at(focus())
-	var ahead := -eye.basis.z
-	var best := -INF
-	for entry in trip.targets:
-		var to: Vector3 = (creature.ducts.exits[int(entry[0])].position as Vector3) - eye.origin
-		var score := ahead.dot(to.normalized()) - float(entry[1]) * 0.0005
-		if score > best:
-			best = score
-			trip.pick = int(entry[0])
-
-func trip_step() -> void:
-	var motion = creature.motion
-	# Her keys are the trip's this tick: turned back, the same press is no drop by a tile.
-	var keys := asked.duplicate()
-	asked.clear()
-	trip.clock = float(trip.clock) + get_physics_process_delta_time()
-	match String(trip.phase):
-		"pick":
-			pick_target()
-			if keys.has(&"lurker_drop"):
-				var exit: Dictionary = creature.ducts.exits[int(trip.from)]
-				trip = {}
-				to_plenum(exit.position, int(exit.room))
-			elif (keys.has(&"lurker_enter") or keys.has(&"lurker_release")) and int(trip.pick) >= 0:
-				trip.phase = "ask"
-				trip.clock = 0.0
-				level.match_net.lurker_duct(int(trip.pick))
-		"ask":
-			if float(trip.clock) > ASK_WAIT: trip.phase = "pick"
-		"go":
-			if motion.legs.is_empty():
-				var exit: Dictionary = creature.ducts.exits[int(trip.pick)]
-				trip = {}
-				trip_ready_at = clock + TRIP_GAP
-				to_plenum(exit.position, int(exit.room))
-
-## The host's answer (lurker.judge_duct()): along the ducts to `e` at the trip's
-## pace, or back to picking.
-func duct_answer(e: int, ok: bool) -> void:
-	if String(trip.get("phase", "")) != "ask" or int(trip.pick) != e: return
-	if not ok:
-		trip.phase = "pick"
-		trip["refused"] = clock
-		return
-	var ducts = creature.ducts
-	var motion = creature.motion
-	var found: Dictionary = ducts.shortest(motion.near_node, int(ducts.exits[e].node))
-	var path: PackedInt32Array = found.path
-	if path.is_empty():
-		trip.phase = "pick"
-		return
-	var points: PackedVector3Array = ducts.points_of(path)
-	var kinds := PackedStringArray()
-	for i in range(1, path.size()): kinds.append(ducts.edge_kind(path[i - 1], path[i]))
-	var length := float(found.length)
-	trip.phase = "go"
-	trip["length"] = length
-	trip["points"] = points
-	trip["speed"] = length / maxf(length / TRIP_SPEED, TRIP_LEAST) if length > 0.0 else TRIP_SPEED
-	motion.run_legs([{"kind": "duct", "nodes": path, "points": points, "kinds": kinds, "length": length}], float(trip.speed))
-	motion.trip_speed = float(trip.speed)
-
-## How far along her trip, 0 to 1.
-func trip_done() -> float:
-	if String(trip.get("phase", "")) != "go" or float(trip.get("length", 0.0)) <= 0.0: return 0.0
-	return clampf(creature.motion.travelled / float(trip.length), 0.0, 1.0)
-
 # --- The host's word on her ---------------------------------------------------------
 
 ## Kept for her flags and the drain (lurker.settled()): the places to lie in
 ## wait are her ways down now (13.6 E2), and nobody settles at them.
 func settled() -> bool: return false
+
+## Her double left in a corner (lurker.judge_double() on the host).
+func double() -> void:
+	if clock - doubled_at < creature.DOUBLE_EVERY: return
+	doubled_at = clock
+	level.match_net.lurker_double()
 
 ## Shows herself at the edge of somebody's view: her peek, and the host's
 ## judgement of whom it frightens.

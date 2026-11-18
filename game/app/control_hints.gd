@@ -250,7 +250,7 @@ func rows(kind: String) -> Array:
 				[lurker_keys("lurker_release"), "Atacar", ["mouse_left", "lurker_release"]],
 				[lurker_keys("lurker_drop"), "Bajar", ["lurker_drop"]],
 				[["MANTÉN"] + lurker_keys("lurker_sneak"), "Sigilo", ["lurker_sneak"]],
-				[lurker_keys("lurker_enter"), "Ductos", ["lurker_enter"]],
+				[lurker_keys("lurker_double"), "Doppelgänger", ["lurker_double"]],
 				[lurker_keys("lurker_drink"), "Beber la luz", ["mouse_right", "lurker_drink"]],
 				[lurker_keys("lurker_peek"), "Asomarse", ["lurker_peek"]],
 			]

@@ -293,6 +293,35 @@ Hecha según 3.1 a 3.3, con dos cambios sobre la propuesta tras simular la econo
   - `lurker_stalk_test` reinicia la espera entre casos.
 - **Sin comprobar en una partida:** el ritmo real, con la IA y en Versus.
 
+## Estado de la fase 2 (18 de noviembre de 2026)
+
+Hecha según 3.4 a 3.7, solo para quien la lleva en Versus (la IA del cooperativo no deja dobles ni bebe en 3 × 3 todavía: fase 9).
+- **Doppelgänger** (`lurker_doubles.gd`):
+  - E (X en el mando) pide al anfitrión un doble (`match_net.lurker_double()`, `lurker.judge_double()`);
+  - el doble es su modelo de verdad, boca abajo y colgado en la esquina de la sala más cercana a ella;
+  - lo juzga el anfitrión (`lurker_doubles.judge()`) y viaja como evento de la criatura (`"double"`);
+  - el salto cuesta 30 de cordura (`MIND.double`, que baja con las repeticiones como los ataques parados) y ser visto, 5 (`MIND.double_seen`);
+  - tope de 12 vivos.
+- **Fuera los ductos de quien la lleva:**
+  - código quitado: el viaje en `lurker_player.gd`, su dibujo en `lurker_view.gd` (red, columnas, colores morado y rosa), `judge_duct()` y `request_duct`;
+  - la acción `lurker_enter` pasa a ser `lurker_double`.
+- **Beber 3 × 3** (`lurker.touching()`, `deep_more`):
+  - cada 10 s (`VERSUS_EVERY`), sin la espera de 45 s por sala, también desde el plénum;
+  - el evento `"drink"` lleva las salas de alrededor.
+- **La bajada** (`lurker_motion.begin_drop()`, `descend()`):
+  - entra en el tronco sobre el pasillo más cercano y baja por él del 20 al 80 % de los 8,5 s del viaje;
+  - la cámara de quien la lleva la sigue con su vista de siempre, sin los colores de los ductos.
+- **Protocolo** `the-four-net-24`.
+- **Pruebas:**
+  - `lurker_player_test`: el doble en una esquina de cada planta, otro rechazado en su espera;
+  - `lurker_stalk_test`: el salto a quien pasa debajo sin verlo y la huida si lo ven con luz;
+  - `net_test` `lurker_versus`: las salas que tocan la suya se beben con ella;
+  - `creature_contract_test`: la lista de mensajes de red, con `request_double`;
+  - `verify`: 100 de 102; las dos que fallaron se arreglaron y pasaron sueltas (la lista de mensajes de red y el tirón de `voice_test`). Banco igual (8,85 ms).
+- **Sin ver todavía:**
+  - no hay capturas del doble ni de la bajada en una partida;
+  - la pantalla de quien la lleva no marca sus dobles (fase 3).
+
 ## 5. Riesgos
 
 - **El coste del edificio grande** no se conoce hasta la fase 0. Puede obligar a montar las plantas de una en una.

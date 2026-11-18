@@ -33,9 +33,8 @@ extends Node
 ## the tile she would go down by, of the way into the ducts at hand, her prey
 ## white (the attack may go) or red, and why not: the line of a look on where
 ## she would drop, or of the torch on it, or the lit room under it reddened.
-## In the ducts (as The Locust between its sets) the cold goes dark purple,
-## the network's tubes light up pink and its ways out stand up as columns of
-## light; the one she looks at burns white. Her keys are along the foot as the
+## Crossing to the next planta the camera follows her down the trunk as it
+## is (the author, 18 November 2026: no ducts of hers any more). Her keys are along the foot as the
 ## control hints draw theirs (hotel_ui.show_controls()): each key in its
 ## keycap and its action's name, what cannot be done now dim, a wait drained
 ## on its own key; a key beside the piece it works on. Sent off, the picture
@@ -167,21 +166,13 @@ const CEILING_FROM := ["Model_detector_humo", "Model_rociador", "Tile_"]
 ## What stops her over the ceiling, up to the slab: a core over its ceiling, the
 ## building's edge this thick.
 const EDGE := 0.2
-## The ducts: a tube's width by its kind; a way out's column, this wide (the
-## one she looks at, PICKED wide); her marks' lines this thick at least, and
-## this share of the metres to them.
-const TUBE := {"main": 0.6, "trunk": 0.45, "express": 0.4, "drop": 0.2}
-const TUBE_LEAST := 0.3
-const COLUMN := 0.12
-const PICKED := 0.22
+## Her marks' lines this thick at least, and this share of the metres to them.
 const LINE := 0.03
 const LINE_SHARE := 0.0025
 ## Beber's wait (lurker.VERSUS_EVERY), drained on its key.
-const DRINK_EVERY := 25.0
+const DRINK_EVERY := 10.0
 ## A key not to be pressed now.
 const DIM := 0.3
-## Into and out of the ducts' colours (per second).
-const DUCTS_RATE := 3.0
 ## What she hears shows where it is: a faint wave of warmth over the surfaces
 ## round it (the shader's ripples), RIPPLES at most, each RIPPLE_LIFE s, out to
 ## a reach by how loud. Running is heard every RUN_EVERY over RUN_SPEED m/s,
@@ -228,7 +219,6 @@ var torch_view := {}
 var cold: Array = []
 var dazzle := 0.0
 var dazzled := false
-var ducts_shade := 0.0
 var flash_clock := -1.0
 var flash_from := Vector2.ZERO
 var immune_until := -1.0
@@ -252,9 +242,8 @@ var click_until := -1.0
 ## The ceilings not drawn now (their nodes) and for which planta.
 var hidden_parts: Array = []
 var hidden_planta := -1
-## Planta -> what stops her, as one mesh; planta -> its network of tubes.
+## Planta -> what stops her, as one mesh.
 var walls := {}
-var tubes := {}
 ## Her marks (depth tested, and seen through everything).
 var marks: MeshInstance3D
 var marks_through: MeshInstance3D
@@ -350,7 +339,7 @@ func setup(owner_driver, cover: CanvasLayer) -> void:
 	keys_bar.offset_top = -74
 	keys_bar.offset_bottom = -36
 	keys_bar.visible = false
-	for kind in ["way", "down"]:
+	for kind in ["down"]:
 		var holder := Control.new()
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.visible = false
@@ -436,7 +425,6 @@ func _process(delta: float) -> void:
 	marks_through.visible = on
 	ceilings(planta() if up else -1)
 	for p in walls: walls[p].visible = up and int(p) == planta()
-	for p in tubes: tubes[p].visible = on and driver.mode == "ducts" and int(p) == planta()
 	if click.playing and clock >= click_until: click.stop()
 	var deep := int(creature.get("deep_room")) if creature.get("deep_room") != null else -1
 	if deep >= 0 and deep_was < 0: drank_at = clock
@@ -445,14 +433,12 @@ func _process(delta: float) -> void:
 		for kind in tags: tags[kind].visible = false
 		return
 	if up: barriers(planta())
-	if driver.mode == "ducts": network(planta())
 	gather_clock -= delta
 	if gather_clock <= 0.0:
 		gather_clock = GATHER_EVERY
 		gather()
 	listen(delta)
 	dazzle = move_toward(dazzle, 1.0 if dazzled else 0.0, DAZZLE_RATE * delta)
-	ducts_shade = move_toward(ducts_shade, 1.0 if driver.mode == "ducts" else 0.0, DUCTS_RATE * delta)
 	calibrate(delta)
 	place(delta)
 	place_marks()
@@ -522,20 +508,6 @@ func barriers(here: int) -> void:
 	mesh.material_override = StandardMaterial3D.new()
 	add_child(mesh)
 	walls[here] = mesh
-
-## The ducts' network of `here`, its tubes (pink in her sensor), built once.
-func network(here: int) -> void:
-	if tubes.has(here): return
-	var ducts = creature.ducts
-	var shape := Shape.new()
-	for edge in ducts.edges:
-		var a := int(edge[0])
-		var b := int(edge[1])
-		if String(edge[3]) == "plenum" or ducts.node_wings[a] != here or ducts.node_wings[b] != here: continue
-		shape.beam(ducts.nodes[a], ducts.nodes[b], float(TUBE.get(String(edge[3]), TUBE_LEAST)), Color(packed(0.05), 0.6, 0.0, 1.0))
-	var mesh := world_mesh("Tubes%d" % here, mark_material)
-	mesh.mesh = shape.mesh()
-	tubes[here] = mesh
 
 ## A reading packed as her shaders pack it.
 static func packed(v: float) -> float: return clampf((v - FOOT) / (RANGE - FOOT), 0.0, 1.0)
@@ -898,7 +870,6 @@ func place(delta: float) -> void:
 	sensor_material.set_shader_parameter("noise", NOISE_HEAT / (gain_high - GAIN_LOW) * calm)
 	sensor_material.set_shader_parameter("stripes", STRIPES * calm)
 	sensor_material.set_shader_parameter("now", clock)
-	sensor_material.set_shader_parameter("ducts", ducts_shade)
 
 ## The survivors as figures (her prey white or red), and from over the
 ## ceiling her point, the grid round her and the lit rooms.
@@ -959,43 +930,18 @@ func rect_of(id: int) -> Vector4:
 	return Vector4(float(room.px) - half.x, float(room.pz) - half.y, float(room.px) + half.x, float(room.pz) + half.y)
 
 ## Her marks in the world, and the keys beside the pieces they work on: the
-## tile she would go down by (or drop by on her prey), the way into the ducts
-## at hand, why her prey is not hers; in the ducts, the ways out and the way
-## along to the one she looks at.
+## tile she would go down by (or drop by on her prey) and why her prey is not hers.
 func place_marks() -> void:
 	var near := Shape.new()
 	var far := Shape.new()
 	var pale := Color(packed(0.0), 1.0, 0.0, 0.0)
 	var red := Color(packed(0.0), 0.0, 1.0, 0.0)
 	var down_at := Vector3.INF
-	var way_at := Vector3.INF
-	var phase := String(driver.trip.get("phase", ""))
-	var ducts = creature.ducts
-	if driver.mode == "ducts":
-		if phase in ["pick", "ask"]:
-			var pick := int(driver.trip.pick)
-			for entry in driver.trip.targets:
-				var e := int(entry[0])
-				if e == pick: continue
-				column(far, ducts.exits[e], COLUMN, Color(packed(0.9), 0.0, 0.0, 0.0))
-			if pick >= 0:
-				var beat := 0.5 + 0.5 * sin(clock * 6.0)
-				column(far, ducts.exits[pick], PICKED * (1.0 + 0.25 * beat), Color(packed(1.25 + 0.3 * beat), 0.0, 0.0, 0.0))
-				route(near, ducts.points_of(ducts.shortest(int(ducts.exits[int(driver.trip.from)].node), int(ducts.exits[pick].node)).path))
-				way_at = ducts.exits[pick].position
-		elif phase == "go":
-			route(near, driver.trip.points)
-			var points: PackedVector3Array = driver.trip.points
-			if not points.is_empty(): column(far, ducts.exits[int(driver.trip.pick)], PICKED, Color(packed(1.25), 0.0, 0.0, 0.0))
-	elif driver.up() and driver.attack.is_empty():
+	if driver.mode != "ducts" and driver.up() and driver.attack.is_empty():
 		var way: Dictionary = driver.down_way()
 		if not way.is_empty() and not driver.gallery():
 			down_at = way.point
 			outline(near, down_at, 0.3, pale)
-		var e: int = driver.entrance()
-		if e >= 0:
-			way_at = ducts.exits[e].position
-			outline(far, way_at, 0.34, pale)
 	# Her prey: the tile she would drop by behind it, and why not.
 	var info: Dictionary = driver.prey_info
 	if driver.prey >= 0 and driver.mode != "ducts":
@@ -1007,19 +953,7 @@ func place_marks() -> void:
 		if from != Vector3.INF and to != Vector3.INF: line(far, from, to, red)
 	marks.mesh = near.mesh()
 	marks_through.mesh = far.mesh()
-	tag("way", way_at, "lurker_enter")
 	tag("down", down_at, "lurker_drop")
-
-## A way out of the ducts as a column of light, from it up to the slab.
-func column(shape: Shape, exit: Dictionary, width: float, colour: Color) -> void:
-	var at: Vector3 = exit.position
-	var top := FLOOR.planta_y(FLOOR.planta_of(at.y - 0.5)) + float(OFFICE.PLENUM.slab)
-	shape.box(Vector3(at.x, (at.y + top) * 0.5, at.z), Vector3(width * 0.5, (top - at.y) * 0.5, width * 0.5), Basis.IDENTITY, colour)
-	outline(shape, at, 0.34, colour)
-
-## The way along the tubes, lit over them.
-func route(shape: Shape, points: PackedVector3Array) -> void:
-	for k in range(1, points.size()): shape.beam(points[k - 1], points[k], 0.3, Color(packed(1.15), 0.35, 0.0, 0.0))
 
 ## A square of `half` round a point, flat: the edge of a piece.
 func outline(shape: Shape, at: Vector3, half: float, colour: Color) -> void:
@@ -1063,7 +997,7 @@ func place_her() -> void:
 	rim.set_shader_parameter("hole_count", count)
 	rim.set_shader_parameter("holes", holes)
 
-## A key in its keycap beside a piece (`kind` "way" or "down"), none at INF.
+## A key in its keycap beside a piece (`kind` "down"), none at INF.
 func tag(kind: String, at: Vector3, action: String) -> void:
 	var holder: Control = tags[kind]
 	var screen := camera.get_viewport().get_visible_rect().size
@@ -1086,24 +1020,21 @@ func key_names(action: String) -> Array:
 	return level.hints.lurker_keys(action) if level.get("hints") != null else [action]
 
 ## Her keys now: [keys, name, whether it can be done now, its wait left (0..1)].
-## Picking a way out of the ducts, go or back; on her way, none; else her six.
+## Crossing to the next planta, none; else her six.
 func rows() -> Array:
-	var phase := String(driver.trip.get("phase", ""))
-	if not creature.motion.transit.is_empty() or phase == "go": return []
-	if phase in ["pick", "ask"]:
-		return [[key_names("lurker_enter") + key_names("lurker_release"), "Ir", phase == "pick" and int(driver.trip.pick) >= 0, 0.0], [key_names("lurker_drop"), "Volver", true, 0.0]]
+	if not creature.motion.transit.is_empty(): return []
 	var up: bool = driver.up()
 	var info: Dictionary = driver.prey_info
 	var wait := clampf(float(info.get("wait", 0.0)), 0.0, 1.0)
 	# Out of reach and charging: how much of her charge is still to come.
 	if driver.prey >= 0 and String(info.get("why", "")) == "far" and driver.charge > 0.0: wait = 1.0 - driver.charge / driver.CHARGE
 	var drink_wait: float = clampf(1.0 - (clock - drank_at) / DRINK_EVERY, 0.0, 1.0)
-	var trip_wait: float = clampf((driver.trip_ready_at - driver.clock) / driver.TRIP_GAP, 0.0, 1.0)
+	var double_wait: float = clampf(1.0 - (driver.clock - driver.doubled_at) / creature.DOUBLE_EVERY, 0.0, 1.0)
 	return [
 		[key_names("lurker_release"), "Atacar", bool(info.get("ok", false)) and driver.attack.is_empty(), wait if driver.prey >= 0 else 0.0],
 		[key_names("lurker_drop"), "Bajar" if up else "Subir", not up or driver.gallery() or not driver.down_way().is_empty(), 0.0],
 		[["MANTÉN"] + key_names("lurker_sneak"), "Sigilo", up, 0.0],
-		[key_names("lurker_enter"), "Ductos", driver.entrance() >= 0, trip_wait],
+		[key_names("lurker_double"), "Doppelgänger", double_wait <= 0.0, double_wait],
 		[key_names("lurker_drink"), "Beber la luz", drink_wait <= 0.0, drink_wait],
 		[key_names("lurker_peek"), "Asomarse", not up, 0.0],
 	]

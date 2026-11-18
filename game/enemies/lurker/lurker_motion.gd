@@ -82,6 +82,8 @@ const SURVIVOR_TOP := 1.85
 const BODY_GAP := 0.45
 ## Between plantas she takes what a ride takes (the author's M10, lifts.gd).
 const RIDE_TIME := 8.5
+## The share of RIDE_TIME her way down the trunk starts and ends at.
+const DESCENT := Vector2(0.2, 0.8)
 
 signal arrived
 ## A tile she goes through (spec_f3_aggression): moved as she starts the
@@ -774,22 +776,34 @@ func start_transit(target_wing: int) -> void:
 		# Nowhere to go in: down where she is, as if by the nearest duct.
 		begin_drop()
 
+## Down to the next planta (the author, 18 November 2026: a way down that is
+## seen, not the ducts): into the trunk over the nearest corridor of hers, then
+## straight down it through the slab to the one under it, over the middle
+## DESCENT share of RIDE_TIME, seen by whoever drives her (her camera follows).
 func begin_drop() -> void:
 	var from := anchor()
 	var target_wing := int(transit.wing)
-	var to_node: int = ducts.trunk_nearest(from, target_wing)
+	var top_node: int = ducts.trunk_nearest(from, wing())
+	var top: Vector3 = ducts.nodes[top_node] if top_node >= 0 else from
+	var to_node: int = ducts.trunk_nearest(top, target_wing)
 	clear_legs()
-	transit = {"phase": &"drop", "wing": target_wing, "left": RIDE_TIME, "node": to_node}
+	transit = {"phase": &"drop", "wing": target_wing, "left": RIDE_TIME, "node": to_node, "top": top, "bottom": ducts.nodes[to_node] if to_node >= 0 else top}
 	plenum = false
 	state = null
 	in_duct = true
 	hidden = true
 	on_floor = false
-	if to_node >= 0:
-		near_node = to_node
-		duct_point = ducts.nodes[to_node]
-		point = duct_point
+	duct_point = top
+	point = top
+	if top_node >= 0: near_node = top_node
 	log_jump(&"planta", from, point)
+
+## Where she is on her way down, by the share of RIDE_TIME gone.
+func descend() -> void:
+	var gone := 1.0 - float(transit.left) / RIDE_TIME
+	point = (transit.top as Vector3).lerp(transit.bottom, smoothstep(DESCENT.x, DESCENT.y, gone))
+	duct_point = point
+	if gone >= 0.5 and int(transit.node) >= 0: near_node = int(transit.node)
 
 func finish_drop() -> void:
 	var target_wing := int(transit.wing)
@@ -823,6 +837,7 @@ func tick(delta: float) -> void:
 		replan(wanted)
 	if not transit.is_empty() and transit.phase == &"drop":
 		transit.left = float(transit.left) - delta
+		if transit.has("top"): descend()
 		if float(transit.left) <= 0.0: finish_drop()
 	squash = move_toward(squash, squash_goal, SQUASH_RATE * delta)
 	least_squash = minf(least_squash, squash)

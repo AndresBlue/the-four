@@ -211,9 +211,9 @@ func steady(fps: int) -> void:
 		if was_started:
 			card -= (now - last) * CODEC.RATE / 1000.0
 			if card < 0.0:
-				# A frame twice as long as the frame rate is this machine stalling
+				# A frame a quarter longer than the frame rate is this machine stalling
 				# (verify runs eight jobs at once), not the game at `fps`.
-				if now - last <= 2000 / fps: dry += 1
+				if now - last <= 1250 / fps: dry += 1
 				card = 0.0
 		last = now
 		# Sequences run 1, 2, 3...: the last one taken counts the blocks pushed.
