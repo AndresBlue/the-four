@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.14.0](#1140--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La pantalla de quien lleva a The Lurker, rehecha: el disco del ataque y la cordura de cada uno en color. |
 | [1.13.0](#1130--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Las oficinas, dos veces y media más grandes, sin códigos de sala y con la ventanilla al fondo. |
 | [1.12.0](#1120--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | The Lurker deja dobles en las esquinas, bebe la luz en 3 × 3 y baja de planta a la vista. |
 | [1.11.0](#1110--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La cordura manda: no vuelve con la luz, solo con café, y a 0 mirarla no salva. |
@@ -84,6 +85,28 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.14.0 — 18 de noviembre de 2026
+
+*La pantalla de quien lleva a The Lurker, rehecha: el disco del ataque y la cordura de cada uno en color.*
+
+Commits `1f3c8768`…`v1.14.0`. Fase 3 del gran cambio del piso 2 (`.claude/specs/cordura_y_edificio.md`, anexo A: qué quedó, qué salió y qué es nuevo).
+
+### Novedades
+
+- **El disco del ataque**, sobre sus teclas: el anillo se llena durante su espera, entero y blanco cuando puede atacar, rojo cuando alguien la vería caer o una luz la cubre; por dentro, su carga; en el centro, la cordura de su presa en color, tan grande como lo que le costaría ahora un ataque.
+- **La cordura en color:** el borde de cada superviviente que ve, verde entero, ámbar a la mitad y rojo a 0; quien está a 0, en rojo a través de las paredes.
+- **Las linternas, desde 80 m** (antes 30) a través de las paredes, y su haz calienta lo que alumbra.
+- **Pasos calientes:** el suelo queda tibio unos 7 s donde pisa alguien.
+- **Las cafeteras** se ven como calor y laten cuando alguien bebe.
+- **Las salas con luz**, más claras que las oscuras desde arriba y desde abajo.
+- **Sus dobles**, marcados a través de las paredes, con el anillo donde saltan.
+- **La huella de beber:** mientras puede beber, las salas con luz que apagaría.
+
+### Quitado
+
+- Los cables con corriente de su vista y la calibración que congelaba la imagen.
+- La presa ya no se pinta de rojo: lo que la para lo dicen la placa, las líneas, el suelo y el disco.
 
 ## 1.13.0 — 18 de noviembre de 2026
 

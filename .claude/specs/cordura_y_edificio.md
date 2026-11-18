@@ -369,6 +369,41 @@ Hecha según 3.4 a 3.7, solo para quien la lleva en Versus (la IA del cooperativ
 - La planta 1 no llega a los 8 minutos de ventanilla para un jugador real.
 - La meta de 400 m de camino hasta la ventanilla está por medir.
 
+## Estado de la fase 3 (18 de noviembre de 2026)
+
+Hecha. El autor dejó a la sesión elegir qué recursos quedan y añadir los nuevos (anexo A, «Lo decidido»).
+- **Dónde está:**
+  - `lurker_view.gd`:
+    - el disco, en `Hud.disc()`;
+    - los colores de la cordura, en `place_tints()` y `mind_colour()`;
+    - el haz, en `beam_stop()` y `place_beams()`;
+    - los pasos, en `tread()`;
+    - la cafetera, en `gather()`;
+    - los dobles, en `place_doubles()`;
+    - la huella de beber, en `place_footprint()`;
+    - qué sala tiene luz para ella, en `glowing()`.
+  - `lurker_sight.gdshader`: el haz, los pasos y el suelo de las salas con luz en las dos vistas.
+  - `lurker_thermal_sensor.gdshader`: el color de cada contorno por su caja en pantalla.
+  - `sanity.sanity_of()`: el invitado guarda la cordura que el anfitrión ya mandaba dos veces por segundo (antes solo guardaba la marca de 0). El protocolo no cambia.
+  - `lurker_player.strike_share()`: su propia cuenta de los ataques repetidos, la misma regla que `lurker.parries`.
+- **Pruebas:** `lurker_player_test` comprueba sin ventana:
+  - el color de la cordura;
+  - lo que cuesta un ataque repetido y que se recupera tras su descanso;
+  - la huella con beber lista y sin ella;
+  - el haz que para una pared;
+  - los pasos de quien anda 4 m.
+- **Aceptación:** `tools/dev/lurker_hunt_drive.gd` (con ventana) deja `evidence/versus/interfaz/*.png`, `sesion.txt`, `hoja.png` con todas las capturas, y `hoja_leyenda.png` (de `hoja_leyenda.py`) con doce capturas y su leyenda. Las cuatro primeras de `hoja.png` son de la vista anterior.
+- **Lo que enseñaron las capturas:**
+  - la huella con las salas oscuras tapaba la imagen: ahora solo las que tienen luz, y tenue;
+  - el disco rojo por estar lejos confundía: rojo solo si la vería alguien o la cubre una luz;
+  - el haz no se veía con una linterna a la vista, que sube la ganancia: más calor;
+  - la caja de calor de la cafetera era menor que el mueble y desde arriba no se veía: ahora la ocupa entero;
+  - el anillo de los dobles quedaba bajo los muebles: ahora se ve a través, solo a menos de 15 m.
+- **Sin resolver:**
+  - **Los pasos bajo las mesas no se ven**, porque desde arriba se ve el tablero. En los pasillos y entre las mesas, sí.
+  - **El color se sale de la figura.** Una línea blanca (la huella, la placa) que cruza la caja de un superviviente en pantalla toma su color en ese tramo.
+  - **No hay rótulos en el juego:** quien la lleva aprende el disco y los colores jugando, como pide «la interfaz dice poco».
+
 ## 5. Riesgos
 
 - **El coste del edificio grande** no se conoce hasta la fase 0. Puede obligar a montar las plantas de una en una.
@@ -429,3 +464,27 @@ Para que el autor diga cuáles quedan y cuáles salen.
 37. La cámara: detrás y encima de ella arriba, a un lado abajo, y el encuadre de la presa al atacar; zum con la rueda.
 
 **Mi recomendación:** salen 30 a 33 (los ductos), 7 (los cables: ruido que no informa) y 18 (la congelación quita control). 34 pierde «Ductos» y gana «Doppelgänger». El resto queda, con 8, 10 y 11 reforzados por los puntos 7 y 8 del pedido.
+
+**Lo decidido (18 de noviembre de 2026; el autor dejó la elección a la sesión):**
+- **Salen:** 7 (los cables), 18 (la calibración que congela la imagen) y 30 a 33 (los ductos, ya fuera en la fase 2).
+- **Cambian:**
+  - 8: la baliza llega a 80 m (antes 30) y lleva su haz (39);
+  - 10 y 24: el contorno de cada superviviente toma el color de su cordura (40); la presa se marca con el contorno entero y ya no en rojo, porque lo que la para lo dicen la placa roja (25), las líneas (26, 27), el suelo enrojecido (28) y el disco (38);
+  - 11: la silueta de quien está a cordura 0 sale en rojo, el color de su cordura;
+  - 34: sin «Ductos» y con «Doppelgänger»; la espera de Atacar pasa al disco;
+  - 35: la carga pasa al disco.
+- **Quedan como estaban:** 1 a 6, 9, 12 a 17, 19 a 23, 25 a 29, 36 y 37.
+- **Nuevos:**
+  - 38. **El disco del ataque**, sobre sus teclas:
+    - el anillo se llena durante la espera;
+    - entero y blanco cuando puede atacar, con un destello al quedar libre;
+    - rojo cuando alguien vería caer su cara o una luz la cubre (lejos de su alcance, no: solo el anillo tenue);
+    - la carga del acecho por dentro;
+    - en el centro, un círculo con el color de la cordura de la presa y tan grande como lo que le costaría ahora un ataque (más pequeño cada vez que repite sobre la misma).
+  - 39. **El haz de las linternas:** calienta lo que alumbra, hasta lo primero que lo para (20 m como mucho).
+  - 40. **La cordura en color:** verde entera, ámbar a la mitad, roja a 0, en el contorno de cada superviviente que ve y en la silueta de quien está a 0.
+  - 41. **Las salas con luz:** su suelo se lee más claro que el de las salas a oscuras, desde arriba y desde abajo (antes, solo desde arriba y la mitad).
+  - 42. **Pasos calientes:** donde pisa un superviviente el suelo queda tibio unos 7 s, un pie y otro.
+  - 43. **Las cafeteras como calor**, que laten cuando alguien bebe: las ve como ve los objetivos.
+  - 44. **Sus dobles marcados:** un poste del suelo a la cabeza de cada uno, a través de las paredes, y cerca de ella (15 m), en el suelo y a través de los muebles, el anillo donde salta.
+  - 45. **La huella de beber:** mientras puede beber, el contorno de las salas con luz que apagaría, a través de las paredes (con las oscuras también, tapaba la imagen).

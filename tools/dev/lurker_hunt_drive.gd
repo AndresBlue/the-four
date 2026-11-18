@@ -13,12 +13,15 @@ extends SceneTree
 ## her flight. Then the polish (lurker_versus.md 11, «Estado del pulido»): a
 ## door slammed near her (its wave), a service gallery with no false ceiling,
 ## planta 3 in the dark, her keys and moves on a pad's events, and the flash
-## and the calibration with reduced effects. The 1.9.0 shots of down in a
-## room and of the attack lead the sheet, as they were.
-## evidence/versus/doble/*.png, sesion.txt and hoja.png.
+## with reduced effects. Her screen of fase 3 (cordura_y_edificio.md): the
+## minds' colours, her disc waiting on a prey she struck twice, a torch far
+## off and a beam, the warm steps of a walker, a coffee machine, her doubles
+## from afar and what her drink would reach. Four shots of the view before
+## fase 3 lead the sheet.
+## evidence/versus/interfaz/*.png, sesion.txt and hoja.png.
 ##   godot --path . --script res://tools/dev/lurker_hunt_drive.gd -- --bots-hunt --floor=2 --bots=3 --seed=81 --test-profile
-const OUT := "res://evidence/versus/doble/"
-const BEFORE := "res://evidence/versus/presentacion/"
+const OUT := "res://evidence/versus/interfaz/"
+const BEFORE := "res://evidence/versus/doble/"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const SIZE := Vector2i(1280, 720)
@@ -53,7 +56,7 @@ func run() -> void:
 	level.automation = true
 	level.settings.set_designed(ALTO)
 	level.apply_settings()
-	for title in ["13_abajo", "17_ataque_cae", "18_aviso", "02_plenum_supervivientes"]:
+	for title in ["02_plenum_supervivientes", "04_sala_encendida", "14_presa_blanca", "16_presa_roja_linterna"]:
 		var old := Image.load_from_file(ProjectSettings.globalize_path(BEFORE + title + ".png"))
 		if old != null and not old.is_empty(): shots.append(["antes_%s.png" % title, old])
 	# As it loads: nothing touched, her and her camera where they were 3 s later.
@@ -80,6 +83,7 @@ func run() -> void:
 	level.camcorder.announce("")
 	note("en sus manos; %d bots quietos" % bots.size())
 	await crawl_part()
+	await screen_part()
 	await lit_part()
 	await busy_part()
 	await double_part()
@@ -157,6 +161,21 @@ func tilt_to(wanted: float) -> void:
 		event.relative = Vector2(0.0, -(wanted - now) * 0.3 / sensitivity)
 		Input.parse_input_event(event)
 		await tick()
+
+## Her camera tilted so `point` sits at `share` of the picture's height from
+## the top: over her body, which hides the middle and below.
+func frame(point: Vector3, share := 0.3) -> void:
+	var best := -0.85
+	var best_gap := INF
+	for k in 10:
+		var tilt := lerpf(-0.35, -1.35, k / 9.0)
+		await tilt_to(tilt)
+		if driver.camera.is_position_behind(point): continue
+		var gap := absf(driver.camera.unproject_position(point).y / driver.camera.get_viewport().get_visible_rect().size.y - share)
+		if gap < best_gap:
+			best_gap = gap
+			best = tilt
+	await tilt_to(best)
 
 func wait(seconds: float) -> void:
 	var left := seconds
@@ -296,6 +315,128 @@ func busy_part() -> void:
 	note("un superviviente en la máquina de escribir: en uso %s" % str(driver.view.busy(point)))
 	await shot("05_objetivo_en_uso")
 	park(bots[0])
+
+## Her screen of fase 3, over a dark room of planta 1.
+func screen_part() -> void:
+	var dark: Array = her_rooms().filter(func(r: Array) -> bool: return not bool(r[2]) and not level.point_protected(centre(int(r[0])) + Vector3(0, 1, 0)))
+	if dark.size() < 2 or bots.size() < 3:
+		note("sin salas oscuras o bots para la interfaz")
+		return
+	for bot in bots: park(bot)
+	var room := int(dark[0][0])
+	var c := centre(room)
+	# Three minds, whole, half and nearly gone.
+	var minds := [100.0, 50.0, 8.0]
+	for i in 3:
+		place_bot(bots[i], c + Vector3(-1.6 + 1.6 * i, 0, 0), Vector3(0, 0, 1), false)
+		level.sanity.minds[int(bots[i].slot)] = {"sanity": minds[i], "rest": 0.0, "paid": 0.0}
+	driver.view.drank_at = -INF
+	driver.to_plenum(c + Vector3(0, 1, -5.5), room)
+	await wait(0.3)
+	await turn_to(c - at())
+	await tilt_to(-0.85)
+	await wait(0.6)
+	note("tres mentes: %s, colores %s" % [str(bots.slice(0, 3).map(func(b) -> float: return snappedf(level.sanity.sanity_of(b), 0.1))), str(bots.slice(0, 3).map(func(b) -> String: return driver.view.mind_colour(level.sanity.sanity_of(b)).to_html(false)))])
+	note("huella de beber: salas %s; [sala, con luz para ella, encendida, mermada, en sus salas con luz]: %s" % [str(driver.view.footprint), str(driver.view.footprint.map(func(id: int) -> Array: return [id, driver.view.glowing(id), level.hotel.lit(id), snappedf(float(level.hotel.drained(id)), 0.01), driver.view.lit_rooms.any(func(e: Array) -> bool: return int(e[1]) == id)]))])
+	await shot("30_cordura_colores")
+	# Her disc: waiting after an attack, on a prey struck twice already.
+	driver.last_attack = driver.clock - 1.5
+	var seat := int(bots[2].slot)
+	driver.strikes[seat] = [2.0, driver.clock]
+	await turn_to(bots[2].global_position - at())
+	await wait(0.2)
+	note("disco: presa %d, espera %.2f, le costaría %.2f de uno nuevo" % [driver.prey, float(driver.prey_info.get("wait", 0.0)), driver.strike_share(seat)])
+	await shot("31_disco_espera_repetida")
+	driver.strikes.clear()
+	# A walker down a corridor (the room's long way when there is none 8 m
+	# long), seen along it from over its end: from a side its walls hide its
+	# floor, and across a room the desks do. Its warm steps.
+	for bot in bots: park(bot)
+	var hall := -1
+	for r in her_rooms():
+		var data: Dictionary = level.manifest.rooms[int(r[0])]
+		if bool(data.get("corridor", false)) and maxf(FLOOR.size_of(data).x, FLOOR.size_of(data).y) >= 8.0 and not level.point_protected(centre(int(r[0])) + Vector3(0, 1, 0)):
+			hall = int(r[0])
+			break
+	var walk_at := centre(hall if hall >= 0 else room)
+	var size := FLOOR.size_of(level.manifest.rooms[hall if hall >= 0 else room])
+	var along := Vector3(1, 0, 0) if size.x >= size.y else Vector3(0, 0, 1)
+	var span := minf(maxf(size.x, size.y) * 0.4, 5.0)
+	driver.to_plenum(walk_at - along * (span + 2.5) + Vector3(0, 1, 0), hall if hall >= 0 else room)
+	await wait(0.3)
+	await turn_to(along)
+	await frame(walk_at, 0.3)
+	for i in 150:
+		bots[0].place(walk_at + along * lerpf(-span, span, i / 149.0), atan2(-along.x, -along.z))
+		await tick()
+	await wait(0.3)
+	var first: Vector3 = driver.view.prints[0][0] if not driver.view.prints.is_empty() else Vector3.INF
+	note("pasos por el pasillo %d: %d huellas, la primera en %s, el que anda en %s" % [hall, driver.view.prints.size(), str(first), str(bots[0].global_position)])
+	await shot("32_pasos")
+	# A torch on a wall near her: its beam.
+	park(bots[0])
+	driver.to_plenum(c + Vector3(0, 1, -5.5), room)
+	await wait(0.3)
+	await turn_to(c - at())
+	var beam_way := Vector3(1, 0, 0)
+	place_bot(bots[1], c - beam_way * 1.5, beam_way + Vector3(0, -0.6, 0), true)
+	await wait(0.5)
+	await frame(c + beam_way * 1.0, 0.35)
+	note("haz: alcance %s" % str(driver.view.beam_reach))
+	await shot("33_haz")
+	park(bots[1])
+	# A torch far off, through the walls.
+	var far := -1
+	var far_metres := 0.0
+	for r in her_rooms():
+		var metres := Vector2(centre(int(r[0])).x - c.x, centre(int(r[0])).z - c.z).length()
+		if metres >= 45.0 and metres <= 75.0 and (far < 0 or absf(metres - 60.0) < absf(far_metres - 60.0)):
+			far = int(r[0])
+			far_metres = metres
+	if far >= 0:
+		place_bot(bots[1], centre(far), c - centre(far), true)
+		await turn_to(centre(far) - at())
+		await tilt_to(-0.3)
+		await wait(0.9)
+		note("linterna lejos: sala %d a %.0f m, baliza %s" % [far, far_metres, str(driver.view.beacons.keys())])
+		await shot("34_linterna_lejos")
+		park(bots[1])
+	else: note("sin sala a 45 a 75 m")
+	# A coffee machine of planta 1, somebody at it.
+	var machine = null
+	for one in level.coffee.machines:
+		if is_instance_valid(one) and FLOOR.planta_of(one.global_position.y + 1.0) == 0: machine = one
+	if machine != null:
+		var front: Vector3 = machine.global_basis.z
+		var aside: Vector3 = machine.global_basis.x
+		place_bot(bots[0], machine.global_position + front * 0.5 + aside * 1.0, -front, false)
+		var cup := int(FLOOR.room_at(level.manifest.rooms, machine.global_position + Vector3(0, 1, 0)).get("id", room))
+		# From its side and further off, so neither the drinker nor her body hides it.
+		driver.to_plenum(machine.global_position + front * 5.0 - aside * 5.0 + Vector3(0, 1, 0), cup)
+		await wait(0.3)
+		await turn_to(machine.global_position - at())
+		await frame(machine.global_position + Vector3(0, 1.0, 0), 0.3)
+		await wait(0.6)
+		note("café en %s" % str(machine.global_position))
+		await shot("35_cafe")
+		park(bots[0])
+	# Two doubles left, seen from afar.
+	var other := int(dark[1][0])
+	for r in [room, other]:
+		driver.to_plenum(centre(r) + Vector3(0, 1, 0), r)
+		await wait(0.3)
+		lurker.double_at = -INF
+		driver.doubled_at = -INF
+		await tap(KEY_E)
+		await wait(0.4)
+	driver.to_plenum(c + Vector3(-12, 1, -8), room)
+	await wait(0.3)
+	await turn_to(c - at())
+	await tilt_to(-0.5)
+	await wait(0.5)
+	note("dobles: %d" % lurker.doubles.doubles.size())
+	await shot("36_dobles_lejos")
+	for id in lurker.doubles.doubles.keys(): lurker.doubles.on_event([int(id), "gone"])
 
 ## Her double (the Doppelganger that took the place of her ducts): E over a
 ## room leaves it in the corner nearest her.
@@ -616,8 +757,7 @@ func pad_part() -> void:
 	note("teclas con mando: %s" % str(driver.view.rows().map(func(row: Array) -> Array: return row[0])))
 	level.hints.pad_said = false
 
-## Reduced effects: the flash half as far and steady, and the calibration
-## never holds the picture.
+## Reduced effects: the flash half as far and steady.
 func reduced_part() -> void:
 	var spot := prey_room()
 	if spot.is_empty(): return
@@ -627,10 +767,6 @@ func reduced_part() -> void:
 	await wait(0.3)
 	driver.go_down()
 	await wait(1.2)
-	var held: float = driver.view.frozen_until
-	driver.view.nuc_clock = 0.0
-	await wait(0.2)
-	note("efectos reducidos: calibración forzada, imagen congelada %s" % str(driver.view.frozen_until != held or driver.view.frozen.visible))
 	driver.view.immune_until = -1.0
 	driver.view.flash(-driver.camera.global_basis.z)
 	var values: Array = []

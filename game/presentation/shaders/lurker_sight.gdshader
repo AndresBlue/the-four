@@ -11,8 +11,8 @@ shader_type spatial;
 // fitting's lens, a machine's body or a torch's head reads its heat, and its
 // heat stains the surfaces round it; a source in view leaves the soft halo a
 // hot point leaves on a sensor, one behind something a warm patch on the face
-// of what hides it. The live wires run as faint lines over the ceiling and
-// down to their switches. Then the camera's gain stretches all of it between
+// of what hides it. A lit torch's beam warms the surfaces it falls on, up to
+// what stops it. Then the camera's gain stretches all of it between
 // gain_low and gain_high; her own lit room burns past a few metres, and a
 // torch in her face saturates the camera.
 //
@@ -21,10 +21,11 @@ shader_type spatial;
 // looks down into the rooms: the T-grid only round her, faint, at its height;
 // past `reach` from her it all sinks to black. Survivors (`figure_at`) read as
 // dark figures cut out by a pale rim and outlined pale a little wider than
-// they are, never as heat; her prey's is marked white (the attack may go) or
-// red (not), and a lit room that keeps her off it reddens its floor. What she
-// hears goes out as a faint wave of warmth over the surfaces round it
-// (`ripple_at`).
+// they are, never as heat (the sensor tints each by its mind); her prey's
+// fully, and a lit room that keeps her off it reddens its floor. A lit room's
+// floor reads over a dark one's from anywhere. What she hears goes out as a
+// faint wave of warmth over the surfaces round it (`ripple_at`), and where
+// somebody walked the floor keeps their steps warm a while (`print_at`).
 //
 // Out goes the reading, not a colour (lurker_thermal_sensor.gdshader makes the
 // recording of it): red, the reading from FOOT to RANGE; green, a pale mark
@@ -49,10 +50,11 @@ uniform vec4 heat_at[96];
 uniform vec4 heat_box[96];
 uniform vec4 heat_screen[96];
 uniform vec4 heat_kind[96];
-// The live wires: (from, heat) and (to, 0), world.
-uniform int wire_count = 0;
-uniform vec4 wire_a[48];
-uniform vec4 wire_b[48];
+// The lit torches' beams: (from, metres to what stops it), (way, cosine of
+// its half angle), world.
+uniform int beam_count = 0;
+uniform vec4 beam_at[8];
+uniform vec4 beam_way[8];
 // The camera's gain: these readings go to the foot and the top of the map.
 uniform float gain_low = 0.06;
 uniform float gain_high = 0.36;
@@ -72,10 +74,10 @@ uniform float up_view = 0.0;
 uniform vec3 focus = vec3(0.0);
 uniform float grid_y = 0.0;
 uniform float reach = 20.0;
-// Survivors: feet (world) and 0 plain, 1 her prey white, 2 her prey red.
+// Survivors: feet (world) and 0 plain, 1 her prey.
 uniform int figure_count = 0;
 uniform vec4 figure_at[16];
-// Lit rooms seen from over the ceiling: (min x, min z, max x, max z), how lit.
+// Lit rooms: (min x, min z, max x, max z), how lit.
 uniform int lit_count = 0;
 uniform vec4 lit_rect[32];
 uniform float lit_heat[32];
@@ -86,6 +88,9 @@ uniform vec4 red_rect = vec4(0.0);
 uniform int ripple_count = 0;
 uniform vec4 ripple_at[8];
 uniform float ripple_reach[8];
+// Warm steps on the floor: (world point, 0..1 of their life).
+uniform int print_count = 0;
+uniform vec4 print_at[48];
 
 const float DAZZLE_NEAR = 4.0;
 const float DAZZLE_LEVEL = 0.1;
@@ -93,7 +98,9 @@ const float DAZZLE_LEVEL = 0.1;
 const float FIGURE_RADIUS = 0.42;
 const float FIGURE_LOW = 0.05;
 const float FIGURE_HIGH = 1.8;
-const float LIT_LIFT = 0.07;
+// A lit room's floor this much over a dark one (lurker_versus.md 13.9: at a
+// glance, cordura_y_edificio.md 3, fase 3).
+const float LIT_LIFT = 0.16;
 // Every survivor in reach outlined, a little wider than its body (OUTLINE
 // pixels at 720 lines), pale, so it reads at a glance from over the ceiling:
 // OUTLINE_PALE, its prey's as its mark.
@@ -122,10 +129,16 @@ const float TORCH_HALO = 0.85;
 const float LAMP_THROUGH = 0.3;
 const float LAMP_THROUGH_FALL = 2.5;
 const float TORCH_THROUGH = 0.62;
-const float TORCH_THROUGH_FALL = 40.0;
-// A wire with current: this much over its surface, this wide.
-const float WIRE_NEAR = 0.04;
-const float WIRE_FAR = 0.13;
+const float TORCH_THROUGH_FALL = 80.0;
+// A beam on what it falls on: this share of a torch's heat, fading to
+// BEAM_END of it at the far end, soft over BEAM_SOFT of its cosine.
+// (A torch in view lifts the gain: under 0.8 the beam sank into the cold.)
+const float BEAM_HEAT = 0.8;
+const float BEAM_END = 0.35;
+const float BEAM_SOFT = 0.03;
+// A warm step: this much over the floor, this wide (metres).
+const float PRINT_LIFT = 0.55;
+const float PRINT_RADIUS = 0.16;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -206,11 +219,18 @@ void fragment() {
 		t += 0.03 * facing + 0.07 * edge;
 		// And a little cooler far off.
 		t -= 0.03 * smoothstep(5.0, 25.0, dist);
-		if (up_view > 0.5) {
-			// A lit room's floor a little over the dark ones.
+		if (n.y > 0.6) {
+			// A lit room's floor over the dark ones.
 			for (int i = 0; i < lit_count; i++) {
 				vec4 r = lit_rect[i];
-				if (world.x >= r.x && world.x <= r.z && world.z >= r.y && world.z <= r.w && n.y > 0.6) t += LIT_LIFT * lit_heat[i];
+				if (world.x >= r.x && world.x <= r.z && world.z >= r.y && world.z <= r.w) t += LIT_LIFT * lit_heat[i];
+			}
+			// The steps somebody left, cooling.
+			for (int i = 0; i < print_count; i++) {
+				vec4 s = print_at[i];
+				if (abs(world.y - s.y) > 0.3) continue;
+				float foot = 1.0 - smoothstep(PRINT_RADIUS * 0.5, PRINT_RADIUS, length(world.xz - s.xz));
+				t += PRINT_LIFT * foot * pow(1.0 - s.w, 1.5);
 			}
 		}
 		// What she hears: its wave going out over the surfaces round it.
@@ -226,8 +246,7 @@ void fragment() {
 		if (f >= 0) {
 			t = -0.09 + 0.26 * rimmed;
 			float mark = 0.55 + 0.45 * clamp(rimmed, 0.0, 1.0);
-			if (figure_at[f].w > 1.5) red = max(red, mark);
-			else if (figure_at[f].w > 0.5) pale = max(pale, mark);
+			if (figure_at[f].w > 0.5) pale = max(pale, mark);
 		} else if (figure_count > 0) {
 			// Just outside one that stands nearer than what is here: its outline.
 			float grow = OUTLINE * VIEWPORT_SIZE.y / 720.0;
@@ -238,8 +257,7 @@ void fragment() {
 				if (!near_drawn || length(v) > dist - 0.2) continue;
 				int g = figure_of((INV_VIEW_MATRIX * vec4(v, 1.0)).xyz);
 				if (g < 0) continue;
-				if (figure_at[g].w > 1.5) red = max(red, 1.0);
-				else pale = max(pale, figure_at[g].w > 0.5 ? 1.0 : OUTLINE_PALE);
+				pale = max(pale, figure_at[g].w > 0.5 ? 1.0 : OUTLINE_PALE);
 				break;
 			}
 		}
@@ -289,15 +307,14 @@ void fragment() {
 			warm += a.w * through * exp(-r2 * 1.6);
 		}
 	}
-	// The wires with current, faint, where the surface is over them.
-	float wire = 0.0;
+	// The torches' beams on what they fall on, up to what stops each.
 	if (drawn) {
-		for (int w = 0; w < wire_count; w++) {
-			vec3 from = wire_a[w].xyz;
-			vec3 along = wire_b[w].xyz - from;
-			vec3 o = world - from;
-			float d = length(o - along * clamp(dot(o, along) / max(dot(along, along), 1.0e-6), 0.0, 1.0));
-			wire += wire_a[w].w * (1.0 - smoothstep(WIRE_NEAR, WIRE_FAR, d));
+		for (int b = 0; b < beam_count; b++) {
+			vec3 o = world - beam_at[b].xyz;
+			float along = dot(o, beam_way[b].xyz);
+			if (along <= 0.05 || along > beam_at[b].w + 0.3) continue;
+			float inside = smoothstep(beam_way[b].w - BEAM_SOFT, beam_way[b].w + BEAM_SOFT, along / max(length(o), 1.0e-4));
+			warm += BEAM_HEAT * inside * mix(1.0, BEAM_END, clamp(along / max(beam_at[b].w, 0.1), 0.0, 1.0));
 		}
 	}
 	if (up_view > 0.5) {
@@ -323,15 +340,14 @@ void fragment() {
 	float span = max(gain_high - gain_low, 0.01);
 	// The bare surfaces on a steady stretch, so the rooms stay legible however
 	// hot what is in view (13.9); the heat on the camera's gain.
-	float v = (t - gain_low) / SURFACE_SPAN + (warm + wire) / span;
+	float v = (t - gain_low) / SURFACE_SPAN + warm / span;
 	// Her own lit room: past a few metres the surfaces drown in an even,
-	// shimmering wash; what is hot still shows through it, and the wires
-	// faintly.
+	// shimmering wash; what is hot still shows through it.
 	vec2 q = (uv - 0.5) * vec2(aspect, 1.0);
 	float burn = dazzle * smoothstep(DAZZLE_NEAR - 1.0, DAZZLE_NEAR + 1.5, dist);
 	// A middling purple, not the pink wash it was (13.2).
 	v = mix(v, DAZZLE_LEVEL + 0.06 * (value_noise(q * 5.0 + vec2(now * 0.6, now * 0.4)) - 0.5), burn);
-	v = max(v + burn * wire / span, (max(hot, halo) - gain_low) / span);
+	v = max(v, (max(hot, halo) - gain_low) / span);
 	// The flash: the torch's bloom swells from its side and burns white, the
 	// gain throws the rest to black; both give back as it passes.
 	q.y = -q.y;

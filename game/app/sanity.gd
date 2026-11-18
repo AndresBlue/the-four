@@ -201,7 +201,19 @@ func apply(told: Dictionary) -> void:
 			level.player.sanity = float(row[0])
 			level.player.set_burnt(bool(row[1]))
 		elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]):
+			told[seat] = float(row[0])
 			level.match_net.bodies[seat].set_burnt(bool(row[1]))
+
+## Seat -> the meter the authority last told this guest of somebody else.
+var told := {}
+
+## A survivor's meter as this machine has it: its own, the authority's, or
+## the last a guest was told (what the hunter's reading tints them by).
+func sanity_of(body) -> float:
+	if body == level.player: return level.player.sanity
+	var seat := int(body.slot)
+	if told.has(seat): return float(told[seat])
+	return float(minds.get(seat, {"sanity": 100.0}).sanity)
 
 ## Whether a place has its lights on, as its room's lamps say (hotel.lit():
 ## not the blackout, not a dark room, power on, not drained).

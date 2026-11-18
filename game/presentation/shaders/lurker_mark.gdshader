@@ -2,11 +2,10 @@ shader_type spatial;
 // Her marks in the world (.claude/specs/lurker_versus.md 13.9), drawn after
 // her reading (lurker_sight.gdshader) and in its terms, so her sensor
 // (lurker_thermal_sensor.gdshader) colours them with it: the vertex colour is
-// what is packed (red a reading, green a pale mark, pink in the ducts; blue a
-// red one); its alpha how much the pale mark darkens on faces turned away,
-// so a tube reads as a tube. lurker_view.gd draws with it the outline of the
-// tile she would go down by and of the way into the ducts at hand, the ducts'
-// network and its ways out, and the lines of why her prey is not hers.
+// what is packed (red a reading, green a pale mark; blue a red one); its alpha
+// how much the pale mark darkens on faces turned away. lurker_view.gd draws
+// with it the outline of the tile she would go down by, the lines of why her
+// prey is not hers, her doubles and the rooms her drink would reach.
 // Its copy with no depth test (lurker_view.through()) is seen through all.
 render_mode unshaded, blend_mix, depth_draw_always, cull_disabled, fog_disabled, shadows_disabled;
 

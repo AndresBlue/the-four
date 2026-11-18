@@ -16,6 +16,7 @@ extends SceneTree
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const PLAYER := preload("res://game/enemies/lurker/lurker_player.gd")
+const VIEW := preload("res://game/enemies/lurker/lurker_view.gd")
 const DT := 1.0 / 60.0
 const OUT := "res://evidence/versus/rehecho/"
 var checks: Array = []
@@ -63,6 +64,7 @@ func run() -> void:
 		lines.append("--- planta %d" % (planta + 1))
 		await down_case(planta)
 		await double_case(planta)
+		if planta == 0: await screen_case()
 	var file := FileAccess.open(OUT + "conductor.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"seed": seed_value, "checks": checks}, "\t"))
 	var text := FileAccess.open(OUT + "conductor.txt", FileAccess.WRITE)
@@ -346,3 +348,61 @@ func double_case(planta: int) -> void:
 	await press(&"lurker_double")
 	check("P%d pasada la espera, otro" % [planta + 1], await until(func() -> bool: return lurker.doubles.doubles.size() == before + 2, 1.0))
 	lurker.doubles.clear()
+
+## Her screen (cordura_y_edificio.md, fase 3), what it works out without a
+## picture: a mind's colours, what an attack on a prey struck twice would
+## still cost, the rooms her drink would reach, a beam stopped by a wall and
+## the warm steps of a walker.
+func screen_case() -> void:
+	var view = driver.view
+	check("Pantalla: el color de una mente, rojo a 0, ámbar a 50, verde a 100", VIEW.mind_colour(0.0) == VIEW.MIND_GONE and VIEW.mind_colour(50.0) == VIEW.MIND_HALF and VIEW.mind_colour(100.0) == VIEW.MIND_WHOLE)
+	var seat := 7
+	driver.strikes[seat] = [2.0, driver.clock]
+	var twice: float = driver.strike_share(seat)
+	driver.strikes[seat] = [2.0, driver.clock - float(lurker.MIND.repeat_back) * 2.0 - 0.1]
+	var rested: float = driver.strike_share(seat)
+	driver.strikes.clear()
+	var expected := maxf(float(lurker.MIND.repeat_least), pow(float(lurker.MIND.repeat), 2.0))
+	check("Pantalla: atacada dos veces, otro ataque le cuesta %.2f; pasado su descanso, entero" % expected, is_equal_approx(twice, expected) and is_equal_approx(rested, 1.0), "%.3f %.3f" % [twice, rested])
+	var room := -1
+	for r in level.manifest.rooms:
+		var id := int(r.id)
+		if int(r.get("wing", -1)) == 0 and shell.tray_of.has(id) and OFFICE.false_ceiling(r) and lurker.may_snuff(id, 0.0, false) and FLOOR.size_of(r).x > 4.0 and FLOOR.size_of(r).y > 4.0:
+			room = id
+			break
+	if room < 0:
+		check("Pantalla: una sala que se pueda beber", false)
+		return
+	await up_over(room, middle_of(room))
+	view.drank_at = -INF
+	view.footprint_of = -2
+	view.place_footprint(VIEW.Shape.new())
+	var under: int = lurker.room_of_point(lurker.face_point())
+	var ring: Array = lurker.touching(under).filter(func(r: int) -> bool: return lurker.may_snuff(r, 0.0, false))
+	check("Pantalla: con beber lista, la huella es su sala y las que la tocan que se pueden beber", not view.footprint.is_empty() and int(view.footprint[0]) == under and view.footprint.size() == ring.size() + 1, "%s, debajo %d, alrededor %s" % [str(view.footprint), under, str(ring)])
+	view.drank_at = view.clock
+	view.footprint_of = -2
+	view.place_footprint(VIEW.Shape.new())
+	check("Pantalla: bebida hace nada, sin huella", view.footprint.is_empty(), str(view.footprint))
+	var r: Dictionary = level.manifest.rooms[room]
+	var torch := Node3D.new()
+	root.add_child(torch)
+	torch.global_position = Vector3(float(r.px), float(r.py) + 1.5, float(r.pz))
+	torch.look_at(torch.global_position + Vector3(1, 0, 0))
+	var beam: float = view.beam_stop(torch, [])
+	torch.queue_free()
+	check("Pantalla: el haz se para en lo primero que encuentra", beam > 0.0 and beam <= FLOOR.size_of(r).x * 0.5 + 0.3, "%.2f m, media sala %.2f" % [beam, FLOOR.size_of(r).x * 0.5])
+	var walker = null
+	for one in level.survivors():
+		if is_instance_valid(one) and "slot" in one and level.survivor_active(one): walker = one
+	if walker == null:
+		lines.append("pantalla: sin superviviente para los pasos")
+		return
+	var was: Vector3 = walker.global_position
+	var count: int = view.prints.size()
+	view.strides.clear()
+	for i in 13:
+		walker.global_position = Vector3(float(r.px) - 2.0 + i * 0.35, float(r.py), float(r.pz))
+		view.tread()
+	walker.global_position = was
+	check("Pantalla: un superviviente que anda 4 m deja sus pasos calientes", view.prints.size() - count >= 4, "%d pasos" % (view.prints.size() - count))

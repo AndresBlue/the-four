@@ -9,12 +9,14 @@ extends Node
 ## figures cut out by a pale rim (never as heat), and the heat from the floor's
 ## registers, never from what is lit, as shapes: the lenses of the lit rooms'
 ## fittings, the emergency units, the landmarks' and the furniture's lamps,
-## the objectives' machines (beating while somebody is at one), the air
-## plant's rotors, the live wires to their switches, and the torches, hottest
-## of all. A source behind a wall warms the face of the wall. The camera's gain
+## the objectives' machines and the coffee machines (beating while somebody is
+## at one), the air plant's rotors, and the torches, hottest of all, with
+## their beams warm on what they fall on. A source behind a wall warms the
+## face of the wall. A lit room's floor reads over a dark one's, and where
+## somebody walked the floor keeps their steps warm a while. The camera's gain
 ## stretches the picture between the coldest and the hottest in view, slowly;
-## her sensor (lurker_thermal_sensor.gdshader) makes a recording of it, and
-## now and then it freezes a moment with a click to calibrate.
+## her sensor (lurker_thermal_sensor.gdshader) makes a recording of it and
+## tints every survivor's outline by its mind, green whole to red gone.
 ##
 ## Her camera is always behind and over her (lurker_player.gd). Over the false
 ## ceiling this machine does not draw the ceiling of her planta (ceilings()):
@@ -30,23 +32,30 @@ extends Node
 ## running, the typewriter) goes out as a faint wave of warmth over the
 ## surfaces round it, where she hears it. Her marks are in
 ## the world, in the reading's terms (lurker_mark.gdshader): the outline of
-## the tile she would go down by, of the way into the ducts at hand, her prey
-## white (the attack may go) or red, and why not: the line of a look on where
-## she would drop, or of the torch on it, or the lit room under it reddened.
+## the tile she would go down by, the tile she would drop by behind her prey
+## (pale if the attack may go, red if not), and why not: the line of a look
+## on where she would drop, or of the torch on it, or the lit room under it
+## reddened; each double of hers waiting, a pin through the walls and the
+## ring of its leap; while her drink is ready, the rooms it would reach.
 ## Crossing to the next planta the camera follows her down the trunk as it
-## is (the author, 18 November 2026: no ducts of hers any more). Her keys are along the foot as the
-## control hints draw theirs (hotel_ui.show_controls()): each key in its
-## keycap and its action's name, what cannot be done now dim, a wait drained
-## on its own key; a key beside the piece it works on. Sent off, the picture
-## closes in a moment.
+## is (the author, 18 November 2026: no ducts of hers any more). Her disc
+## over her keys (Hud) is her attack: its ring fills through her wait, whole
+## and white when it may go, red when something stops it; her charge inside;
+## in its middle her prey's mind in its colour, as big as an attack on it
+## would still cost (less each time on the same one). Her keys are along the
+## foot as the control hints draw theirs (hotel_ui.show_controls()): each key
+## in its keycap and its action's name, what cannot be done now dim, a wait
+## drained on its own key; a key beside the piece it works on. Sent off, the
+## picture closes in a moment.
 ##
 ## What she is given of the survivors: a lit torch through the walls within
 ## BEACON_REACH (none she drank, none while her face is behind a shut tile or
 ## deep in a duct), figures within her prey's reach, and anybody whose mind
-## has gone through the walls as a cold outline. Her own lit room floods the
+## has gone through the walls as an outline, red. Her own lit room floods the
 ## sensor past a few metres. flash() is a torch in her face (the host fires
-## it: lurker.scare_off()): the camera saturated. All of it local to her
-## machine: nothing travels for it.
+## it: lurker.scare_off()): the camera saturated. All of it worked out on her
+## machine from what it has: the minds are the ones the authority tells every
+## machine (sanity.sanity_of()).
 const SIGHT_SHADER := preload("res://game/presentation/shaders/lurker_sight.gdshader")
 const SENSOR_SHADER := preload("res://game/presentation/shaders/lurker_thermal_sensor.gdshader")
 const MARK_SHADER := preload("res://game/presentation/shaders/lurker_mark.gdshader")
@@ -56,15 +65,48 @@ const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const SIGHT := preload("res://game/enemies/creature_sight.gd")
 const VISUAL := preload("res://game/enemies/lurker/lurker_visual.gd")
 const STYLE := preload("res://game/ui/osd_style.gd")
-## The shader's source and wire slots, and its kinds (its LAMP, TORCH, COLD).
+const COFFEE := preload("res://game/world/interactables/coffee_machine.gd")
+## The shader's source slots, and its kinds (its LAMP, TORCH, COLD).
 const MOST := 96
-const WIRES := 48
 enum Kind { LAMP = 0, TORCH = 1, COLD = 3 }
-## A lit torch is a beacon through the walls this far (decision A).
-const BEACON_REACH := 30.0
+## A lit torch is a beacon through the walls this far (the author: seen from
+## much further, cordura_y_edificio.md 1.8); its beam warms what it falls on
+## up to BEAM_REACH (creature_sight.TORCH_REACH), over BEAM_SHARE of its
+## light's cone (the bright middle). The shader's beam slots.
+const BEACON_REACH := 80.0
+const BEAM_REACH := 20.0
+const BEAM_SHARE := 0.8
+const BEAMS := 8
+## A coffee machine's body, all of it (from over the ceiling its top is what
+## she sees), warm: its boiler.
+const COFFEE_HEAT := 0.62
+## Warm steps: one every PRINT_STRIDE metres a survivor walks, PRINT_SIDE
+## from its line, alternate feet; cool in PRINT_LIFE s; the nearest PRINTS
+## to her eye are drawn.
+const PRINTS := 48
+const PRINT_STRIDE := 0.75
+const PRINT_SIDE := 0.13
+const PRINT_LIFE := 7.0
+## A mind's colour on her sensor: gone, half, whole.
+const MIND_GONE := Color(1.0, 0.16, 0.1)
+const MIND_HALF := Color(1.0, 0.78, 0.18)
+const MIND_WHOLE := Color(0.38, 1.0, 0.48)
+## The sensor's tint slots, and how far a survivor's box reaches past its
+## body (metres): its outline.
+const TINTS := 24
+const TINT_GROW := 0.5
+## Her doubles' ring is drawn within this of her (through the furniture that
+## hid it), in this many pieces, where an eye this high over the floor is
+## within its leap; the rooms her drink would reach, inset this much, this pale.
+const RING_REACH := 15.0
+const RING_PIECES := 20
+const EYE_HEIGHT := 1.6
+const FOOTPRINT_IN := 0.2
+## (Faint: in an open office most rooms round her are lit, so it is a grid.)
+const FOOTPRINT_PALE := 0.4
 ## Heat (a reading): a fitting, an emergency unit, a landmark's lamp, a
 ## furniture lamp, an objective's machine and its lamp, a running air handler,
-## a torch, a live wire over its surface. A machine in use beats by BEAT.
+## a torch. A machine in use beats by BEAT.
 const FITTING_HEAT := 0.72
 const EMERGENCY_HEAT := 0.66
 const LANDMARK_HEAT := 0.74
@@ -73,7 +115,6 @@ const MACHINE_HEAT := 0.8
 const LAMP_HEAT := 0.95
 const FAN_HEAT := 0.86
 const TORCH_HEAT := 1.15
-const WIRE_HEAT := 0.07
 const BEAT := 0.35
 ## The half sizes of what is not a troffer (metres): an emergency unit, a lamp,
 ## a station's or a pilot's lamp, a rotor, a torch's head. A usable's is most
@@ -91,8 +132,6 @@ const BUSY_REACH := 1.6
 ## Sources further than this are left out, and from FADE_FROM they cool a little.
 const LAMP_REACH := 32.0
 const FADE_FROM := 15.0
-## The live wires of the lit rooms whose middle is this near.
-const WIRE_REACH := 16.0
 ## A source is in view when nothing stands between but this much round it.
 const SHAPE_SLACK := 0.35
 ## The registers are read this often; the sources are placed every frame.
@@ -110,7 +149,7 @@ const WARM_REACH := 1.6
 ## What of a hidden source reaches the face that hides it (the shader's
 ## LAMP_THROUGH, LAMP_THROUGH_FALL, TORCH_THROUGH, TORCH_THROUGH_FALL).
 const LAMP_THROUGH := Vector2(0.3, 2.5)
-const TORCH_THROUGH := Vector2(0.62, 40.0)
+const TORCH_THROUGH := Vector2(0.62, 80.0)
 ## The camera's gain: the coldest reading at the foot of the map; the top at
 ## the hottest in view over GAIN_SHARE (so it burns white), the warmest patch
 ## of something hidden over HIDDEN_SHARE (warm, not burning), never under
@@ -132,16 +171,6 @@ const STRIPES := 0.02
 const REDUCED_NOISE := 0.5
 ## The halos lag the camera this much (per second toward it): the sensor's trail.
 const LAG_RATE := 22.0
-## The calibration (NUC): every so often, and NUC_AFTER after a saturation has
-## passed, the picture holds still NUC_HOLD with a dry click (the start of the
-## camcorder's zoom motor). Never with reduced effects.
-const NUC_EVERY := Vector2(25.0, 55.0)
-const NUC_AFTER := 0.25
-const NUC_HOLD := 0.35
-const CLICK := preload("res://assets/audio/sfx/camera/zoom_in.wav")
-const CLICK_FROM := 0.02
-const CLICK_LENGTH := 0.08
-const CLICK_DB := -12.0
 ## The dazzle of her own lit room comes and goes this fast (per second).
 const DAZZLE_RATE := 3.0
 ## The flash: saturated in FLASH_RISE, back in FLASH_FALL, none again for
@@ -154,7 +183,7 @@ const REDUCED_PEAK := 0.5
 ## What the reading packs (lurker_sight.gdshader's FOOT and RANGE).
 const FOOT := -0.4
 const RANGE := 1.6
-## Survivors drawn as figures, lit rooms lifted from over the ceiling.
+## Survivors drawn as figures, lit rooms lifted.
 const FIGURES := 16
 const LITS := 32
 const LIT_REACH := 30.0
@@ -201,44 +230,41 @@ var field: MeshInstance3D
 var material: ShaderMaterial
 var sensor: CanvasLayer
 var sensor_material: ShaderMaterial
-var frozen: TextureRect
-var click: AudioStreamPlayer
 var clock := 0.0
 var gather_clock := 0.0
 ## The registers' heat on her planta, nearest first:
 ## [point, half size, yaw, heat, kind, busy, metres, in view, metres behind what hides it].
 var lamps: Array = []
-## [from, to, heat] of the live wires near her.
-var wires: Array = []
 ## Lit rooms near her: [metres, room, how lit].
 var lit_rooms: Array = []
 ## seat -> the survivor whose torch she has as a beacon; seat -> [in view,
-## metres behind what hides it] of its torch.
+## metres behind what hides it] of its torch; seat -> metres to what stops
+## its beam.
 var beacons := {}
 var torch_view := {}
+var beam_reach := {}
 var cold: Array = []
 var dazzle := 0.0
 var dazzled := false
 var flash_clock := -1.0
 var flash_from := Vector2.ZERO
 var immune_until := -1.0
-var saturated := false
-## Room -> its fittings' shapes [point, half size, yaw]; room -> its wires.
+## Room -> its fittings' shapes [point, half size, yaw].
 var shapes := {}
-var runs := {}
 var heat_at := PackedVector4Array()
 var heat_box := PackedVector4Array()
 var heat_screen := PackedVector4Array()
 var heat_kind := PackedVector4Array()
-var wire_a := PackedVector4Array()
-var wire_b := PackedVector4Array()
 var placed := 0
 var gain_high := GAIN_LEAST
 ## Where the halos are drawn from: the camera, a moment late.
 var lag := Transform3D.IDENTITY
-var nuc_clock := 30.0
-var frozen_until := -1.0
-var click_until := -1.0
+## The warm steps: [point, born]; seat -> [where its last step was, its foot].
+var prints: Array = []
+var strides := {}
+## The rooms her drink would reach now and the room it was worked out for.
+var footprint: Array = []
+var footprint_of := -2
 ## The ceilings not drawn now (their nodes) and for which planta.
 var hidden_parts: Array = []
 var hidden_planta := -1
@@ -310,18 +336,6 @@ func setup(owner_driver, cover: CanvasLayer) -> void:
 	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
 	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sensor.add_child(screen)
-	frozen = TextureRect.new()
-	frozen.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frozen.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	frozen.stretch_mode = TextureRect.STRETCH_SCALE
-	frozen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frozen.visible = false
-	sensor.add_child(frozen)
-	click = AudioStreamPlayer.new()
-	click.stream = CLICK
-	click.bus = &"Effects"
-	click.volume_db = CLICK_DB
-	add_child(click)
 	setup_her()
 	hud = Hud.new()
 	hud.view = self
@@ -349,9 +363,6 @@ func setup(owner_driver, cover: CanvasLayer) -> void:
 	heat_box.resize(MOST)
 	heat_screen.resize(MOST)
 	heat_kind.resize(MOST)
-	wire_a.resize(WIRES)
-	wire_b.resize(WIRES)
-	nuc_clock = randf_range(NUC_EVERY.x, NUC_EVERY.y)
 	if is_instance_valid(level.get("hotel")):
 		for door in level.hotel.doors:
 			if door.has_signal("noise"): door.noise.connect(on_door)
@@ -419,13 +430,12 @@ func _process(delta: float) -> void:
 	sensor.visible = on
 	hud.visible = on
 	keys_bar.visible = on
-	her_layer.visible = on and clock >= frozen_until
+	her_layer.visible = on
 	her_port.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
 	marks.visible = on
 	marks_through.visible = on
 	ceilings(planta() if up else -1)
 	for p in walls: walls[p].visible = up and int(p) == planta()
-	if click.playing and clock >= click_until: click.stop()
 	var deep := int(creature.get("deep_room")) if creature.get("deep_room") != null else -1
 	if deep >= 0 and deep_was < 0: drank_at = clock
 	deep_was = deep
@@ -438,8 +448,8 @@ func _process(delta: float) -> void:
 		gather_clock = GATHER_EVERY
 		gather()
 	listen(delta)
+	tread()
 	dazzle = move_toward(dazzle, 1.0 if dazzled else 0.0, DAZZLE_RATE * delta)
-	calibrate(delta)
 	place(delta)
 	place_marks()
 	place_her()
@@ -518,8 +528,7 @@ func wing_of(room_id: int) -> int:
 	return int(level.manifest.rooms[room_id].get("wing", -1)) if room_id >= 0 and room_id < level.manifest.rooms.size() else -1
 
 ## The registers' heat on her planta, nearest first, and whether she has each
-## in view; the live wires near her; what she makes out of the survivors;
-## whether her room dazzles her.
+## in view; what she makes out of the survivors; whether her room dazzles her.
 func gather() -> void:
 	var hotel = level.hotel
 	var here := planta()
@@ -528,9 +537,7 @@ func gather() -> void:
 	lit_rooms = []
 	for room in level.manifest.rooms:
 		var id := int(room.id)
-		if int(room.get("wing", -1)) != here or id >= hotel.lights.size() or not hotel.lit(id): continue
-		var light: OmniLight3D = hotel.lights[id]
-		if light.has_meta("off") or light.has_meta("void"): continue
+		if int(room.get("wing", -1)) != here or not glowing(id): continue
 		var left: float = (1.0 - 0.5 * float(hotel.drained(id))) * (UP_FITTING if above() else 1.0)
 		for shape in shapes_of(id): found.append([shape[0], shape[1], shape[2], FITTING_HEAT * left, Kind.LAMP, false])
 		var middle := FLOOR.position_of(room)
@@ -560,6 +567,11 @@ func gather() -> void:
 				if lamp is Light3D and lamp.visible and FLOOR.planta_of(lamp.global_position.y) == here: found.append([lamp.global_position, PILOT_HALF, 0.0, LAMP_HEAT, Kind.LAMP, false])
 		if "rotors" in objective and objective.running():
 			for rotor in objective.rotors: found.append([(rotor as Node3D).global_position, ROTOR_HALF, 0.0, FAN_HEAT, Kind.LAMP, false])
+	if level.get("coffee") != null:
+		for machine in level.coffee.machines:
+			if not is_instance_valid(machine) or FLOOR.planta_of(machine.global_position.y + 1.0) != here: continue
+			var body: Vector3 = machine.global_position + Vector3(0, COFFEE.SIZE.y * 0.5, 0)
+			found.append([body, COFFEE.SIZE * 0.5, machine.global_rotation.y, COFFEE_HEAT, Kind.LAMP, busy(body)])
 	for entry in found:
 		var d: float = eye.distance_to(entry[0])
 		entry[3] = float(entry[3]) * (1.0 - 0.25 * smoothstep(FADE_FROM, LAMP_REACH, d))
@@ -568,16 +580,18 @@ func gather() -> void:
 	lamps.sort_custom(func(a: Array, b: Array) -> bool: return float(a[6]) < float(b[6]))
 	if lamps.size() > MOST: lamps.resize(MOST)
 	for entry in lamps: entry.append_array(in_view(eye, entry[0], []))
-	# The wires of the nearest lit rooms.
 	lit_rooms.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
-	wires.clear()
-	for room in lit_rooms:
-		if float(room[0]) > WIRE_REACH: break
-		for run in runs_of(int(room[1])):
-			if wires.size() < WIRES: wires.append([run[0], run[1], WIRE_HEAT * float(room[2])])
 	look_at_survivors(eye)
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, eye)
 	dazzled = not room.is_empty() and not above() and hotel.lit(int(room.id))
+
+## A room lit as she reads it: its power on and a lamp of its own on (not
+## one lit only by its emergency units, whose lamp is off).
+func glowing(id: int) -> bool:
+	var hotel = level.hotel
+	if id < 0 or id >= hotel.lights.size() or not hotel.lit(id): return false
+	var light: OmniLight3D = hotel.lights[id]
+	return not light.has_meta("off") and not light.has_meta("void")
 
 ## Somebody at a machine: using it, or about to.
 func busy(point: Vector3) -> bool:
@@ -616,55 +630,6 @@ func shapes_of(id: int) -> Array:
 	shapes[id] = found
 	return found
 
-## A room's live wires, [from, to] over its ceiling: its fittings chained one
-## to the next, square to the room, and from the last over to its door and down
-## to the switch beside it. Laid out once.
-func runs_of(id: int) -> Array:
-	if runs.has(id): return runs[id]
-	var room: Dictionary = level.manifest.rooms[id]
-	var points: Array = shapes_of(id).map(func(shape: Array) -> Vector3: return shape[0])
-	var size := FLOOR.size_of(room)
-	var along_z := size.y > size.x
-	# Snaking down the rows of the long way.
-	points.sort_custom(func(a: Vector3, b: Vector3) -> bool: return (a.z if along_z else a.x) < (b.z if along_z else b.x) - 0.5 or (absf((a.z if along_z else a.x) - (b.z if along_z else b.x)) <= 0.5 and (a.x if along_z else a.z) < (b.x if along_z else b.z)))
-	var found: Array = []
-	for k in range(1, points.size()): found.append_array(square(points[k - 1], points[k]))
-	var door := door_of(room)
-	if door != Vector3.INF and not points.is_empty():
-		var last: Vector3 = points[0]
-		for point: Vector3 in points:
-			if Vector2(point.x - door.x, point.z - door.z).length() < Vector2(last.x - door.x, last.z - door.z).length(): last = point
-		# The switch, by the door (office_geometry.SWITCH_Y), and its run up.
-		var top := Vector3(door.x, last.y, door.z)
-		found.append_array(square(last, top))
-		found.append([top, Vector3(door.x, float(room.get("py", 0.0)) + 1.15, door.z)])
-	runs[id] = found
-	return found
-
-## From a to b along x, then along z, on a's height.
-func square(a: Vector3, b: Vector3) -> Array:
-	var corner := Vector3(b.x, a.y, a.z)
-	return [[a, corner], [corner, Vector3(b.x, a.y, b.z)]]
-
-## Beside the room's door nearest its middle, on the wall, a hand from the
-## frame: where its switch is (office_geometry.switch_plate()); INF with none.
-func door_of(room: Dictionary) -> Vector3:
-	var middle := Vector2(float(room.px), float(room.pz))
-	var half := FLOOR.size_of(room) * 0.5
-	var best := Vector3.INF
-	for door in level.hotel.doors:
-		var at: Vector3 = door.doorway
-		if absf(at.y - float(room.get("py", 0.0))) > 2.0: continue
-		var off := Vector2(at.x, at.z) - middle
-		var on_x := absf(absf(off.x) - half.x) < 0.3 and absf(off.y) < half.y
-		var on_z := absf(absf(off.y) - half.y) < 0.3 and absf(off.x) < half.x
-		if not on_x and not on_z: continue
-		# Along the wall from the doorway, to the side nearer the room's middle.
-		var along := Vector3(0, 0, -signf(off.y)) if on_x else Vector3(-signf(off.x), 0, 0)
-		var point := at + along * 0.6
-		if best == Vector3.INF or Vector2(point.x, point.z).distance_to(middle) < Vector2(best.x, best.z).distance_to(middle): best = point
-	return best
-
 ## Whose torch is her beacon, whose mind has gone.
 func look_at_survivors(eye: Vector3) -> void:
 	beacons.clear()
@@ -678,9 +643,19 @@ func look_at_survivors(eye: Vector3) -> void:
 		var torch = one.get("torch")
 		if not eyes or not is_instance_valid(torch) or not torch.visible or senses.drank(one): continue
 		if (torch.global_position as Vector3).distance_to(eye) <= BEACON_REACH:
+			var mine: Array = [one.get_rid()] if one is CollisionObject3D else []
 			beacons[int(one.slot)] = one
-			torch_view[int(one.slot)] = in_view(eye, torch.global_position, [one.get_rid()] if one is CollisionObject3D else [])
+			torch_view[int(one.slot)] = in_view(eye, torch.global_position, mine)
+			beam_reach[int(one.slot)] = beam_stop(torch, mine)
 	cold = level.sanity.burnt_survivors() if level.get("sanity") != null else []
+
+## How far a torch's beam goes before something stops it (BEAM_REACH at most).
+func beam_stop(torch: Node3D, exclude: Array) -> float:
+	var from := torch.global_position
+	var query := PhysicsRayQueryParameters3D.create(from, from - torch.global_basis.z * BEAM_REACH, SIGHT.MASK)
+	query.exclude = [creature.get_rid()] + exclude
+	var hit: Dictionary = camera.get_world_3d().direct_space_state.intersect_ray(query)
+	return BEAM_REACH if hit.is_empty() else from.distance_to(hit.position)
 
 # --- What she hears --------------------------------------------------------------------
 
@@ -712,6 +687,27 @@ func listen(delta: float) -> void:
 			ripple(typewriter, NOISE.radius("door_slow"), 0.9)
 			return
 
+## Where the survivors on her planta walk, a warm step every PRINT_STRIDE,
+## alternate feet; the cold ones let go.
+func tread() -> void:
+	prints = prints.filter(func(entry: Array) -> bool: return clock - float(entry[1]) < PRINT_LIFE)
+	var here := planta()
+	for one in level.survivors():
+		if not is_instance_valid(one) or not "slot" in one or not level.survivor_active(one) or bool(one.get("hidden")) or not SIGHT.alive(level, one): continue
+		var feet: Vector3 = one.global_position
+		var seat_id := int(one.slot)
+		if FLOOR.planta_of(feet.y + 1.0) != here:
+			strides.erase(seat_id)
+			continue
+		if not strides.has(seat_id): strides[seat_id] = [feet, 1.0]
+		var last: Array = strides[seat_id]
+		var walked: Vector3 = feet - (last[0] as Vector3)
+		if Vector2(walked.x, walked.z).length() < PRINT_STRIDE: continue
+		var foot := -float(last[1])
+		var aside := Vector3(-walked.z, 0, walked.x).normalized() * PRINT_SIDE * foot
+		strides[seat_id] = [feet, foot]
+		prints.append([feet + aside, clock])
+
 ## A noise where she hears it, as she hears it, or nowhere: its wave over the
 ## surfaces round it, out to `reach` metres.
 func ripple(point: Vector3, radius: float, reach: float) -> void:
@@ -721,7 +717,7 @@ func ripple(point: Vector3, radius: float, reach: float) -> void:
 	ripples.append([point if float(route.distance) < RIPPLE_TRUTH else route.apparent, clock, reach])
 	if ripples.size() > RIPPLES: ripples.pop_front()
 
-# --- The flash and the calibration -----------------------------------------------------
+# --- The flash --------------------------------------------------------------------------
 
 ## A torch full in her face, from `from_direction` (world, from her to it):
 ## the camera saturates, white from that side and black elsewhere, in
@@ -759,29 +755,6 @@ func nearest_survivor_way() -> Vector3:
 			nearest = d
 			best = ((one.camera.global_position as Vector3) - eye).normalized()
 	return best
-
-## The sensor calibrating itself now and then, and soon after a saturation:
-## the picture held still a moment, with a click.
-func calibrate(delta: float) -> void:
-	frozen.visible = clock < frozen_until
-	var white := flash_now()
-	if white > 0.5: saturated = true
-	elif saturated and white < 0.2:
-		saturated = false
-		nuc_clock = minf(nuc_clock, NUC_AFTER)
-	nuc_clock -= delta
-	if nuc_clock > 0.0: return
-	nuc_clock = randf_range(NUC_EVERY.x, NUC_EVERY.y)
-	# Without a screen (headless, its dummy renderer) there is no frame to hold.
-	if level.settings.values.reduced or not field.visible or DisplayServer.get_name() == "headless": return
-	# The last frame as it was shown, held (a read back once in a while).
-	var shown := get_viewport().get_texture().get_image()
-	if shown == null or shown.is_empty(): return
-	frozen.texture = ImageTexture.create_from_image(shown)
-	frozen.visible = true
-	frozen_until = clock + NUC_HOLD
-	click.play(CLICK_FROM)
-	click_until = clock + CLICK_LENGTH
 
 # --- On the screen ---------------------------------------------------------------------
 
@@ -841,10 +814,7 @@ func place(delta: float) -> void:
 	# A machine somebody is at beats.
 	var beat := 1.0 - BEAT * (0.5 + 0.5 * sin(clock * 5.0))
 	for entry in lamps: put.call(entry[0], entry[1], float(entry[2]), float(entry[3]) * (beat if bool(entry[5]) else 1.0), Kind.LAMP, bool(entry[7]), float(entry[8]))
-	for w in wires.size():
-		var run: Array = wires[w]
-		wire_a[w] = Vector4(run[0].x, run[0].y, run[0].z, float(run[2]))
-		wire_b[w] = Vector4(run[1].x, run[1].y, run[1].z, 0.0)
+	place_beams()
 	# The gain: the hottest in view at the top over GAIN_SHARE, slowly.
 	var target := maxf(GAIN_LEAST_UP if above() else GAIN_LEAST, maxf(float(peak[0]) * GAIN_SHARE, float(peak[1]) * HIDDEN_SHARE))
 	gain_high = lerpf(gain_high, target, 1.0 - exp(-delta / GAIN_TIME))
@@ -854,9 +824,6 @@ func place(delta: float) -> void:
 	material.set_shader_parameter("heat_box", heat_box)
 	material.set_shader_parameter("heat_screen", heat_screen)
 	material.set_shader_parameter("heat_kind", heat_kind)
-	material.set_shader_parameter("wire_count", wires.size())
-	material.set_shader_parameter("wire_a", wire_a)
-	material.set_shader_parameter("wire_b", wire_b)
 	material.set_shader_parameter("gain_low", GAIN_LOW)
 	material.set_shader_parameter("gain_high", gain_high)
 	material.set_shader_parameter("floor_y", FLOOR.planta_y(planta()))
@@ -866,13 +833,94 @@ func place(delta: float) -> void:
 	material.set_shader_parameter("flash_peak", REDUCED_PEAK if reduced else 1.0)
 	material.set_shader_parameter("now", clock)
 	place_figures()
+	place_tints()
 	var calm: float = REDUCED_NOISE if reduced else 1.0
 	sensor_material.set_shader_parameter("noise", NOISE_HEAT / (gain_high - GAIN_LOW) * calm)
 	sensor_material.set_shader_parameter("stripes", STRIPES * calm)
 	sensor_material.set_shader_parameter("now", clock)
 
-## The survivors as figures (her prey white or red), and from over the
-## ceiling her point, the grid round her and the lit rooms.
+## Her beacons' beams: each from its torch along its look, up to what stops it.
+func place_beams() -> void:
+	var at := PackedVector4Array()
+	var way := PackedVector4Array()
+	at.resize(BEAMS)
+	way.resize(BEAMS)
+	var count := 0
+	for seat_id in beacons:
+		var one = beacons[seat_id]
+		if count >= BEAMS or not is_instance_valid(one) or not is_instance_valid(one.get("torch")): continue
+		var torch: Node3D = one.torch
+		var from := torch.global_position
+		var look := -torch.global_basis.z
+		var angle: float = float(torch.get("spot_angle")) if torch.get("spot_angle") != null else 26.0
+		at[count] = Vector4(from.x, from.y, from.z, float(beam_reach.get(seat_id, BEAM_REACH)))
+		way[count] = Vector4(look.x, look.y, look.z, cos(deg_to_rad(angle * BEAM_SHARE)))
+		count += 1
+	material.set_shader_parameter("beam_count", count)
+	material.set_shader_parameter("beam_at", at)
+	material.set_shader_parameter("beam_way", way)
+
+## Every survivor she makes out and every mind gone, as a box on her screen
+## tinted by its mind (her sensor's), and the warm steps nearest her eye.
+func place_tints() -> void:
+	var size: Vector2 = camera.get_viewport().get_visible_rect().size
+	var boxes := PackedVector4Array()
+	var colours := PackedVector4Array()
+	boxes.resize(TINTS)
+	colours.resize(TINTS)
+	var count := 0
+	var at: Vector3 = creature.motion.anchor()
+	var here := planta()
+	var sanity = level.get("sanity")
+	for one in level.survivors():
+		if count >= TINTS or sanity == null: break
+		if not is_instance_valid(one) or not "slot" in one: continue
+		var spent: bool = bool(one.get("burnt")) and level.survivor_active(one)
+		if not spent and not driver.markable(one, at, here): continue
+		var box := screen_box(one.global_position, size)
+		if box == Vector4.ZERO: continue
+		var colour := mind_colour(0.0 if spent else float(sanity.sanity_of(one)))
+		boxes[count] = box
+		colours[count] = Vector4(colour.r, colour.g, colour.b, 1.0)
+		count += 1
+	sensor_material.set_shader_parameter("tint_count", count)
+	sensor_material.set_shader_parameter("tint_box", boxes)
+	sensor_material.set_shader_parameter("tint_colour", colours)
+	var eye := camera.global_position
+	var near: Array = prints.duplicate()
+	if near.size() > PRINTS:
+		near.sort_custom(func(a: Array, b: Array) -> bool: return eye.distance_squared_to(a[0]) < eye.distance_squared_to(b[0]))
+		near.resize(PRINTS)
+	var steps := PackedVector4Array()
+	steps.resize(PRINTS)
+	for i in near.size():
+		var point: Vector3 = near[i][0]
+		steps[i] = Vector4(point.x, point.y, point.z, (clock - float(near[i][1])) / PRINT_LIFE)
+	material.set_shader_parameter("print_count", near.size())
+	material.set_shader_parameter("print_at", steps)
+
+## The box a survivor standing at `feet` fills on her screen with its outline
+## (uv: min x, min y, max x, max y); zero when it is behind her.
+func screen_box(feet: Vector3, size: Vector2) -> Vector4:
+	var low := Vector2.INF
+	var high := -Vector2.INF
+	var side: Vector3 = camera.global_basis.x * TINT_GROW
+	for corner: Vector3 in [Vector3(0, -0.1, 0), Vector3(0, 2.1, 0)]:
+		for aside in [-1.0, 1.0]:
+			var point: Vector3 = feet + corner + side * aside
+			if camera.is_position_behind(point): return Vector4.ZERO
+			var on := camera.unproject_position(point) / size
+			low = low.min(on)
+			high = high.max(on)
+	return Vector4(low.x, low.y, high.x, high.y)
+
+## A mind's colour on her sensor (0 gone, 100 whole).
+static func mind_colour(sanity: float) -> Color:
+	var whole := clampf(sanity / 100.0, 0.0, 1.0)
+	return MIND_GONE.lerp(MIND_HALF, whole * 2.0) if whole < 0.5 else MIND_HALF.lerp(MIND_WHOLE, whole * 2.0 - 1.0)
+
+## The survivors as figures (her prey full), and from over the ceiling her
+## point, the grid round her; the lit rooms.
 func place_figures() -> void:
 	var at: Vector3 = creature.motion.anchor()
 	var here := planta()
@@ -882,10 +930,7 @@ func place_figures() -> void:
 	var count := 0
 	for one in level.survivors():
 		if count >= FIGURES or not driver.markable(one, at, here): continue
-		var mark := 0.0
-		# Her prey white while she may go, or while she goes (her attack, her warning, her take).
-		var going: bool = not driver.attack.is_empty() or creature.cue or int(one.slot) == driver.struck
-		if int(one.slot) == driver.prey: mark = 1.0 if bool(info.get("ok", false)) or going else 2.0
+		var mark := 1.0 if int(one.slot) == driver.prey or int(one.slot) == driver.struck else 0.0
 		figures[count] = Vector4(one.global_position.x, one.global_position.y, one.global_position.z, mark)
 		count += 1
 	material.set_shader_parameter("figure_count", count)
@@ -905,7 +950,7 @@ func place_figures() -> void:
 		rects[lits] = rect_of(int(entry[1]))
 		heats[lits] = float(entry[2])
 		lits += 1
-	material.set_shader_parameter("lit_count", lits if up else 0)
+	material.set_shader_parameter("lit_count", lits)
 	material.set_shader_parameter("lit_rect", rects)
 	material.set_shader_parameter("lit_heat", heats)
 	var red := int(info.get("room", -1))
@@ -951,9 +996,54 @@ func place_marks() -> void:
 		var from: Vector3 = info.get("from", Vector3.INF)
 		var to: Vector3 = info.get("face", Vector3.INF)
 		if from != Vector3.INF and to != Vector3.INF: line(far, from, to, red)
+	place_doubles(far, pale)
+	place_footprint(far)
 	marks.mesh = near.mesh()
 	marks_through.mesh = far.mesh()
 	tag("down", down_at, "lurker_drop")
+
+## Her doubles waiting: a pin from the floor up to each head and a square
+## round it, seen through the walls; near her, on its floor and through what
+## stands on it, the ring within which it leaps at an eye
+## (lurker_doubles.POUNCE_REACH from its head).
+func place_doubles(far: Shape, pale: Color) -> void:
+	var doubles = creature.get("doubles")
+	if doubles == null: return
+	var eye := camera.global_position
+	for id in doubles.doubles:
+		if String(doubles.doubles[id].get("state", "")) != "wait": continue
+		var head: Vector3 = doubles.head_of(int(id))
+		if head == Vector3.INF: continue
+		var ground := Vector3(head.x, FLOOR.planta_y(FLOOR.planta_of(head.y - 1.5)) + 0.04, head.z)
+		line(far, ground, head, pale)
+		outline(far, head, 0.25, pale)
+		if eye.distance_to(ground) > RING_REACH: continue
+		var rise := head.y - ground.y - EYE_HEIGHT
+		var reach := sqrt(maxf(doubles.POUNCE_REACH * doubles.POUNCE_REACH - rise * rise, 0.0))
+		for k in RING_PIECES:
+			var a := TAU * k / RING_PIECES
+			var b := TAU * (k + 1) / RING_PIECES
+			line(far, ground + Vector3(cos(a), 0, sin(a)) * reach, ground + Vector3(cos(b), 0, sin(b)) * reach, pale)
+
+## While her drink is ready, the rooms it would reach (lurker.judge_drink():
+## the room she is in or over and those touching it that may go dark): the
+## floors of those lit outlined through the walls (the dark ones would only
+## lose the torches in them; outlined, they buried the picture).
+func place_footprint(far: Shape) -> void:
+	var ready: bool = clock - drank_at >= DRINK_EVERY and creature.grace <= 0.0 and creature.motion.transit.is_empty() and int(creature.deep_room) < 0
+	var room: int = creature.room_of_point(creature.face_point()) if ready else -1
+	if room >= 0 and not creature.may_snuff(room, 0.0, false): room = -1
+	if room != footprint_of:
+		footprint_of = room
+		footprint = [] if room < 0 else [room] + creature.touching(room).filter(func(r: int) -> bool: return creature.may_snuff(r, 0.0, false))
+	var colour := Color(packed(0.0), FOOTPRINT_PALE, 0.0, 0.0)
+	for id: int in footprint:
+		if not glowing(id): continue
+		var data: Dictionary = level.manifest.rooms[id]
+		var r := rect_of(id) + Vector4(FOOTPRINT_IN, FOOTPRINT_IN, -FOOTPRINT_IN, -FOOTPRINT_IN)
+		var y := float(data.get("py", 0.0)) + 0.05
+		var corners := [Vector3(r.x, y, r.y), Vector3(r.z, y, r.y), Vector3(r.z, y, r.w), Vector3(r.x, y, r.w)]
+		for k in 4: line(far, corners[k], corners[(k + 1) % 4], colour)
 
 ## A square of `half` round a point, flat: the edge of a piece.
 func outline(shape: Shape, at: Vector3, half: float, colour: Color) -> void:
@@ -1025,13 +1115,11 @@ func rows() -> Array:
 	if not creature.motion.transit.is_empty(): return []
 	var up: bool = driver.up()
 	var info: Dictionary = driver.prey_info
-	var wait := clampf(float(info.get("wait", 0.0)), 0.0, 1.0)
-	# Out of reach and charging: how much of her charge is still to come.
-	if driver.prey >= 0 and String(info.get("why", "")) == "far" and driver.charge > 0.0: wait = 1.0 - driver.charge / driver.CHARGE
 	var drink_wait: float = clampf(1.0 - (clock - drank_at) / DRINK_EVERY, 0.0, 1.0)
 	var double_wait: float = clampf(1.0 - (driver.clock - driver.doubled_at) / creature.DOUBLE_EVERY, 0.0, 1.0)
 	return [
-		[key_names("lurker_release"), "Atacar", bool(info.get("ok", false)) and driver.attack.is_empty(), wait if driver.prey >= 0 else 0.0],
+		# Its wait and her charge are on her disc (Hud).
+		[key_names("lurker_release"), "Atacar", bool(info.get("ok", false)) and driver.attack.is_empty(), 0.0],
 		[key_names("lurker_drop"), "Bajar" if up else "Subir", not up or driver.gallery() or not driver.down_way().is_empty(), 0.0],
 		[["MANTÉN"] + key_names("lurker_sneak"), "Sigilo", up, 0.0],
 		[key_names("lurker_double"), "Doppelgänger", double_wait <= 0.0, double_wait],
@@ -1082,11 +1170,61 @@ class Fill extends Control:
 	func _draw() -> void:
 		if share > 0.0: draw_rect(Rect2(0, size.y * (1.0 - share), size.x, size.y * share), Color(1, 1, 1, 0.3))
 
-## Sent off (lurker_player.scared()): the picture closes in and opens again.
+## Her disc over her keys (her attack, the header's), and sent off
+## (lurker_player.scared()) the picture closing in and opening again.
 class Hud extends Control:
+	## The disc's radius and its gap over her keys; its rings' width; its ring
+	## going out when the attack comes free, this long.
+	const RADIUS := 26.0
+	const GAP := 16.0
+	const WIDTH := 3.5
+	const RING_OUT := 0.45
+	const SOFT := Color(1, 1, 1, 0.16)
+	const WAITING := Color(1, 1, 1, 0.55)
+	const FREE := Color(1, 1, 1, 0.95)
+	const STOPPED := Color(1.0, 0.16, 0.1, 0.85)
 	var view
+	var free_was := false
+	var freed_at := -INF
 
 	func _draw() -> void:
+		disc()
+		closing()
+
+	## Her attack: the ring fills through her wait, whole and white when it
+	## may go (or goes), red when something stops it; her charge inside; her
+	## prey's mind in the middle, its colour, its area what an attack on it
+	## would still cost.
+	func disc() -> void:
+		var driver = view.driver
+		if not driver.creature.motion.transit.is_empty(): return
+		var at := Vector2(size.x * 0.5, size.y + float(view.keys_bar.offset_top) - GAP - RADIUS)
+		draw_circle(at, RADIUS + 7.0, Color(0, 0, 0, 0.45))
+		draw_arc(at, RADIUS, 0.0, TAU, 48, SOFT, WIDTH, true)
+		var seat: int = driver.prey if driver.prey >= 0 else driver.struck
+		var info: Dictionary = driver.prey_info
+		var ok: bool = driver.prey >= 0 and bool(info.get("ok", false))
+		if ok and not free_was: freed_at = view.clock
+		free_was = ok
+		if seat < 0: return
+		var top := -PI * 0.5
+		var wait := clampf(float(info.get("wait", 0.0)), 0.0, 1.0)
+		var why := String(info.get("why", ""))
+		if ok or not driver.attack.is_empty() or driver.creature.cue: draw_arc(at, RADIUS, 0.0, TAU, 48, FREE, WIDTH, true)
+		elif wait > 0.0: draw_arc(at, RADIUS, top, top + TAU * (1.0 - wait), 48, WAITING, WIDTH, true)
+		# Out of reach is no stop: only a look or a light on where she would drop.
+		elif why in ["look", "light"]: draw_arc(at, RADIUS, 0.0, TAU, 48, STOPPED, WIDTH, true)
+		var charge: float = driver.charge / driver.CHARGE
+		if charge > 0.0: draw_arc(at, RADIUS - WIDTH * 2.0, top, top + TAU * charge, 40, FREE, WIDTH * 0.7, true)
+		var one = driver.body_of(seat)
+		var sanity = view.level.get("sanity")
+		if one != null and sanity != null:
+			var mind: float = 0.0 if bool(one.get("burnt")) else float(sanity.sanity_of(one))
+			draw_circle(at, (RADIUS - WIDTH * 3.2) * sqrt(driver.strike_share(seat)), view.mind_colour(mind))
+		var t: float = (view.clock - freed_at) / RING_OUT
+		if t < 1.0: draw_arc(at, RADIUS + 10.0 * t, 0.0, TAU, 48, Color(1, 1, 1, 1.0 - t), WIDTH * (1.0 - 0.5 * t), true)
+
+	func closing() -> void:
 		var driver = view.driver
 		var t: float = (driver.clock - driver.fled_at) / driver.FLED_FOR
 		if t < 0.0 or t >= 1.0: return

@@ -183,6 +183,9 @@ var fled_from := Vector3.INF
 var attack := {}
 ## When she last left her double (the host keeps her waiting lurker.DOUBLE_EVERY).
 var doubled_at := -INF
+## seat -> [her attacks on it that still count, clock of the last]: her own
+## reckoning of the host's repeats (lurker.parries), for her disc.
+var strikes := {}
 var pose_clock := 0.0
 ## Room -> its plenum node (the ducts' nearest when it has none).
 var plenum_nodes := {}
@@ -671,6 +674,16 @@ func watch_charge(delta: float) -> void:
 
 func charged() -> bool: return charge >= CHARGE - 1e-4
 
+## Her attacks on `seat` that still count (lurker.parry_steps()).
+func strike_steps(seat: int) -> float:
+	var row: Array = strikes.get(seat, [0.0, -INF])
+	return creature.parry_steps(float(row[0]), clock - float(row[1]))
+
+## What an attack on `seat` would cost its mind now, as a share of a fresh
+## one (lurker.parried_cost(): down to MIND.repeat_least on the same one).
+func strike_share(seat: int) -> float:
+	return creature.parried_cost(strike_steps(seat)) / float(creature.MIND.parried)
+
 ## What her marker says of `one`: whether the attack may go now, else why not
 ## (the first of: wait, far, look, light), how much of a wait is left, the
 ## tile she would drop by and her face there, and what shows why in her view:
@@ -768,6 +781,7 @@ func find_drop(one) -> Dictionary:
 func attack_now() -> void:
 	if prey < 0 or not bool(prey_info.get("ok", false)): return
 	attacked[prey] = clock
+	strikes[prey] = [strike_steps(prey) + 1.0, clock]
 	last_attack = clock
 	struck = prey
 	if creature.motion.plenum:
