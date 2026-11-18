@@ -9,7 +9,7 @@ extends RefCounted
 ## preloads it, and the generator and the validator load it headless.
 
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
-const VERSION := 4
+const VERSION := 5
 
 ## The real building's typologies (planta_real.md 13.7), a table each: its rows
 ## from the front wall to the back, [role, sizes] ("main" and "gallery" are
@@ -170,6 +170,7 @@ const REAL_ROOM_BANDS := {
 	WINDOW: [3.6, 0.0, 4.8, 7.2],
 	SECURITY: [3.6, 0.0, 4.8, 7.2],
 	ELECTRICAL: [3.6, 0.0, 4.8, 0.0],
+	MANEUVER: [3.6, 0.0, 4.8, 0.0],
 	REFUGE: [7.2, 7.2, 7.2, 7.2],
 	AIR_ROOM: [7.2, 7.2, 7.2, 7.2],
 }
@@ -212,6 +213,9 @@ const EXEC_OFFICE := 16
 const WINDOW := 17
 const ELECTRICAL := 18
 const SECURITY := 21
+## The freight lift's maneuver room of planta 2 (cordura_y_edificio.md 3.10):
+## its lever behind a motorised door that opens only with its sector's power.
+const MANEUVER := 26
 const AIR_ROOM := 22
 const AIR_PLANT := 23
 const SECRETARY := 24
@@ -263,15 +267,15 @@ static func rings(area: float) -> int:
 const WARDROBES := {4: 2, 8: 1, 14: 1, 15: 1, 21: 2}
 ## Not read on this floor: hard_floor() asks floor_finish().
 const HARD_FLOORS := []
-const TYPES := ["recepcion_interna", "oficina_abierta", "cubiculos", "despacho", "aseos", "sala_juntas", "archivo", "reprografia", "almacen", "montacargas", "vestibulo_llegada", "pasillo", "pasillo_servicio", "archivo_movil", "correo", "sala_descanso", "despacho_direccion", "ventanilla", "cuarto_electrico", "vestibulo_montacargas", "vacio", "puesto_seguridad", "sala_climatizacion", "climatizadora", "secretaria", "deposito"]
+const TYPES := ["recepcion_interna", "oficina_abierta", "cubiculos", "despacho", "aseos", "sala_juntas", "archivo", "reprografia", "almacen", "montacargas", "vestibulo_llegada", "pasillo", "pasillo_servicio", "archivo_movil", "correo", "sala_descanso", "despacho_direccion", "ventanilla", "cuarto_electrico", "vestibulo_montacargas", "vacio", "puesto_seguridad", "sala_climatizacion", "climatizadora", "secretaria", "deposito", "sala_maniobra"]
 ## What the way signs call the company's other places they point to
 ## (office_landmarks.ways(), the author's nerf of 16 November 2026).
 const WAY_PLACES := {TOILETS: "ASEOS", BOARDROOM: "SALA DE JUNTAS", ARCHIVE: "ARCHIVO", COPY_ROOM: "REPROGRAFÍA", STORE: "ALMACÉN", MOBILE_ARCHIVE: "ARCHIVO MÓVIL", MAIL: "CORREO", BREAK_ROOM: "SALA DE DESCANSO", EXEC_OFFICE: "DIRECCIÓN", SECRETARY: "SECRETARÍA", DEPOT: "DEPÓSITO"}
-const NAMES := ["Recepción interna", "Oficina abierta", "Cubículos", "Despacho", "Aseos y vestuario", "Sala de juntas", "Archivo", "Reprografía y microfichas", "Almacén", "Montacargas", "Vestíbulo de llegada", "Pasillo", "Pasillo de servicio", "Archivo móvil", "Correo", "Sala de descanso", "Despacho de dirección", "Ventanilla de Personal", "Cuarto eléctrico", "Vestíbulo del montacargas", "Vacío", "Puesto de seguridad", "Sala de climatización", "Climatizadora", "Secretaría", "Depósito"]
+const NAMES := ["Recepción interna", "Oficina abierta", "Cubículos", "Despacho", "Aseos y vestuario", "Sala de juntas", "Archivo", "Reprografía y microfichas", "Almacén", "Montacargas", "Vestíbulo de llegada", "Pasillo", "Pasillo de servicio", "Archivo móvil", "Correo", "Sala de descanso", "Despacho de dirección", "Ventanilla de Personal", "Cuarto eléctrico", "Vestíbulo del montacargas", "Vacío", "Puesto de seguridad", "Sala de climatización", "Climatizadora", "Secretaría", "Depósito", "Sala de maniobra"]
 ## How tools/dev/office_plan.gd draws each type on a planta's plan: its fill
 ## and its short label, by type like NAMES.
-const PLAN_FILLS := ["d9b45a", "b9d9a0", "9fc98a", "a9c4e0", "8fd3d3", "b49ad6", "b08a62", "e6a8c0", "a8a58e", "d070c0", "d9a0d0", "d8d4cc", "b8a98a", "c9a882", "eedd77", "f0b070", "6f94c8", "f2c94c", "e05050", "e0a0e0", "000000", "a04040", "5fb0a0", "3f8f80", "8fb0e0", "8a8670"]
-const PLAN_CODES := ["REC", "ABIER", "CUB", "DESP", "ASEO", "JUNT", "ARCH", "REPR", "ALM", "MONT", "LLEG", "", "", "AMOV", "CORR", "DESC", "DIR", "VENT", "ELEC", "VEST", "", "SEG", "CLIM", "MAQ", "SECR", "DEP"]
+const PLAN_FILLS := ["d9b45a", "b9d9a0", "9fc98a", "a9c4e0", "8fd3d3", "b49ad6", "b08a62", "e6a8c0", "a8a58e", "d070c0", "d9a0d0", "d8d4cc", "b8a98a", "c9a882", "eedd77", "f0b070", "6f94c8", "f2c94c", "e05050", "e0a0e0", "000000", "a04040", "5fb0a0", "3f8f80", "8fb0e0", "8a8670", "e07830"]
+const PLAN_CODES := ["REC", "ABIER", "CUB", "DESP", "ASEO", "JUNT", "ARCH", "REPR", "ALM", "MONT", "LLEG", "", "", "AMOV", "CORR", "DESC", "DIR", "VENT", "ELEC", "VEST", "", "SEG", "CLIM", "MAQ", "SECR", "DEP", "MANI"]
 static func plan_fill(room: Dictionary) -> Color:
 	var kind := int(room.get("type", -1))
 	return Color(PLAN_FILLS[kind]) if kind >= 0 and kind < PLAN_FILLS.size() else Color.MAGENTA
@@ -279,7 +283,7 @@ static func plan_code(room: Dictionary) -> String:
 	var kind := int(room.get("type", -1))
 	return PLAN_CODES[kind] if kind >= 0 and kind < PLAN_CODES.size() else "?"
 ## The article each type's name takes on a paper (hint_placement.room_said()).
-const ARTICLES := ["la", "la", "los", "el", "los", "la", "el", "la", "el", "el", "el", "el", "el", "el", "el", "la", "el", "la", "el", "el", "el", "el", "la", "la", "la", "el"]
+const ARTICLES := ["la", "la", "los", "el", "los", "la", "el", "la", "el", "el", "el", "el", "el", "el", "el", "la", "el", "la", "el", "el", "el", "el", "la", "la", "la", "el", "la"]
 
 ## Each corner is a socket, "" an empty one. The archives, the lift, the
 ## corridors, the void and the air rooms have none: what fills them is their
@@ -311,18 +315,19 @@ const RECIPES := [
 	["", "", "", ""],
 	["desk", "filing", "coat_rack", "plant"],
 	["shelf", "boxes", "shelf", "cart"],
+	["cabinet", "shelf", "", ""],
 ]
 
 ## How tall a room is (height_of()): a false ceiling at 2.95 in every room
 ## that has one, the boardroom too (spec_rediseno 3.5), none where the slab
 ## is the ceiling (4.4).
-const HEIGHTS := [2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 4.4, 2.95, 2.95]
+const HEIGHTS := [2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 4.4, 2.95, 2.95, 2.95]
 ## The hotel's: height_of() does not read it, a salon is as tall as its type.
 const HALL_HEIGHT := 4.8
 ## Rooms whose lamps are never out (may_be_dark()): the lit lobbies, the
 ## window, the security post and the rooms with only an emergency light or
 ## none. Salons may be dark.
-const NEVER_DARK := [0, 9, 10, 17, 18, 19, 20, 21, 22, 23]
+const NEVER_DARK := [0, 9, 10, 17, 18, 19, 20, 21, 22, 23, 26]
 ## The hotel palette's name, kept for the shared contract (office_test): no
 ## office is numbered (numbered()), whatever its type.
 const NO_NUMBER := []
@@ -424,19 +429,19 @@ const KEPT := Vector2(0.25, 0.55)
 const WALL_KINDS := ["desk", "shelf", "filing", "sideboard", "board", "copier", "sorter", "vending", "cooler", "fridge", "cabinet", "gun_rack", "reception", "basin", "bench"]
 
 ## Plain or bare ceilings, and walls let go.
-const SERVICE_CEILINGS := [8, 12, 18, 22, 23, 25]
+const SERVICE_CEILINGS := [8, 12, 18, 22, 23, 25, 26]
 const DECREPIT_WALLS := [8, 25]
 const SPRINKLER_ROOMS := [0, 1, 2, 3, 5, 7, 11, 14, 15, 16, 17, 24]
 ## No wall lamps on this floor.
 const SCONCE_ROOMS := []
 ## The fluorescent battens (lamp_of()): the archives, the store, the service
 ## corridor, the air rooms and the depot.
-const BATTEN_ROOMS := [6, 8, 12, 13, 22, 23, 25]
+const BATTEN_ROOMS := [6, 8, 12, 13, 22, 23, 25, 26]
 ## The hotel's: lamp_of() does not read it, no office has a chandelier.
 const CHANDELIER_HEIGHT := 4.0
 ## The set of furniture each type puts along its walls (room_dressing, step
 ## 1d); "" none: archive rows run to the walls.
-const MODULE_SET := {0: "office_open", 1: "office_open", 2: "office_open", 3: "office_private", 4: "lockers", 5: "office_private", 6: "", 7: "copy", 8: "store", 9: "", 10: "", 11: "office_corridor", 12: "office_corridor", 13: "", 14: "mail", 15: "break", 16: "office_private", 17: "office_private", 18: "", 19: "", 20: "", 21: "office_private", 22: "", 23: "", 24: "office_private", 25: "store"}
+const MODULE_SET := {0: "office_open", 1: "office_open", 2: "office_open", 3: "office_private", 4: "lockers", 5: "office_private", 6: "", 7: "copy", 8: "store", 9: "", 10: "", 11: "office_corridor", 12: "office_corridor", 13: "", 14: "mail", 15: "break", 16: "office_private", 17: "office_private", 18: "", 19: "", 20: "", 21: "office_private", 22: "", 23: "", 24: "office_private", 25: "store", 26: ""}
 const ALARM_ROOMS := [0, 10, 11, 12]
 ## No fuse boxes (no key on this floor, OFICINAS 14), ceiling fans or clocks.
 const FUSE_ROOMS := []
@@ -449,7 +454,7 @@ const PUBLIC_ROOMS := [0, 10, 11, 12]
 const SMEAR_ROOMS := [4, 7, 8, 9]
 ## Metal shelving and carts instead of wood (prop_factory): every type but the
 ## boardroom, the director's office and the secretary's.
-const SERVICE := [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 25]
+const SERVICE := [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 25, 26]
 ## Types that are circulation besides corridors and halls: the structural
 ## roles, as the hotel's.
 const CIRCULATION := [0, 9, 10, 12]
@@ -474,11 +479,11 @@ const NAVE_CARPET := [1, 2]
 ## sealed concrete in the store, the service corridor and the depot; the
 ## electrical room's ridged tile (quarry). CARPET on wing 2 and NAVE_CARPET on
 ## wing 0 are carpet instead.
-const FINISH_BY_TYPE := ["vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
+const FINISH_BY_TYPE := ["vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete", "quarry"]
 const FINISHES := ["terrazzo", "tile", "carpet", "carpet_exec", "concrete", "vinyl", "quarry"]
 ## Painted concrete block (wall_material()): the store, the service
 ## corridor, the electrical room, the air rooms and the depot.
-const BLOCK_WALLS := [8, 12, 18, 22, 23, 25]
+const BLOCK_WALLS := [8, 12, 18, 22, 23, 25, 26]
 const WALLS := ["office_paint", "office_paint_kept", "block", "veneer", "partition"]
 ## The lower wall of each type (wall_trim(), spec_rediseno 2): the frieze of
 ## the corridors and the lobbies, the walnut dado round the office, the
@@ -498,7 +503,7 @@ const LAMPS := ["troffer", "batten", "emergency"]
 ## for a ceiling lamp (today it has only its emergency unit), and the refuge's
 ## lamp is turned green after (the hotel's extras()). Starting values, set
 ## against the references in the captures.
-const LAMP_KELVIN := [2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3300.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3500.0, 3500.0, 3000.0, 3000.0, 2700.0, 3300.0, 3000.0, 2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0]
+const LAMP_KELVIN := [2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3300.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3500.0, 3500.0, 3000.0, 3000.0, 2700.0, 3300.0, 3000.0, 2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0]
 ## The troffer families (troffer_look(), spec_rediseno 2): narrow with a louvre
 ## in the boardroom, parabolic in the secretary's office, a
 ## surface-mounted wraparound in the director's office, prismatic elsewhere.
@@ -511,7 +516,12 @@ const WRAP_TROFFERS := [EXEC_OFFICE]
 ## reception (the author, 18 November 2026: it took a minute to find; now the
 ## far end of the planta's walk).
 const WINDOW_DEPTH := Vector2(0.7, 0.98)
-const ELECTRICAL_DEPTH := Vector2(0.4, 0.7)
+## The electrical room toward the lift's end, so the maneuver room, back toward
+## the arrival, is a walk across the building each way (cordura_y_edificio.md 3.10).
+const ELECTRICAL_DEPTH := Vector2(0.6, 0.85)
+## The maneuver room is drawn from the best MANEUVER_TOP of the cells it may
+## take, ranked by the shorter of its walks to the board and to the lift.
+const MANEUVER_TOP := 0.25
 const SECURITY_DEPTH := Vector2(0.25, 0.55)
 ## Metres over the planta's floor. duct: the trunk [width, height]; branch:
 ## the branches, bridges and loose links; main: the crawl duct's clear inside,
@@ -608,6 +618,7 @@ const ROOM_BANDS := {
 	SECURITY: [0.0, 0.0, 0.0, 7.0],
 	WINDOW: [0.0, 0.0, 0.0, 7.5],
 	ELECTRICAL: [0.0, 6.5, 0.0, 0.0],
+	MANEUVER: [0.0, 6.5, 0.0, 0.0],
 	AIR_ROOM: [7.0, 0.0, 8.0, 0.0],
 	REFUGE: [6.0, 0.0, 0.0, 7.0],
 }
@@ -739,6 +750,7 @@ const ROOM_FURNITURE := {
 	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["sideboard", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["lounge", "side", 1, 1, 1], ["sideboard", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	WINDOW: [["filing", "run", 2, 2, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 3], ["cart_boxes", "spare", 1, 1, 1]],
 	ELECTRICAL: [["work_desk", "side", 1, 1, 1], ["shelving", "spare", 1, 1, 2], ["cart_boxes", "run", 2, 2, 1], ["work_table", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1]],
+	MANEUVER: [["shelving", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1], ["filing", "spare", 1, 1, 2], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1]],
 	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["plant_floor", "run", 1, 1, 1], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["pigeonholes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["card_index", "spare", 1, 1, 1]],
 	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1], ["shelving", "spare", 1, 2, 1]],
@@ -855,7 +867,7 @@ const PAPER_TOPS_KEPT := {BREAK_ROOM: "table", MAIL: "table", SECRETARY: "desk"}
 ## handler; "lift", the wall its car stands behind. Each falls back to "far".
 ## A type not here has none, and its capture looks straight in. The types of
 ## FEATURE_FIRST_PIECE end up with another (office_generator.furnish_furniture()).
-const FEATURE_WALLS := {RECEPTION: "far", OPEN_OFFICE: "far", CUBICLES: "far", OFFICE: "far", TOILETS: "far", BOARDROOM: "far", COPY_ROOM: "far", STORE: "far", LANDING: "lift", LOBBY: "lift", MAIL: "far", BREAK_ROOM: "far", EXEC_OFFICE: "far", WINDOW: "window", ELECTRICAL: "board", REFUGE: "lift", SECURITY: "console", AIR_ROOM: "far", AIR_PLANT: "unit", SECRETARY: "suite", DEPOT: "far"}
+const FEATURE_WALLS := {RECEPTION: "far", OPEN_OFFICE: "far", CUBICLES: "far", OFFICE: "far", TOILETS: "far", BOARDROOM: "far", COPY_ROOM: "far", STORE: "far", LANDING: "lift", LOBBY: "lift", MAIL: "far", BREAK_ROOM: "far", EXEC_OFFICE: "far", WINDOW: "window", ELECTRICAL: "board", REFUGE: "lift", SECURITY: "console", AIR_ROOM: "far", AIR_PLANT: "unit", SECRETARY: "suite", DEPOT: "far", MANEUVER: "far"}
 ## The types that end up framed by the wall their first piece against a wall
 ## landed on, whichever the rule above tried first.
 const FEATURE_FIRST_PIECE := [RECEPTION, OFFICE, TOILETS, COPY_ROOM, STORE, MAIL, BREAK_ROOM, SECRETARY, DEPOT]
@@ -900,6 +912,7 @@ const WALL_DRESSING := {
 	STORE: [["notice", 1, 0], ["rule", 1, 0], ["extinguisher", 1, 0]],
 	DEPOT: [["notice", 1, 0], ["rule", 1, 0], ["extinguisher", 1, 0]],
 	ELECTRICAL: [["notice", 1, 0], ["extinguisher", 1, 0]],
+	MANEUVER: [["notice", 1, 0], ["extinguisher", 1, 0]],
 	AIR_ROOM: [["notice", 1, 0], ["thermostat", 1, 0], ["extinguisher", 1, 0]],
 	LOBBY: [["notice", 1, 0], ["directory", 1, 0], ["plan", 1, 0], ["extinguisher", 1, 0], ["alarm", 1, 0]],
 	REFUGE: [["notice", 1, 0], ["plan", 1, 0], ["extinguisher", 1, 0]],
@@ -927,7 +940,7 @@ const CORNER_HEIGHT := {"reception": 1.1, "bench": 0.45, "sideboard": 1.3, "tabl
 ## Either side of a floor system's spot on a wall, nothing else hangs
 ## (office_walls.gd, LAYOUT.fixtures()): the electrical board with its supply
 ## box and memo, the security post's desk, the air handler; 0.9 elsewhere.
-const FIXTURE_HALF := {ELECTRICAL: 2.2, SECURITY: 1.1, AIR_PLANT: 1.7}
+const FIXTURE_HALF := {ELECTRICAL: 2.2, SECURITY: 1.1, AIR_PLANT: 1.7, MANEUVER: 1.0}
 ## The chairs of a type's waiting row and of its corner "chairs"
 ## (office_props.gd, office_models.gd); the stacking chair elsewhere.
 const WAITING_CHAIR := {RECEPTION: "reception_seat", WINDOW: "waiting_chair", SECRETARY: "visitor_chair"}

@@ -135,7 +135,8 @@ En el edificio, «módulo» es una celda (3,6 o 7,2 m por el fondo de su banda) 
 | **Correo** | Módulo | Fluorescente | Casilleros, carros, sacos y una segunda central del tubo neumático, decorativa y sin función (4c) | El tubo suena: no siempre es una cápsula |
 | **Ventanilla de Personal** (planta 1) | Módulo | Fluorescente | Mostrador con cristal, máquina de escribir, el mapa de la red de tubos y la central neumática de la que nacen los tubos | Quien escribe le da la espalda a la sala |
 | **Estación del tubo** (planta 1, en 8–14 salas) | En la pared | Su lucecita | Boca del tubo, bandeja y timbre | Se recoge de espaldas |
-| **Cuarto eléctrico** (planta 2) | Módulo pequeño | Foco de emergencia | El cuadro general con sus palancas y la roja del montacargas | El más expuesto de la planta |
+| **Cuarto eléctrico** (planta 2) | Módulo pequeño | Foco de emergencia | El cuadro general con sus palancas y el armario del respaldo | El más expuesto de la planta |
+| **Sala de maniobra** (planta 2) | Módulo pequeño, una puerta | Regletas, con su sector | El armario del montacargas y su palanca roja, tras la puerta motorizada | Lejos del cuadro y del montacargas |
 | **Reprografía y microfichas** | Módulo | Fluorescente | Fotocopiadora, lectores, cajas | |
 | **Sala de descanso** | Módulo | Fluorescente | Máquina expendedora, fuente de agua, mesas, nevera | La máquina zumba: tapa el sonido |
 | **Aseos y vestuario** | Módulo | Fluorescente | **Taquillas metálicas (escondite)** | Espera encima |
@@ -184,7 +185,7 @@ En el edificio, «módulo» es una celda (3,6 o 7,2 m por el fondo de su banda) 
 - **Salas de hito** (14 de noviembre de 2026, `office_landmarks.gd`): la ventanilla de Personal, el cuarto eléctrico, el puesto de seguridad y las dos salas de máquinas (climatización y climatizadora) se distinguen de las corrientes. Por fuera de cada puerta a una sala corriente: un aplique estanco de batería sobre la puerta, siempre encendido, con el cristal del color del sistema (blanco cálido, ámbar, rojo, rojo): son las únicas puertas del piso con luz encima. A la altura de los ojos, junto al marco, el cartel de seguridad: «PELIGRO / CUARTO ELÉCTRICO / SOLO PERSONAL AUTORIZADO» (negro y amarillo, con franja de rayas amarillas y negras en el suelo del umbral), «ACCESO RESTRINGIDO / SOLO PERSONAL AUTORIZADO» (cabecera roja, cuerpo amarillo), «SALA DE MÁQUINAS / SOLO PERSONAL AUTORIZADO» (rojo con letras blancas). El lector de la puerta del puesto lleva un piloto rojo que pasa a verde al abrirla con la ficha, y una cámara sobre el marco mira a quien llega.
 - **Vestíbulo del montacargas:** solo el cartel en su puerta, «MONTACARGAS / SOLO PERSONAL REGISTRADO», y el del lector, «SOLO PERSONAL REGISTRADO»; ni banderola, ni aplique, ni línea en los directorios ni en las señales.
 - **Dentro de cada hito**, el objeto que se usa tiene su luz: el flexo de la ventanilla sobre la máquina de escribir, con la sala un poco más baja; el foco de emergencia del cuarto eléctrico apuntado al tablero, y un piloto rojo junto a la palanca del montacargas encendido mientras espera; un aplique sobre la consola del puesto; un aplique de batería sobre la caja de paro de la climatizadora.
-- **Orientación, escasa a propósito** (el autor, 16 de noviembre de 2026: con tanta información era fácil llegar): la banderola sobre la puerta de los hitos ya no se pone (`BANNERS`), y el directorio de cada llegada (la recepción y los vestíbulos de llegada de las plantas 2 y 3) lista solo los departamentos, cada uno con una flecha hacia donde va el camino más corto. **Una sola señal por planta** cuelga del techo en el camino de la llegada a sus hitos, en el giro más cercano a la mitad del camino («VENTANILLA DE PERSONAL», «CUADRO ELÉCTRICO», «SEGURIDAD», «SALA DE MÁQUINAS»). Entre las demás señales, hasta seis por planta (`DECOYS_MOST`) apuntan, siempre bien, a la sala más cercana de otros sitios de la empresa (`office_palette.WAY_PLACES`: aseos, sala de juntas, archivo, reprografía, almacén, archivo móvil, correo, sala de descanso, dirección, secretaría, depósito), con dos filas por señal como mucho. El plano de evacuación de pared pinta los hitos en amarillo. `tools/dev/extras_probe.gd` comprueba en pisos montados, de varias semillas y en los dos pisos, las máquinas de café, las llaves y estas señales.
+- **Orientación, escasa a propósito** (el autor, 16 de noviembre de 2026: con tanta información era fácil llegar): la banderola sobre la puerta de los hitos ya no se pone (`BANNERS`), y el directorio de cada llegada (la recepción y los vestíbulos de llegada de las plantas 2 y 3) lista solo los departamentos, cada uno con una flecha hacia donde va el camino más corto. **Una sola señal por planta** cuelga del techo en el camino de la llegada a sus hitos, en el giro más cercano a la mitad del camino («VENTANILLA DE PERSONAL», «CUADRO ELÉCTRICO» y «SALA DE MANIOBRA», «SEGURIDAD», «SALA DE MÁQUINAS»). Entre las demás señales, hasta seis por planta (`DECOYS_MOST`) apuntan, siempre bien, a la sala más cercana de otros sitios de la empresa (`office_palette.WAY_PLACES`: aseos, sala de juntas, archivo, reprografía, almacén, archivo móvil, correo, sala de descanso, dirección, secretaría, depósito), con dos filas por señal como mucho. El plano de evacuación de pared pinta los hitos en amarillo. `tools/dev/extras_probe.gd` comprueba en pisos montados, de varias semillas y en los dos pisos, las máquinas de café, las llaves y estas señales.
 
 ---
 
@@ -268,36 +269,33 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - El vestíbulo tiene luz.
 - Archivos de estanterías altas con pasillos de un metro, correo, microfichas.
 
-**El grupo electrógeno da para poco.** En el **cuarto eléctrico** (hondo, entre el 40 y el 70 % del recorrido) está el **cuadro general**:
-- una fila de palancas, **una por zona**, con el código que llevan los rótulos de zona de los pasillos (R-2 ARCHIVO, R-4 CORREO);
-- y una más, roja: **MONTACARGAS**.
+**El grupo electrógeno da para poco** (el autor, 18 de noviembre de 2026; `power_objective.gd`, `.claude/specs/cordura_y_edificio.md` 3.10). En el **cuarto eléctrico**, al fondo de la planta (entre el 60 y el 85 % del recorrido, ya cerca del montacargas), está el **cuadro general**:
+- una fila de palancas, **una por sector**, rotuladas con el nombre de su zona («ARCHIVO», «CORREO»);
+- a su lado, el armario del **RESPALDO** con tres pilotos: se enciende uno por cada sector arriba.
+- Junto al cuadro, el cartel (se lee): «Durante un apagón el sistema de respaldo solo puede manejar 3 sectores de electricidad. Por favor, no sobrecargar el sistema.»
 
 **La regla:**
-- **Solo caben K zonas encendidas a la vez** (3 en Apacible y Equilibrada, 2 en Desafiante y Pesadilla).
-- Subir una palanca de más **baja la más antigua**: se oye el chasquido y una zona entera se va a negro, que es justo donde ella va.
-- **El MONTACARGAS se lo come todo:**
-  - subirla apaga la planta entera salvo la emergencia y el vestíbulo;
-  - arranca el **temporizador de arranque**, un reloj mecánico de 45 a 90 s que **se oye hacer tictac** en toda la planta;
-  - el montacargas de bajada, al otro extremo (más allá del 80 %), solo baja **cuando el tictac acaba** y está dentro la cuota.
+- Las palancas se suben y se bajan cuando se quiera. **Caben tres arriba**, en todas las dificultades.
+- **Con una cuarta saltan todas**: el golpe del diferencial y la planta entera vuelve a la emergencia.
+- Sin palanca roja y sin reloj.
+
+**La sala de maniobra del montacargas** (tipo nuevo, `office_palette.MANEUVER`): un cuarto técnico con una sola puerta, de acero y motorizada, a un pasillo.
+- **Dónde:** el generador la pone de vuelta hacia la llegada (`office_generator.pick_maneuver()`), en un sector que no es el de la llegada, el del cuadro ni el del montacargas, entre las celdas más alejadas a la vez del cuadro y del montacargas. Con dos supervivientes, el camino andable de la llegada al cuadro, a la sala y al montacargas suma de 480 a 600 m; el directo de la llegada al montacargas, unos 210.
+- **La puerta:** sobre su marco, por fuera, un piloto rojo sin corriente en su sector y verde con ella. Sin corriente, al intentarlo suena un golpe sordo y no se abre. Con corriente se abre sola, despacio (4,5 s), con el chirrido de un motor pesado. Una vez en marcha acaba abierta aunque el sector se caiga, y nadie la cierra después.
+- **Dentro:** el armario del montacargas con su palanca roja. Bajarla (un segundo) **suelta el montacargas en el acto**; baja con la cuota dentro.
+- Es un hito con su cartel de peligro en la puerta, las rayas en el umbral y su fila en la señal de la llegada («SALA DE MANIOBRA»).
 
 **Los minuteros:** en los pasillos hay **pulsadores de luz temporizada**, como los de las escaleras de toda la vida.
 - Se pulsan y dan luz a ese pasillo 45–90 s, con su propio tictac, sin gastar del cuadro.
 - Son la luz del que va solo.
 
 **Cómo se juega:**
-- **Cruzar la planta es encender un camino**:
-  - ir al cuadro;
-  - subir las zonas que llevan hacia el montacargas;
-  - avanzar, bajar las de atrás, subir las de delante.
-- En cooperativo, **alguien se queda en el cuadro**, que está contra la pared: el más expuesto. Los demás le dicen qué zona quieren.
+- Se cruza la planta tres veces: hasta el cuadro, al fondo; de vuelta, hasta la sala de maniobra; y otra vez al fondo, al montacargas.
+- **Uno de los tres sectores ha de ser el de la sala de maniobra**: los otros dos alumbran el camino. Subir un cuarto por error apaga la planta entera, con quien esté lejos a oscuras.
+- En cooperativo, **alguien se queda en el cuadro**, que está contra la pared: el más expuesto. Los demás le dicen qué sector quieren.
 - **Encender la zona en la que está ella la echa**: se va por los ductos a la oscuridad, y se oye adónde. Con la luz **se la pastorea**, sin poder encerrarla nunca, porque siempre queda algo a oscuras.
-- **El final:**
-  - todos junto al montacargas, menos quien sube la palanca roja;
-  - con la planta a oscuras y el tictac corriendo, esa persona cruza sola de vuelta, con su linterna y los minuteros;
-  - los del montacargas la esperan en lo protegido, oyendo el reloj.
-  - En solitario, ese cruce es el clímax de la planta.
 
-**Alucinaciones de la planta:** chasquidos de palanca que no han sido; un tictac donde no hay minutero.
+**Alucinaciones de la planta:** chasquidos de palanca que no han sido, mientras el montacargas no está suelto; un tictac donde no hay minutero.
 
 ### Planta 3. Dirección: el aire
 
@@ -334,7 +332,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 
 - **Para la red de tubos:** estaciones, máquina de escribir, lector de fichas.
 - **Para la foto de la ficha:** la Polaroid del hotel, con el cuerpo del jugador visible para esa cámara.
-- **Para la corriente:** el cuadro con presupuesto, los minuteros, la palanca del montacargas con reloj y la luz por zonas.
+- **Para la corriente:** el cuadro con su respaldo de tres sectores, los minuteros, la puerta motorizada, la palanca del montacargas y la luz por zonas.
 - **Para el aire:** la climatizadora (máscara de sonido y ductos cerrados para ella), la compuerta y **el ducto a gatas** del jugador.
 - **Para todo el piso:** el montacargas con reja, que es el ascensor con otra piel.
 
@@ -484,7 +482,7 @@ En Apacible, más asomos y menos capturas: miedo sin castigo.
 
 Un jugador que miraba al techo todo el rato era inmune a ella. Ahora la cordura es lo que se gasta en mirarla, y solo se recupera con café (`.claude/specs/cordura_y_edificio.md` §3.1 a 3.3; las cifras, en `lurker.gd`, `MIND`):
 
-- **La luz ya no la devuelve.** Solo el café (dos máquinas por planta: una en la llegada y otra en la sala corriente más lejana de la llegada y de los hitos; una taza por superviviente y máquina; al notarse sale «Te sientes mejor...») y el cambio de planta.
+- **La luz ya no la devuelve.** Solo el café (dos máquinas por planta: una en la llegada, o en la sala más cercana que no sea un hito, y otra en la sala corriente más lejana de la llegada y de los hitos; una taza por superviviente y máquina; al notarse sale «Te sientes mejor...») y el cambio de planta.
 - **Lo que cuesta,** de un medidor de 100, un susto cada 12 s como mucho (dentro de ese descanso solo se paga lo que un susto mayor añade):
   - verla, 1,5; que te mire, 3,5; su asomo, 6; su chillido cerca, 3;
   - un aviso de la espalda parado (girarse con luz, alumbrarla, correr), 8 a la víctima, y cada vez que se repite sobre la misma, × 0,8 (nunca menos de 3,2); se recupera un escalón cada 20 s sin que la ataque;
@@ -887,10 +885,10 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
     - Se saca **en el momento de escribir**, así que si ella está, sale.
     - Se guarda con la ficha, en TUS NOTAS, y se ve igual en todas las máquinas: cada una saca la de su propio jugador y la envía al resto como textura pequeña, o cada máquina la saca con el avatar remoto (a decidir al hacerlo, midiendo).
 - **Planta 2:**
-  - `main_board.gd`: palancas por zona, presupuesto K, la que sobra baja la más antigua; la roja con su reloj.
+  - `main_board.gd`: palancas por zona, presupuesto K, la que sobra baja la más antigua; la roja con su reloj. Rehecho en la 1.15.0 en `power_objective.gd`: tres sectores, el cuarto salta todos, y la sala de maniobra (sección 3).
   - `timer_switch.gd`: minutero con tictac.
   - La luz por zonas con `set_room_power()`; las zonas son los `sector` del manifiesto.
-  - El montacargas de bajada solo arranca con la roja cumplida.
+  - El montacargas de bajada solo arranca con la roja cumplida (desde la 1.15.0, con la palanca de la sala de maniobra).
   - Todo pasa por el anfitrión y se reparte como el estado de las teles.
 - **Planta 3:**
   - `air_handler.gd`: cargas, tiempo en marcha.
@@ -1053,7 +1051,7 @@ Se juega contra una criatura nula (`null_creature.gd`), que cumple el contrato y
 - **Construcción:** paleta, generador, validador y geometría de oficinas.
 - **Los sistemas de cada planta** (11.7):
   - planta 1: tubos, ventanilla, estaciones, lector y la foto de la ficha;
-  - planta 2: cuadro, minuteros y la roja del montacargas;
+  - planta 2: cuadro, minuteros y la roja del montacargas (desde la 1.15.0, el respaldo de tres sectores y la sala de maniobra);
   - planta 3: climatizadora, compuerta, ducto a gatas y pozo;
   - el montacargas con reja;
   - el impreso de La Oficina y la ficha.
@@ -1061,7 +1059,7 @@ Se juega contra una criatura nula (`null_creature.gd`), que cumple el contrato y
   - `office/office_test` (40 semillas en manifiesto, 3 en físico, alcance de la malla y de los pasillos de archivo; red de tubos conexa; cuarto eléctrico, sala de climatización y pozo alcanzables);
   - `office/office_stages_test`:
     - planta 1: pedir, seguir y leer la ficha, y pasarla por el lector con la cuota;
-    - planta 2: el presupuesto baja la zona más antigua; la roja apaga la planta, el reloj corre y el montacargas solo baja al acabar;
+    - planta 2: el presupuesto baja la zona más antigua; la roja apaga la planta, el reloj corre y el montacargas solo baja al acabar (desde la 1.15.0 lo comprueba la red `office_coop`: tres sectores aguantan, el cuarto salta todos, la puerta sin corriente no se abre, con corriente se abre sola y la palanca suelta el montacargas);
     - planta 3: sin cargas no hay ventiladores, con ventiladores no se abre la compuerta, el ducto llega al pozo;
   - `office_metrics` con mil semillas (aparte, a demanda);
   - `light_layers_scan` en el piso 2;

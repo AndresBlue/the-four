@@ -46,7 +46,7 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 			# Steel with boxes where things are kept (spec_rediseno 6.13, 6.18); oak elsewhere (6.5).
 			var t := int(builder.building_room.get("type", -1))
 			var pick: int = int(builder.vary(seed_pos, 6) * 3.0)
-			if t == OFFICE.STORE or t == OFFICE.DEPOT or t == OFFICE.ELECTRICAL or t == OFFICE.SECURITY:
+			if t == OFFICE.STORE or t == OFFICE.DEPOT or t == OFFICE.ELECTRICAL or t == OFFICE.MANEUVER or t == OFFICE.SECURITY:
 				piece(builder, node, STORAGE.archive_shelving(builder, Vector3(2.0, 2.1, 0.4), pick), at(0.0, 0.4))
 			else:
 				piece(builder, node, STORAGE.wood_shelving(builder, Vector3(1.6, 2.0, 0.4), pick), at(0.0, 0.4))

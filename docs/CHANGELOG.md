@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.15.0](#1150--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La planta 2 se cruza tres veces: tres sectores en el cuadro, una puerta motorizada y la palanca del montacargas en su sala. |
 | [1.14.0](#1140--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La pantalla de quien lleva a The Lurker, rehecha: el disco del ataque y la cordura de cada uno en color. |
 | [1.13.0](#1130--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Las oficinas, dos veces y media más grandes, sin códigos de sala y con la ventanilla al fondo. |
 | [1.12.0](#1120--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | The Lurker deja dobles en las esquinas, bebe la luz en 3 × 3 y baja de planta a la vista. |
@@ -85,6 +86,39 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.15.0 — 18 de noviembre de 2026
+
+*La planta 2 se cruza tres veces: tres sectores en el cuadro, una puerta motorizada y la palanca del montacargas en su sala.*
+
+Commits `4e4baedd`…`v1.15.0`. Fase 6 del gran cambio del piso 2 (`.claude/specs/cordura_y_edificio.md`). Versión del generador del piso 2: 5 (los pisos guardados con la 4 se rechazan).
+
+### Novedades
+
+- **El cuadro con respaldo:** las palancas de los sectores se suben y se bajan a voluntad; caben tres arriba y con una cuarta saltan todas y la planta vuelve a la emergencia. Tres pilotos en el armario del respaldo dicen cuántas hay. El cartel lo avisa: «Durante un apagón el sistema de respaldo solo puede manejar 3 sectores de electricidad. Por favor, no sobrecargar el sistema.»
+- **La sala de maniobra del montacargas**, un tipo de sala nuevo, de vuelta hacia la llegada y en otro sector que el cuadro y el montacargas: el recorrido de la planta pasa de unos 210 m a unos 500.
+- **Su puerta, motorizada:** piloto rojo sin corriente en su sector y un golpe sordo al intentarlo; con corriente se abre sola en 4,5 s con un motor pesado, y queda abierta.
+- **Dentro, la palanca del montacargas:** bajarla lo suelta en el acto.
+- Dos sonidos nuevos de BigSoundBank (CC0): el motor de la puerta y su golpe.
+
+### Arreglos
+
+- La cafetera de la llegada ya no cae en una sala de hito; con la sala de maniobra hacia la llegada, tapaba su armario.
+
+### Herramientas y documentación
+
+- `tools/capture/maneuver_capture.gd` fotografía el recorrido nuevo de la planta 2 (`evidence/planta/fase6/`).
+- El explorador ingenuo mide la planta 2 en tres tramos: 14,5 minutos de mediana (antes 10,7).
+
+### Sin comprobar al cerrar la versión
+
+- Los dos sonidos de la puerta, sin oír.
+- Una partida con personas por el recorrido nuevo.
+
+### Quitado
+
+- La palanca roja del cuadro, el reloj del montacargas y su tictac.
+- Que la palanca de más bajara la más antigua.
 
 ## 1.14.0 — 18 de noviembre de 2026
 

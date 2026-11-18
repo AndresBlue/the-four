@@ -1,7 +1,7 @@
 extends SceneTree
 ## Floor 2 played from its first stage to its end (spec_f1_systems 2 and 4):
 ## on level 1 the request typed, the card taken from its station and through
-## the reader; on level 2 the board, a minutero and the red lever's clock; the
+## the reader; on level 2 the board, a minutero and the maneuver room; the
 ## freight lift down each time; and on the third the post opened with the
 ## card, the fans started and stopped, the hatch, the climb into the main duct
 ## and back, the crouched body passing all of it, and the shaft's
@@ -219,52 +219,66 @@ func the_card(tag: String) -> void:
 	check("%s: la ficha vuelve con la instantánea del piso" % tag, kept.has("files") and not kept.has("televisions") and files.swiped.has(player.slot) and files.has_card(player.slot))
 	check("%s: con la cuota pasada, el nivel 1 se cumple y su puerta se abre" % tag, bool(session.goal.get("ready", false)) and not level.hotel.gates[0].locked)
 
-## Level 2: a zone's lever up lights its rooms, one over the budget trips
-## the oldest, a minutero lights its corridor, and the red lever cuts the
-## planta and runs the freight lift's clock, which holds the car until it is
-## out.
+## Level 2: a zone's lever up lights its rooms, a fourth up trips them all, a
+## minutero lights its corridor; the maneuver room's door stays shut without
+## its sector's power and opens on its motor with it, and the lever inside
+## frees the freight lift, which holds the car until then.
 func the_power(tag: String) -> void:
 	var power = level.objective(&"power")
 	var player = level.player
 	var session = level.session
-	check("%s: el nivel 2 pide la corriente" % tag, power != null and String(session.goal.get("kind", "")) == "power" and power.zones.size() >= 2)
-	if power == null or power.zones.size() < 2: return
+	check("%s: el nivel 2 pide la corriente" % tag, power != null and String(session.goal.get("kind", "")) == "power" and power.zones.size() > power.BACKUP)
+	if power == null or power.zones.size() <= power.BACKUP: return
 	var legend = power.usables.back()
 	check("%s: junto al cuadro, un memorándum que se lee" % tag, String(legend.action) == "read" and power.word_of(legend, level.player.slot) == "LEER" and power.paper_of(legend.index).form.lines.size() == power.zones.size() + 3)
-	power.lift_timer = 3.0
 	var room_of = func(z: int) -> int:
 		for id in power.zones[z].rooms:
 			if not power.lit_always.has(int(id)) and not level.hotel.dark_ids.has(int(id)): return int(id)
 		return -1
 	var first: int = room_of.call(0)
 	check("%s: con todo abajo, la planta 2 a oscuras" % tag, first >= 0 and not level.hotel.lit(first))
+	var use := func(action: String, index: int) -> void:
+		player.global_position = power.usables[index].stand + Vector3(0, 0.04, 0)
+		await frames(2)
+		level.match_net.use_office(&"power", action, index)
 	player.global_position = power.usables[0].stand + Vector3(0, 0.04, 0)
 	await frames(3)
 	check("%s: en el cuadro, SUBIR" % tag, power.word_of(power.usables[0], player.slot) == "SUBIR")
 	level.match_net.use_office(&"power", "lever", 0)
 	check("%s: la zona subida se enciende" % tag, power.on_order == [0] and level.hotel.lit(first))
-	power.budget = 1
-	player.global_position = power.usables[1].stand + Vector3(0, 0.04, 0)
-	await frames(2)
-	level.match_net.use_office(&"power", "lever", 1)
-	check("%s: pasado el presupuesto cae la más antigua" % tag, power.on_order == [1] and not level.hotel.lit(first))
-	var timer: int = power.red_index() + 1
-	if timer < power.usables.size():
-		player.global_position = power.usables[timer].stand + Vector3(0, 0.04, 0)
-		await frames(2)
-		level.match_net.use_office(&"power", "switch", timer)
+	for z in range(1, power.BACKUP): await use.call("lever", z)
+	check("%s: tres arriba aguantan, con sus tres pilotos" % tag, power.on_order.size() == power.BACKUP and power.backup_lenses.all(func(pair): return pair[0].visible))
+	await use.call("lever", power.BACKUP)
+	check("%s: con una cuarta saltan todas" % tag, power.on_order.is_empty() and not level.hotel.lit(first) and power.backup_lenses.all(func(pair): return not pair[0].visible))
+	if not power.switch_until.is_empty():
+		await use.call("switch", power.zones.size())
 		var lit_corridor: bool = level.manifest.power.timers[0].rooms.all(func(id): return power.powered(int(id)))
 		check("%s: el minutero enciende su pasillo" % tag, lit_corridor)
-	var red: int = power.red_index()
-	player.global_position = power.usables[red].stand + Vector3(0, 0.04, 0)
-	await frames(2)
-	level.match_net.use_office(&"power", "red", red)
-	check("%s: la roja corta la planta y corre el reloj" % tag, power.red == power.Red.RUNNING and power.on_order.is_empty())
-	check("%s: el montacargas no baja con el reloj corriendo" % tag, not level.ride_allowed(1, [player]))
+	await use.call("door", power.door_index())
+	# Aimed high or low at the leaf from where it is pressed, the focus is the
+	# motor's button, never the locked leaf.
+	var aims: Array = []
+	for height: float in [0.5, 1.2, 2.1]:
+		var eye: Vector3 = player.camera.global_position
+		var at: Vector3 = power.motor_door.doorway + Vector3(0, height, 0)
+		var flat := Vector2(at.x - eye.x, at.z - eye.z)
+		player.rotation.y = atan2(-flat.x, -flat.y)
+		player.camera.rotation.x = atan2(at.y - eye.y, flat.length())
+		await frames(2)
+		aims.append(level.interaction.focused_area() == power.usables[power.door_index()])
+	check("%s: apuntando a cualquier altura de la puerta se enfoca su botón" % tag, aims.all(func(ok): return ok), str(aims))
+	check("%s: sin corriente la puerta de la sala de maniobra no se abre" % tag, not power.motor_started and not power.motor_door.opened and power.door_pilot[0].visible)
+	await use.call("lever", power.zone_of(power.maneuver_room))
+	check("%s: con su sector arriba, el piloto de la puerta en verde" % tag, power.door_powered() and power.door_pilot[1].visible and not power.door_pilot[0].visible)
+	await use.call("door", power.door_index())
+	check("%s: la puerta se abre sola, despacio, y el montacargas aún no baja" % tag, power.motor_started and power.motor_door.moving and not level.ride_allowed(1, [player]))
 	for i in 600:
 		await physics_frame
-		if power.red == power.Red.ARMED: break
-	check("%s: acabado el reloj, el nivel 2 se cumple" % tag, power.red == power.Red.ARMED and bool(session.goal.get("ready", false)) and level.ride_allowed(1, [player]))
+		if power.motor_door.opened: break
+	check("%s: la puerta acaba abierta y nadie la cierra" % tag, power.motor_door.opened and power.motor_door.locked and not power.motor_door.toggle())
+	await use.call("lift", power.lift_index())
+	await frames(3)
+	check("%s: la palanca de dentro suelta el montacargas y el nivel 2 se cumple" % tag, power.freed and bool(session.goal.get("ready", false)) and level.ride_allowed(1, [player]), "suelto %s, meta %s, viaje %s, palabra «%s», a %.2f m" % [str(power.freed), str(session.goal.get("ready", false)), str(level.ride_allowed(1, [player])), power.word_of(power.usables[power.lift_index()], player.slot), player.global_position.distance_to(power.usables[power.lift_index()].global_position)])
 
 ## Until the body's climb (its transit) is over, and a moment more.
 func settle(player) -> void:

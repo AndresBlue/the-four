@@ -2288,11 +2288,11 @@ const DOOR_MODELS := {"vision": "res://assets/props/office/puerta_oficina_sousin
 const STEEL_FRAME := "res://assets/props/office/puerta_metal_tboiston_frame.res"
 
 ## Whether the door between two rooms is steel: a store's or a depot's, the
-## plant rooms' and the stages' gates. Not the other service cells' (a break
+## plant rooms', the maneuver room's and the stages' gates. Not the other service cells' (a break
 ## room, the washrooms, the copy room) nor the service corridor's: steel on a
 ## room people sit in read as a hospital.
 func service_door(a: Dictionary, b: Dictionary) -> bool:
-	return service_room(a) or service_room(b) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
+	return service_room(a) or service_room(b) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.MANEUVER, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
 
 static func service_room(room: Dictionary) -> bool:
 	return int(room.type) in [OFFICE.STORE, OFFICE.DEPOT]

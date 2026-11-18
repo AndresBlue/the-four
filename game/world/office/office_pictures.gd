@@ -168,7 +168,7 @@ static func plan(manifest: Dictionary, planta: int) -> Image:
 		var fill := Color(0.82, 0.8, 0.74)
 		if bool(room.get("corridor", false)) or t == OFFICE.CORRIDOR or t == OFFICE.GALLERY: fill = Color(0.7, 0.78, 0.66)
 		# The landmarks in the yellow of their signs (office_landmarks.gd).
-		if t in [OFFICE.WINDOW, OFFICE.ELECTRICAL, OFFICE.SECURITY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]: fill = Color(0.86, 0.66, 0.1)
+		if t in [OFFICE.WINDOW, OFFICE.ELECTRICAL, OFFICE.MANEUVER, OFFICE.SECURITY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]: fill = Color(0.86, 0.66, 0.1)
 		image.fill_rect(cell, Color(0.25, 0.25, 0.24))
 		image.fill_rect(cell.grow(-1), fill)
 	return image

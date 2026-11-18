@@ -25,6 +25,7 @@ const TABLE_OFFSET := 1.55    # a meeting table's footprint, from the boardroom'
 const TABLE_WALK := 0.66     # free each long side of it: a capsule's way (office_validator)
 const BOARDROOM_DOOR := 1.5   # the real building's boardroom doors, off their walls' middles (hang_doors())
 const BOARD_HALF := 1.3       # the power board's half width (power_equipment.BOARD), its front kept clear
+const MANEUVER_HALF := 0.6    # the maneuver room's cabinet and its lever beside it
 const DESKS_MOST := 8         # free-standing items per cell
 ## The band a duct shortcut keeps against the walk (1c's validator has its own).
 const SHORTCUT_MIN := 0.55
@@ -347,7 +348,11 @@ func place_specials(f: Dictionary, planta: int, alive: Dictionary, arrival: int,
 		if electrical < 0:
 			fail("electrical")
 			return false
-		f.specials[1] = {"electrical": base + electrical}
+		var maneuver := pick_maneuver(f, alive, arrival, refuge, shares, electrical, standby, rng)
+		if maneuver < 0:
+			fail("maneuver")
+			return false
+		f.specials[1] = {"electrical": base + electrical, "maneuver": base + maneuver}
 		return true
 	return place_air(f, alive, arrival, back, refuge, rng, standby)
 
@@ -403,6 +408,26 @@ func candidates(f: Dictionary, alive: Dictionary, arrival: int, refuge: Dictiona
 	# In its type's band while one is to be had (spec_proporcion D9).
 	var wanted: Array = out.filter(func(entry): return palette.fits_band(room_type, at(f, int(entry.room))))
 	return wanted if not wanted.is_empty() else out
+
+## The freight lift's maneuver room (cordura_y_edificio.md 3.10): a room of
+## one door, on to a corridor, in none of the sectors of the arrival, the board
+## and the lift, in the real building a cell its programme made a plain room
+## (none of the planta's musts), drawn from the MANEUVER_TOP of them farthest by the
+## shorter of their walks to the board and to the lift; in standby (no sectors
+## yet) the farthest. -1 with none.
+func pick_maneuver(f: Dictionary, alive: Dictionary, arrival: int, refuge: Dictionary, shares: Dictionary, electrical: int, standby: bool, rng: RandomNumberGenerator) -> int:
+	var to_board := route_metres(f, alive, electrical)
+	var to_lift := route_metres(f, alive, int(refuge.room))
+	var real := not building.is_empty()
+	var sector_of := func(local: int) -> int: return int(building.programme[laying].sectors.get(int(at(f, local).x), 0)) if real else -1
+	var taken: Array = [sector_of.call(arrival), sector_of.call(electrical), sector_of.call(int(refuge.room))]
+	var grouped := func(local: int) -> bool: return real and (building.programme[laying].groups.any(func(g): return g.members.has(local)) or not int(building.programme[laying].types.get(local, -1)) in [palette.OFFICE, palette.STORE, palette.MOBILE_ARCHIVE, palette.DEPOT])
+	var pool: Array = candidates(f, alive, arrival, refuge, shares, Vector2(0.0, 1.0), standby, true, [electrical], false, palette.MANEUVER).filter(func(entry): return int(entry.doors) == 1 and not grouped.call(int(entry.room)) and (not real or not taken.has(sector_of.call(int(entry.room)))))
+	if pool.is_empty(): return -1
+	for entry in pool: entry.weight = maxf(0.001, minf(float(to_board.get(int(entry.room), 0.0)), float(to_lift.get(int(entry.room), 0.0))))
+	pool.sort_custom(func(a, b): return float(a.weight) > float(b.weight) or (float(a.weight) == float(b.weight) and int(a.room) < int(b.room)))
+	if standby: return int(pool[0].room)
+	return int(weighted(pool.slice(0, maxi(1, ceili(pool.size() * float(palette.MANEUVER_TOP)))), rng).room)
 
 ## One of the candidates, weighted by rule ("window": one or two doors;
 ## "electrical": one door, then service cells); in standby the one nearest the
@@ -650,6 +675,7 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 	structure[int(refuges[2])] = palette.AIR_ROOM
 	structure[int(f.specials[0].window)] = palette.WINDOW
 	structure[int(f.specials[1].electrical)] = palette.ELECTRICAL
+	structure[int(f.specials[1].maneuver)] = palette.MANEUVER
 	structure[int(f.specials[2].security)] = palette.SECURITY
 	for id in structure:
 		var room: Dictionary = f.rooms[int(id)]
@@ -659,7 +685,7 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 	for id in [int(refuges[0]), int(refuges[1]), int(refuges[2])]:
 		f.rooms[id].hall = -1
 		f.rooms[id].service = false
-	for id in [int(f.specials[0].window), int(f.specials[1].electrical), int(f.specials[2].security)]: f.rooms[id].service = false
+	for id in [int(f.specials[0].window), int(f.specials[1].electrical), int(f.specials[1].maneuver), int(f.specials[2].security)]: f.rooms[id].service = false
 	if building.is_empty(): type_rooms(f, typed, locked, decoration)
 	else:
 		# The real building's rooms are what its programme made them (13.9).
@@ -1360,7 +1386,8 @@ func tube_points(f: Dictionary, chain: Array, hub_spot: Dictionary, station_spot
 	return points
 
 ## Spec 2.5d, planta 1's power: the board, one circuit a sector with its
-## lever, and the corridor timers.
+## lever, the corridor timers, and the maneuver room's lever behind its
+## motorised door (cordura_y_edificio.md 3.10).
 func furnish_power(job: Dictionary) -> String:
 	var f: Dictionary = job.f
 	var rooms: Array = f.rooms
@@ -1377,6 +1404,23 @@ func furnish_power(job: Dictionary) -> String:
 				break
 		if not board.is_empty(): break
 	if board.is_empty(): return "board"
+	# The maneuver room's lever on its wall farthest from its door, the door
+	# shut and opened only by its motor.
+	var man := int(f.specials[1].maneuver)
+	var man_room: Dictionary = rooms[man]
+	var lift_lever := {}
+	for wall in far_walls(man_room):
+		for along in [0.0, -1.2, 1.2]:
+			if spot_free(job, man_room, String(wall), along, MANEUVER_HALF):
+				lift_lever = wall_spot(man_room, String(wall), along, float(man_room.py))
+				register(job, man, String(wall), along, MANEUVER_HALF)
+				break
+		if not lift_lever.is_empty(): break
+	if lift_lever.is_empty(): return "maneuver"
+	var outside := int(f.adjacency[man][0])
+	var door_key := "%d:%d" % [mini(man, outside), maxi(man, outside)]
+	job.doors[door_key].open = false
+	job.doors[door_key]["lock"] = "motor"
 	# One circuit a sector, the levers in a drawn order.
 	var entries: Array = f.departments[1].duplicate()
 	entries.sort_custom(func(a, b): return int(a.sector) < int(b.sector))
@@ -1438,7 +1482,7 @@ func furnish_power(job: Dictionary) -> String:
 		timers.append(timer)
 		for id in stretches[best].rooms: covered[int(id)] = true
 	if corridor > 0 and float(covered.size()) / float(corridor) < float(palette.TIMER_COVER): return "timers"
-	job.out["power"] = {"room": el, "board": board, "circuits": circuits, "lift_lever": circuits.size(), "timers": timers}
+	job.out["power"] = {"room": el, "board": board, "circuits": circuits, "timers": timers, "maneuver": {"room": man, "door": door_key, "outside": outside, "lever": lift_lever}}
 	return ""
 
 ## A corridor lane cell, where a timed stretch runs.

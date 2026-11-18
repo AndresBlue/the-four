@@ -84,7 +84,7 @@ func face_pieces(hotel, h: float, along_z: bool, look: String) -> Dictionary:
 
 ## The lamps' colour by type and the troffer families in the palette (U1).
 func block_palette() -> void:
-	check("Una temperatura por cada uno de los 26 tipos", OFFICE.LAMP_KELVIN.size() == 26)
+	check("Una temperatura por cada uno de los 27 tipos", OFFICE.LAMP_KELVIN.size() == 27)
 	check("Las salas, a 3000 K", kelvin(OFFICE.OFFICE) == 3000.0 and kelvin(OFFICE.OPEN_OFFICE) == 3000.0 and kelvin(OFFICE.MAIL) == 3000.0 and kelvin(OFFICE.SECRETARY) == 3000.0)
 	check("Los pasillos, a 3500 K", kelvin(OFFICE.CORRIDOR) == 3500.0 and kelvin(OFFICE.GALLERY) == 3500.0)
 	check("Ámbar en recepción y descanso", kelvin(OFFICE.RECEPTION) == 2700.0 and kelvin(OFFICE.BREAK_ROOM) == 2700.0)
@@ -92,7 +92,7 @@ func block_palette() -> void:
 	# The reception's plain lens, as its reference (13 November 2026).
 	check("Lisa en recepción, estrecha en juntas, parabólica en secretaría, envolvente en dirección", look_of(OFFICE.RECEPTION) == "prismatic" and look_of(OFFICE.BOARDROOM) == "narrow" and look_of(OFFICE.SECRETARY) == "parabolic" and look_of(OFFICE.EXEC_OFFICE) == "wrap")
 	check("Prismática en el resto", look_of(OFFICE.OFFICE) == "prismatic" and look_of(OFFICE.CORRIDOR) == "prismatic" and look_of(OFFICE.MAIL) == "prismatic")
-	var unknown: Array = range(26).filter(func(t): return not OFFICE.TROFFER_LOOKS.has(look_of(t)))
+	var unknown: Array = range(27).filter(func(t): return not OFFICE.TROFFER_LOOKS.has(look_of(t)))
 	check("Toda familia está en TROFFER_LOOKS", unknown.is_empty())
 	check("La lámpara de cada tipo no cambia", OFFICE.lamp_of({"type": OFFICE.BOARDROOM, "wing": 0}) == "troffer" and OFFICE.lamp_of({"type": OFFICE.ARCHIVE, "wing": 0}) == "batten" and OFFICE.lamp_of({"type": OFFICE.ELECTRICAL, "wing": 0}) == "emergency")
 
@@ -742,7 +742,12 @@ func block_landmarks(level, hotel) -> void:
 	air.show_post()
 	check("El piloto del lector de la seguridad: rojo cerrada, verde al abrir", shut and open and air.post_pilot[0].visible)
 	var power = level.objective(&"power")
-	check("El piloto de la palanca roja, encendido mientras espera", power.red_pilot.size() == 3 and power.red_pilot[0].visible and power.red_pilot[2].visible and not power.red_pilot[1].visible)
+	var unpowered: bool = power.door_pilot.size() == 3 and power.door_pilot[0].visible and not power.door_pilot[1].visible
+	var zone: int = power.zone_of(power.maneuver_room)
+	power.apply("lever", zone, -1, {}, true)
+	var powered: bool = power.door_pilot[1].visible and not power.door_pilot[0].visible
+	power.apply("lever", zone, -1, {}, true)
+	check("El piloto de la puerta de la sala de maniobra: rojo sin corriente, verde con ella", unpowered and powered and power.door_pilot[0].visible)
 
 func run() -> void:
 	block_palette()

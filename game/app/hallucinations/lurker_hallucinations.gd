@@ -250,7 +250,7 @@ func fitting(gone: float) -> Dictionary:
 	if not pane.is_empty(): out["persiana"] = {"weight": WEIGHTS.persiana, "pane": pane}
 	var lamp := lamp_near(body.camera, wing)
 	if not lamp.is_empty(): out["lampara"] = {"weight": WEIGHTS.lampara, "lamp": lamp}
-	if wing == 1 and power != null and int(power.get("red")) == 0:
+	if wing == 1 and power != null and not bool(power.get("freed")):
 		var board: Dictionary = level.manifest.get("power", {}).get("board", {})
 		if board.has("point"): out["palanca"] = {"weight": WEIGHTS.palanca, "point": v3(board.point) + Vector3(0, 1.2, 0)}
 		var tick := tick_spot(ear)

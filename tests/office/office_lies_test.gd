@@ -103,7 +103,7 @@ func plantas() -> void:
 	var power = level.objective(&"power")
 	var air = level.objective(&"air")
 	var files = level.objective(&"files")
-	var power_before: Array = [int(power.red), power.get("on_order").duplicate() if power.get("on_order") != null else []]
+	var power_before: Array = [bool(power.freed), power.get("on_order").duplicate() if power.get("on_order") != null else []]
 	var air_before := float(air.running_until)
 	var files_before: String = var_to_str(files.get("requests"))
 	var bad_kinds: Array = []
@@ -141,7 +141,7 @@ func plantas() -> void:
 	await frames(90)
 	check("Cada mentira es de su planta", bad_kinds.is_empty(), str(bad_kinds))
 	check("Ninguna bebe la luz, ni suena su aviso, ni nada suyo que signifique algo", level.hotel.drains.is_empty() and level.world_audio.last_cue.is_empty() and never.is_empty(), "%s %s" % [str(level.hotel.drains), str(never)])
-	check("Ninguna toca un objetivo, sigue al que escucha, tapa con los ventiladores ni lleva subtítulo", int(power.red) == int(power_before[0]) and float(air.running_until) == air_before and var_to_str(files.get("requests")) == files_before and follows == 0 and masked == 0 and captions == 0, "%d %d %d" % [follows, masked, captions])
+	check("Ninguna toca un objetivo, sigue al que escucha, tapa con los ventiladores ni lleva subtítulo", bool(power.freed) == bool(power_before[0]) and float(air.running_until) == air_before and var_to_str(files.get("requests")) == files_before and follows == 0 and masked == 0 and captions == 0, "%d %d %d" % [follows, masked, captions])
 	level.world_audio.enabled = false
 
 ## A point of a planta where every kind that planta must show can be told:
@@ -192,10 +192,10 @@ func conditions() -> void:
 	var air = level.objective(&"air")
 	var spot := await spot_for(1)
 	if spot != Vector3.INF:
-		power.red = 1
+		power.freed = true
 		var here: Dictionary = lies.kinds_here(0.8)
-		power.red = 0
-		check("Con la palanca roja en marcha no hay tictac ni palanca", not here.has("tictac") and not here.has("palanca"), str(here.keys()))
+		power.freed = false
+		check("Con el montacargas suelto no hay tictac ni palanca", not here.has("tictac") and not here.has("palanca"), str(here.keys()))
 	spot = await spot_for(2)
 	if spot != Vector3.INF:
 		air.spin = 1.0

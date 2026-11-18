@@ -36,6 +36,7 @@ const KINDS := {
 	"window": {"banner": "PERSONAL\nVENTANILLA", "look": "white", "lamp": Color(1.0, 0.86, 0.66), "glass": "glow_white", "wash": 1.6, "sign": "window", "way": "VENTANILLA DE PERSONAL"},
 	# Cold white: the battery units of planta 2 are amber too (2400 K).
 	"electrical": {"banner": "CUARTO ELÉCTRICO", "look": "yellow", "lamp": Color(0.78, 0.88, 1.0), "glass": "glow_white", "wash": 1.2, "sign": "electrical", "way": "CUADRO ELÉCTRICO"},
+	"maneuver": {"banner": "SALA DE MANIOBRA\nMONTACARGAS", "look": "yellow", "lamp": Color(1.0, 0.8, 0.55), "glass": "glow_white", "wash": 1.2, "sign": "maneuver", "way": "SALA DE MANIOBRA"},
 	"security": {"banner": "SEGURIDAD\nCONTROL DE ACCESO", "look": "red", "lamp": Color(1.0, 0.2, 0.12), "glass": "glow_red", "wash": 1.3, "sign": "restricted", "way": "SEGURIDAD"},
 	"machines": {"banner": "SALA DE MÁQUINAS", "look": "red", "lamp": Color(1.0, 0.2, 0.12), "glass": "glow_red", "wash": 1.3, "sign": "machines", "way": "SALA DE MÁQUINAS"},
 	"lift": {"banner": "", "look": "", "sign": "lift", "way": ""},
@@ -46,6 +47,7 @@ const LOOKS := {"white": ["sign_white", INK_BLACK], "yellow": ["sign_yellow", IN
 ## body enamel, body ink, body words, the body's small words under them].
 const SIGNS := {
 	"electrical": ["black", "black", INK_YELLOW, "PELIGRO", "sign_yellow", INK_BLACK, "CUARTO ELÉCTRICO", "SOLO PERSONAL AUTORIZADO"],
+	"maneuver": ["black", "black", INK_YELLOW, "PELIGRO", "sign_yellow", INK_BLACK, "SALA DE MANIOBRA", "PUERTA MOTORIZADA"],
 	"restricted": ["black", "sign_red", INK_YELLOW, "ACCESO RESTRINGIDO", "sign_yellow", INK_BLACK, "SOLO PERSONAL\nAUTORIZADO", ""],
 	"machines": ["sign_white", "sign_red", INK_WHITE, "SALA DE MÁQUINAS", "sign_red", INK_WHITE, "SOLO PERSONAL\nAUTORIZADO", ""],
 	"lift": ["black", "sign_red", INK_WHITE, "MONTACARGAS", "sign_white", INK_BLACK, "SOLO PERSONAL\nREGISTRADO", ""],
@@ -125,6 +127,7 @@ static func kind_of(manifest: Dictionary, room_id: int) -> String:
 	if room_id < 0: return ""
 	if int(manifest.get("mail", {}).get("window", -1)) == room_id: return "window"
 	if int(manifest.get("power", {}).get("room", -1)) == room_id: return "electrical"
+	if int(manifest.get("power", {}).get("maneuver", {}).get("room", -1)) == room_id: return "maneuver"
 	var air: Dictionary = manifest.get("air", {})
 	if int(air.get("security", {}).get("room", -1)) == room_id: return "security"
 	if int(air.get("room", -1)) == room_id or int(air.get("plant", -1)) == room_id: return "machines"
@@ -217,7 +220,7 @@ static func dress_door(b: Node3D, kind: String, inside: Dictionary, outside: Dic
 	if kind == "lift": return
 	var banner_side := plaque if wall_left(b, inside, outside, center, face.basis.x * plaque) >= FRAME_EDGE + BANNER_GAP + 0.1 else -plaque
 	door_head(b, holder, face, kind, banner_side, int(inside.id), float(outside.height), wash)
-	if kind == "electrical":
+	if kind in ["electrical", "maneuver"]:
 		b.place(holder, stripes_mesh(), face * Transform3D(Basis(Vector3.RIGHT, -PI / 2), Vector3(0, 0.003, 0.1)), false)
 	if card:
 		# A camera over the card door, at the frame's corner opposite the
@@ -460,12 +463,12 @@ static func room(b: Node3D, node: Node3D, here: Dictionary) -> void:
 static func spot_of(spot: Dictionary) -> Vector3:
 	return Vector3(float(spot.point[0]), float(spot.point[1]), float(spot.point[2]))
 
-## The landmarks of a planta: [room id, kind] (the window, the electrical
-## room; the security post and the plant room on the third).
+## The landmarks of a planta: [room id, kind] (the window; the electrical
+## room and the maneuver room; the security post and the plant room on the third).
 static func targets(manifest: Dictionary, planta: int) -> Array:
 	match planta:
 		0: return [[int(manifest.get("mail", {}).get("window", -1)), "window"]]
-		1: return [[int(manifest.get("power", {}).get("room", -1)), "electrical"]]
+		1: return [[int(manifest.get("power", {}).get("room", -1)), "electrical"], [int(manifest.get("power", {}).get("maneuver", {}).get("room", -1)), "maneuver"]]
 		2:
 			var air: Dictionary = manifest.get("air", {})
 			return [[int(air.get("security", {}).get("room", -1)), "security"], [int(air.get("room", -1)), "machines"]]

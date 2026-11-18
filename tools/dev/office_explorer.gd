@@ -22,12 +22,12 @@ const LOOK := 1.0
 ## How much nearer the explorer reckons a corridor than a room.
 const CORRIDOR_PULL := 0.8
 ## The errands' fixed seconds: typing, the capsule's way, taking and swiping
-## the card; the red lever's clock; the fans running, then the hatch and the
-## climb; the crawl's pace.
+## the card; the maneuver room's door on its motor and its lever; the fans
+## running, then the hatch and the climb; the crawl's pace.
 const TYPE_HOLD := 5.0 + 1.2
 const CAPSULE_SPEED := 6.0
 const CARD_HOLDS := 1.5 + 0.5
-const LIFT_CLOCK := 60.0
+const MANEUVER_HOLDS := 4.5 + 1.0
 const FANS := 75.0 + 1.0 + 1.0 + 2.0 + 2.4
 const CRAWL := 1.2
 
@@ -114,15 +114,18 @@ func plantas(data: Dictionary, run_seed: int, run: int, straight: bool, legs: Di
 		add(legs, "1_ventanilla", a / 60.0)
 		add(legs, "1_estacion", b / 60.0)
 		add(legs, "1_montacargas", c / 60.0)
-	# Planta 2: the board, then the lift; the clock runs while one walks there.
+	# Planta 2: the board, the maneuver room, then the lift.
 	seen = {}
 	var electrical := int(data.get("power", {}).get("room", -1))
+	var maneuver := int(data.get("power", {}).get("maneuver", {}).get("room", electrical))
 	a = leg(data, int(data.entries[1]), electrical, seen, rng, straight)
-	b = leg(data, electrical, int(data.refuges[1]), seen, rng, straight)
-	out[1] = (a + maxf(b, LIFT_CLOCK)) / 60.0
+	b = leg(data, electrical, maneuver, seen, rng, straight)
+	c = leg(data, maneuver, int(data.refuges[1]), seen, rng, straight)
+	out[1] = (a + b + c + MANEUVER_HOLDS) / 60.0
 	if not straight:
 		add(legs, "2_cuadro", a / 60.0)
-		add(legs, "2_montacargas", b / 60.0)
+		add(legs, "2_maniobra", b / 60.0)
+		add(legs, "2_montacargas", c / 60.0)
 	# Planta 3: the post, the fans, the air room, the crawl.
 	seen = {}
 	var air: Dictionary = data.get("air", {})

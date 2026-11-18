@@ -318,8 +318,9 @@ func add_exit_edges() -> void:
 # --- Doors, rooms and exits ---------------------------------------------------------
 
 ## Open sides only from the manifest's merged pairs; a door only when its
-## node says opened, not moving and not locked; with no node, shut (and one
-## error for the session).
+## node says opened and not moving (a locked door is shut, but the maneuver
+## room's, locked open on its motor); with no node, shut (and one error for
+## the session).
 func door_open(pair: Vector2i) -> bool:
 	if merged.has(pair): return true
 	var door = door_nodes.get(pair)
@@ -328,7 +329,7 @@ func door_open(pair: Vector2i) -> bool:
 			missing_reported[pair] = true
 			if report_missing: push_error("lurker_routes: no door node for %d:%d" % [pair.x, pair.y])
 		return false
-	return bool(door.opened) and not bool(door.moving) and not bool(door.locked)
+	return bool(door.opened) and not bool(door.moving)
 
 ## A hash of every door of a wing as it stands, once per physics frame; a
 ## change bumps door_epoch even when no signal came (set_state(), locks).

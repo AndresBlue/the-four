@@ -586,19 +586,19 @@ func office_host() -> void:
 	check("Con la cuota, la puerta del montacargas se abre", await wait_for(func(): return not level.hotel.gates[0].locked, 15.0))
 	var power = level.objective(&"power")
 	var air = level.objective(&"air")
-	check("El cuadro de los invitados se aplica en el anfitrión", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 90.0))
+	check("El cuadro de los invitados se aplica en el anfitrión", await wait_for(func(): return power.on_order == [power.zone_of(power.maneuver_room)], 90.0))
 	check("Y el aire: la seguridad abierta, los ventiladores encendidos y parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 90.0))
 	# Bravo leaves and comes back: its seat is held for it, and it is put up
 	# to date when it has built the floor again.
 	var bravo_back := await wait_for(func(): return level.match_net.away.has(bravo), 60.0)
 	check("Bravo se va y su plaza le espera", bravo_back)
 	check("Y vuelve", await wait_for(func(): return not level.match_net.away.has(bravo) and net.connected_seats().has(bravo), 120.0))
-	# The rides: the three into the first car, the button; the red lever's
-	# clock (short here) on level 2; the three into the second car.
-	power.lift_timer = 3.0
+	# The rides: the three into the first car, the button; on level 2 Alpha
+	# opens the maneuver room's door and pulls its lever; the three into the
+	# second car.
 	await pause_for(15.0)
 	check("Los tres bajan al nivel 2", await host_ride(0, 2))
-	check("La palanca roja de Alpha arma el montacargas", await wait_for(func(): return power.red == power.Red.ARMED, 90.0))
+	check("La palanca de Alpha en la sala de maniobra suelta el montacargas", await wait_for(func(): return power.freed and power.motor_door.opened, 90.0))
 	check("Los tres bajan al nivel 3", await host_ride(1, 3))
 	# The guests check what they were told before the room goes.
 	await pause_for(15.0)
@@ -665,13 +665,24 @@ func office_guest(words: String, index: int) -> void:
 		check("Pasa su ficha por el lector de la seguridad", await asked.call("post", 3, func(): return air.post_open, &"air"))
 	else:
 		check("Ve subir la zona que subió Alpha", await wait_for(func(): return power.on_order == [0], 60.0))
-		for z in range(1, power.budget + 1):
+		for z in range(1, power.BACKUP):
 			await asked.call("lever", z, func(): return power.on_order.has(z), &"power")
-		check("Pasado el presupuesto, cae la primera", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 20.0))
+		check("Con tres arriba el respaldo aguanta", await wait_for(func(): return power.on_order.size() == power.BACKUP, 20.0))
+		await asked.call("lever", power.BACKUP, func(): return power.on_order.size() != power.BACKUP, &"power")
+		check("Con una cuarta saltan todas", await wait_for(func(): return power.on_order.is_empty(), 20.0))
+		# Without its sector's power the maneuver room's door stays shut.
+		level.player.global_position = power.usables[power.door_index()].stand + Vector3(0, 0.05, 0)
+		level.player.velocity = Vector3.ZERO
+		await pause_for(0.5)
+		level.match_net.use_office(&"power", "door", power.door_index())
+		await pause_for(2.0)
+		check("Sin corriente la puerta de la sala de maniobra no se abre", not power.motor_started and not power.motor_door.opened)
+		var mz: int = power.zone_of(power.maneuver_room)
+		check("Sube el sector de la sala de maniobra", await asked.call("lever", mz, func(): return power.on_order == [mz], &"power"))
 		check("Ve abierta la seguridad que abrió Alpha", await wait_for(func(): return air.post_open and not air.post_door.locked, 60.0))
 		check("Enciende los ventiladores desde la consola", await asked.call("start", 4, func(): return air.running(), &"air"))
 		check("Y los para", await asked.call("stop", 5, func(): return not air.running(), &"air"))
-	check("El cuadro queda igual en todos", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 60.0))
+	check("El cuadro queda igual en todos", await wait_for(func(): return power.on_order == [power.zone_of(power.maneuver_room)], 60.0))
 	check("Y el aire también: la seguridad abierta, una carga gastada, parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 60.0))
 	if words == "Bravo":
 		await office_return(words, index)
@@ -687,24 +698,28 @@ func ride_to(car: int, stage: int, offset: Vector3) -> bool:
 		await pause_for(0.5)
 	return level.session.stage >= stage
 
-## Both guests ride with the host to level 2; Alpha pulls the red lever there;
-## then the three ride on to level 3.
+## Both guests ride with the host to level 2; Alpha opens the maneuver room's
+## door there, waits for its motor and pulls the lever inside; then the three
+## ride on to level 3.
 func office_rides(words: String) -> void:
 	var offset := Vector3(0.4 if words == "Alpha" else -0.4, 0, 0)
 	check("Baja con los demás al nivel 2", await ride_to(0, 2, offset))
 	var power = level.objective(&"power")
 	if words == "Alpha":
-		var red: int = power.red_index()
-		var stand: Vector3 = power.usables[red].stand
-		for attempt in 30:
-			if power.red != power.Red.DOWN: break
-			level.player.global_position = stand + Vector3(0, 0.05, 0)
-			level.player.velocity = Vector3.ZERO
-			await pause_for(0.5)
-			level.match_net.use_office(&"power", "red", red)
-			await pause_for(0.5)
-		check("Tira de la palanca roja", power.red != power.Red.DOWN)
-	check("El reloj del montacargas acaba también aquí", await wait_for(func(): return power.red == power.Red.ARMED, 60.0))
+		for step: Array in [["door", power.door_index(), func(): return power.motor_started], ["lift", power.lift_index(), func(): return power.freed]]:
+			var stand: Vector3 = power.usables[int(step[1])].stand
+			for attempt in 30:
+				if step[2].call(): break
+				level.player.global_position = stand + Vector3(0, 0.05, 0)
+				level.player.velocity = Vector3.ZERO
+				await pause_for(0.5)
+				level.match_net.use_office(&"power", String(step[0]), int(step[1]))
+				await pause_for(0.5)
+			if String(step[0]) == "door":
+				check("Con corriente la puerta se abre sola, despacio", power.motor_started and not power.motor_door.opened)
+				check("Y acaba abierta", await wait_for(func(): return power.motor_door.opened, 15.0))
+		check("Baja la palanca del montacargas", power.freed)
+	check("El montacargas suelto también aquí, y la puerta abierta", await wait_for(func(): return power.freed and power.motor_door.opened, 60.0))
 	check("Y bajan juntos al nivel 3", await ride_to(1, 3, offset))
 
 ## Bravo leaves and comes back.
@@ -716,7 +731,7 @@ func office_return(words: String, index: int) -> void:
 	# Bravo leaves and comes back: it builds the floor again, and the host's
 	# catch-up gives it the card, the board and the air as they stand.
 	var alpha_seat := seat_named("Alpha")
-	var budget: int = power.budget
+	var board: Array = power.on_order.duplicate()
 	net.shutdown("")
 	await pause_for(3.0)
 	check("Vuelve a la sala", net.join("127.0.0.1", words, index, port) == OK)
@@ -725,7 +740,7 @@ func office_return(words: String, index: int) -> void:
 	power = level.objective(&"power")
 	air = level.objective(&"air")
 	check("Puesto al día: las dos fichas, pasadas, y la foto de Alpha", await wait_for(func(): return files.requests.size() == 2 and files.swiped.size() == 2 and files.photos.has(alpha_seat), 30.0))
-	check("El cuadro como lo tiene el anfitrión", power.on_order.size() == budget and not power.on_order.has(0))
+	check("El cuadro como lo tiene el anfitrión", power.on_order == board)
 	check("Y el aire: la seguridad abierta y su puerta sin llave", air.post_open and air.released and air.charges == 1 and not air.running() and not air.post_door.locked)
 
 func multiplayer_peers() -> Array:

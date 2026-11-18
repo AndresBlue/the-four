@@ -132,7 +132,7 @@ func rooms_ok(data: Dictionary, errors: Array[String]) -> void:
 
 ## 3. One of each special piece, and the stage rooms where the floor says.
 func specials_ok(data: Dictionary, errors: Array[String]) -> void:
-	for want in [["window", 0, OFFICE.WINDOW], ["electrical", 1, OFFICE.ELECTRICAL], ["security", 2, OFFICE.SECURITY], ["air_room", 2, OFFICE.AIR_ROOM], ["air_plant", 2, OFFICE.AIR_PLANT]]:
+	for want in [["window", 0, OFFICE.WINDOW], ["electrical", 1, OFFICE.ELECTRICAL], ["maneuver", 1, OFFICE.MANEUVER], ["security", 2, OFFICE.SECURITY], ["air_room", 2, OFFICE.AIR_ROOM], ["air_plant", 2, OFFICE.AIR_PLANT]]:
 		if of_type(data, int(want[1]), int(want[2])).size() != 1: errors.append("special_%s" % String(want[0]))
 	var refuges: Array = data.refuges
 	var gates: Array = data.gates
@@ -399,7 +399,9 @@ func mail_ok(data: Dictionary, errors: Array[String]) -> void:
 			break
 
 ## 9. Planta 1's power: the board, a circuit a sector in lever order, every
-## room on one, the timers on corridor stretches clear of the doors.
+## room on one, the timers on corridor stretches clear of the doors, and the
+## maneuver room: one door, on to a corridor, shut and motorised, its lever on
+## a wall, in a sector of its own where the real building has the sectors.
 func power_ok(data: Dictionary, errors: Array[String]) -> void:
 	if not data.has("power"):
 		errors.append("power")
@@ -407,7 +409,7 @@ func power_ok(data: Dictionary, errors: Array[String]) -> void:
 	var rooms: Array = data.rooms
 	var power: Dictionary = data.power
 	var el: Dictionary = rooms[int(power.room)]
-	if int(el.type) != OFFICE.ELECTRICAL or not on_wall(el, v3(power.board.point), String(power.board.wall)) or int(power.lift_lever) != power.circuits.size(): errors.append("power")
+	if int(el.type) != OFFICE.ELECTRICAL or not on_wall(el, v3(power.board.point), String(power.board.wall)): errors.append("power")
 	var sectors := {}
 	var want: Array = []
 	for room in rooms:
@@ -415,6 +417,12 @@ func power_ok(data: Dictionary, errors: Array[String]) -> void:
 		sectors[int(room.sector)] = true
 		if not OFFICE.off_limits(room) and int(room.id) != int(el.id): want.append(int(room.id))
 	if power.circuits.size() != sectors.size(): errors.append("circuit_count")
+	var man: Dictionary = power.get("maneuver", {})
+	var man_room: Dictionary = rooms[int(man.get("room", 0))]
+	var spec: Dictionary = data.get("doors", {}).get(String(man.get("door", "")), {})
+	var ways := FLOOR.doorways(man_room)
+	if man.is_empty() or int(man_room.type) != OFFICE.MANEUVER or ways.size() != 1 or int(ways[0].other) != int(man.outside) or not bool(rooms[int(man.outside)].corridor) or String(spec.get("lock", "")) != "motor" or bool(spec.get("open", false)) or not on_wall(man_room, v3(man.lever.point), String(man.lever.wall)): errors.append("maneuver")
+	elif not OFFICE.typology.is_empty() and [int(rooms[int(data.entries[1])].sector), int(el.sector), int(rooms[int(data.refuges[1])].sector)].has(int(man_room.sector)): errors.append("maneuver_sector")
 	var got: Array = []
 	for i in power.circuits.size():
 		var c: Dictionary = power.circuits[i]

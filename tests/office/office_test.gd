@@ -33,12 +33,12 @@ const RULES := ["won", "solo", "clean", "brave", "time_under", "team_out", "rest
 ## The office's furniture sets along the walls (spec_f1_geometry.md 9.5).
 const SETS := ["office_open", "office_private", "mail", "copy", "break", "lockers", "store", "office_corridor"]
 ## The office's types, 0 to 25.
-const TYPE_COUNT := 26
+const TYPE_COUNT := 27
 ## Table 1.2, type by type on wing 0: the floor, the lamp and the walls.
-const FINISHES_12 := ["vinyl", "carpet", "carpet", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
-const LAMPS_12 := ["troffer", "troffer", "troffer", "troffer", "troffer", "troffer", "batten", "troffer", "batten", "troffer", "troffer", "troffer", "batten", "batten", "troffer", "troffer", "troffer", "troffer", "emergency", "troffer", "emergency", "troffer", "batten", "batten", "troffer", "batten"]
+const FINISHES_12 := ["vinyl", "carpet", "carpet", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete", "quarry"]
+const LAMPS_12 := ["troffer", "troffer", "troffer", "troffer", "troffer", "troffer", "batten", "troffer", "batten", "troffer", "troffer", "troffer", "batten", "batten", "troffer", "troffer", "troffer", "troffer", "emergency", "troffer", "emergency", "troffer", "batten", "batten", "troffer", "batten", "batten"]
 ## The reception kept clean (the floor's first view, 12 November 2026).
-const WALLS_12 := ["office_paint_kept", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
+const WALLS_12 := ["office_paint_kept", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block", "block"]
 var checks: Array = []
 var failed := 0
 ## What each floor of the generator drew and how long it took, for the evidence.
@@ -95,7 +95,7 @@ func palette_tables() -> void:
 	var absent: Array = CONTRACT.filter(func(name): return not constants.has(name) and not methods.has(name))
 	check("Y todo lo que le piden la geometría y los sistemas", absent.is_empty(), str(absent))
 	var sizes: Array = [OFFICE.TYPES.size(), OFFICE.NAMES.size(), OFFICE.ARTICLES.size(), OFFICE.RECIPES.size(), OFFICE.HEIGHTS.size(), OFFICE.MODULE_SET.size(), OFFICE.FINISH_BY_TYPE.size()]
-	check("TYPES, NAMES, ARTICLES, RECIPES, HEIGHTS, MODULE_SET y FINISH_BY_TYPE tienen 26 entradas", sizes.all(func(size): return int(size) == TYPE_COUNT), str(sizes))
+	check("TYPES, NAMES, ARTICLES, RECIPES, HEIGHTS, MODULE_SET y FINISH_BY_TYPE tienen 27 entradas", sizes.all(func(size): return int(size) == TYPE_COUNT), str(sizes))
 	check("Cada receta tiene sus cuatro rincones", OFFICE.RECIPES.all(func(recipe): return recipe.size() == 4))
 	check("Los papeles estructurales tienen su número y su tipo", OFFICE.RECEPTION == 0 and OFFICE.LANDING == 9 and OFFICE.LOBBY == 10 and OFFICE.CORRIDOR == 11 and OFFICE.GALLERY == 12 and OFFICE.REFUGE == 19 and OFFICE.VOID == 20 and FLOOR.VOID == OFFICE.VOID and OFFICE.TYPES[OFFICE.LANDING] == "montacargas" and OFFICE.TYPES[OFFICE.REFUGE] == "vestibulo_montacargas")
 	var heights_right: bool = is_equal_approx(OFFICE.height_of({"type": OFFICE.OFFICE}), 2.95) and is_equal_approx(OFFICE.height_of({"type": OFFICE.ELECTRICAL}), 2.95) and is_equal_approx(OFFICE.height_of({"type": OFFICE.BOARDROOM}), 2.95) and [OFFICE.GALLERY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT].all(func(type): return is_equal_approx(OFFICE.height_of({"type": type}), 4.4))
@@ -124,7 +124,7 @@ func palette_tables() -> void:
 	var walls: Array = range(TYPE_COUNT).map(func(type): return OFFICE.wall_material({"type": type, "wing": 0}))
 	check("Las paredes de cada tipo son las de la tabla 1.2", walls == WALLS_12, str(walls))
 	check("Moqueta en las naves de la planta 1 y en juntas, dirección y secretaría de la planta 3", soft == [Vector2i(1, 0), Vector2i(2, 0), Vector2i(5, 2), Vector2i(16, 2), Vector2i(24, 2)], str(soft))
-	check("Nunca a oscuras los vestíbulos, la ventanilla, el cuarto eléctrico, el vacío, seguridad y la climatización, y un salón puede estarlo", never_dark == [0, 9, 10, 17, 18, 19, 20, 21, 22, 23] and OFFICE.may_be_dark({"type": OFFICE.OPEN_OFFICE, "hall": 6, "id": 6}), str(never_dark))
+	check("Nunca a oscuras los vestíbulos, la ventanilla, el cuarto eléctrico, el vacío, seguridad, la climatización y la sala de maniobra, y un salón puede estarlo", never_dark == [0, 9, 10, 17, 18, 19, 20, 21, 22, 23, 26] and OFFICE.may_be_dark({"type": OFFICE.OPEN_OFFICE, "hall": 6, "id": 6}), str(never_dark))
 	var plenum: Dictionary = OFFICE.PLENUM
 	var duct_y := float(plenum.duct_y)
 	var main := float(plenum.main)
@@ -301,7 +301,7 @@ func kind_checks() -> void:
 	var made = (load(KIND.CREATURE) as PackedScene).instantiate()
 	check("Su criatura se carga y es una criatura del contrato", made != null and made is CREATURE)
 	if made != null: made.free()
-	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 4", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 4)
+	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 5", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 5)
 	check("Sus etapas se llaman niveles; las del hotel, sectores", KIND.title_of(2) == "NIVEL 2" and HOTEL_KIND.title_of(2) == "SECTOR 2")
 
 # --- Generador ---------------------------------------------------------------
@@ -438,8 +438,11 @@ func generator_checks() -> void:
 	# verify.ps1's load the same floors take about half as long again, and a
 	# little more since three more of its tests build a floor of their own
 	# beside this one (25 October 2026: 2523 and 2568 ms there, under 2500
-	# alone, with the generator untouched).
-	check("La mediana de un piso no pasa de 2750 ms con la máquina ocupada", int(times[times.size() / 2]) <= 2750, "%d ms" % int(times[times.size() / 2]))
+	# alone, with the generator untouched). The building of 18 November 2026
+	# (2.5 times the area, and planta 2's maneuver room) draws in 1.9 to 2.1 s
+	# alone, the same tries with the board where it was or deeper, and 2784
+	# and 3212 ms here in two runs: the author's 2 s, half as long again.
+	check("La mediana de un piso no pasa de 3300 ms con la máquina ocupada", int(times[times.size() / 2]) <= 3300, "%d ms" % int(times[times.size() / 2]))
 	var file := FileAccess.open("res://evidence/office_manifest_7.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify(kept, "\t"))
 	var moved: Array = []
@@ -477,7 +480,7 @@ static func share_of(m: Dictionary, id: int) -> float:
 ## One of each special piece, in its band; the freight lobby at the far end
 ## of planta 1 and planta 0's long walk.
 func floor_specials(m: Dictionary, tag: String) -> void:
-	for want in [[0, OFFICE.WINDOW, OFFICE.WINDOW_DEPTH], [1, OFFICE.ELECTRICAL, OFFICE.ELECTRICAL_DEPTH], [2, OFFICE.SECURITY, OFFICE.SECURITY_DEPTH], [2, OFFICE.AIR_ROOM, null], [2, OFFICE.AIR_PLANT, null]]:
+	for want in [[0, OFFICE.WINDOW, OFFICE.WINDOW_DEPTH], [1, OFFICE.ELECTRICAL, OFFICE.ELECTRICAL_DEPTH], [1, OFFICE.MANEUVER, null], [2, OFFICE.SECURITY, OFFICE.SECURITY_DEPTH], [2, OFFICE.AIR_ROOM, null], [2, OFFICE.AIR_PLANT, null]]:
 		var found := of_type(m, int(want[0]), int(want[1]))
 		if found.size() != 1:
 			note(T_SPECIALS, "%s: tipo %d, %d" % [tag, int(want[1]), found.size()])
@@ -495,7 +498,7 @@ func floor_specials(m: Dictionary, tag: String) -> void:
 ## What finish() promises: the musts, the archive salon, toilets by sector,
 ## the mobile archives, the depots and the departments.
 func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
-	var specials := [OFFICE.WINDOW, OFFICE.ELECTRICAL, OFFICE.SECURITY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT, OFFICE.RECEPTION, OFFICE.LANDING, OFFICE.LOBBY, OFFICE.REFUGE]
+	var specials := [OFFICE.WINDOW, OFFICE.ELECTRICAL, OFFICE.MANEUVER, OFFICE.SECURITY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT, OFFICE.RECEPTION, OFFICE.LANDING, OFFICE.LOBBY, OFFICE.REFUGE]
 	for planta in 3:
 		var musts: Dictionary = OFFICE.MUSTS[planta].duplicate()
 		# A real building's smaller planta of a floor for one keeps the half with
@@ -602,7 +605,8 @@ func floor_power(m: Dictionary, tag: String) -> void:
 		var c: Dictionary = power.circuits[i]
 		if int(c.lever) != i or c.has("code"): note(T_CIRCUITS, "%s: palanca %d" % [tag, i])
 		for id in c.rooms: count[int(id)] = int(count.get(int(id), 0)) + 1
-	if int(power.lift_lever) != power.circuits.size(): note(T_CIRCUITS, "%s: palanca del montacargas" % tag)
+	var man := int(power.get("maneuver", {}).get("room", -1))
+	if man < 0 or int(m.rooms[man].type) != OFFICE.MANEUVER: note(T_CIRCUITS, "%s: sala de maniobra" % tag)
 	var lit := OFFICE.always_lit(m, 1)
 	var corridor := 0
 	for room in m.rooms:

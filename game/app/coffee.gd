@@ -122,7 +122,8 @@ func place_offices(manifest: Dictionary, rng: RandomNumberGenerator) -> void:
 		var near: Array = rooms.filter(func(room): return int(room.get("wing", -1)) == planta and from_entry.has(int(room.id)))
 		near.sort_custom(func(a, b): return float(from_entry[int(a.id)]) < float(from_entry[int(b.id)]))
 		var arrival: Array = [manifest.rooms[entry]] if entry >= 0 and entry < manifest.rooms.size() else []
-		pick(arrival + near, NEAR_CORNERS, rng)
+		# Never in a landmark (planta 2's maneuver room lies back toward the arrival).
+		pick(arrival + near.filter(func(room): return not is_landmark(manifest, int(room.id))), NEAR_CORNERS, rng)
 		var away: Array = [from_entry]
 		for landmark in landmarks(manifest, planta): away.append(FLOOR.route_metres(manifest, landmark))
 		var far: Array = near.filter(func(room): return not is_landmark(manifest, int(room.id)))
@@ -154,7 +155,9 @@ func landmarks(manifest: Dictionary, planta: int) -> Array:
 	if planta < refuges.size(): out.append(int(refuges[planta]))
 	match planta:
 		0: out.append(int(manifest.get("mail", {}).get("window", -1)))
-		1: out.append(int(manifest.get("power", {}).get("room", -1)))
+		1:
+			out.append(int(manifest.get("power", {}).get("room", -1)))
+			out.append(int(manifest.get("power", {}).get("maneuver", {}).get("room", -1)))
 		2:
 			var air: Dictionary = manifest.get("air", {})
 			out.append(int(air.get("security", {}).get("room", -1)))

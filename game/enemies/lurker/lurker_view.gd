@@ -127,7 +127,7 @@ const TORCH_HALF := Vector3(0.06, 0.06, 0.06)
 const USABLE_SHARE := 0.4
 ## What an objective's usable does that runs on electricity; somebody this near
 ## one is using it.
-const ELECTRIC := ["type", "take", "swipe", "lever", "red", "switch", "post", "start", "stop"]
+const ELECTRIC := ["type", "take", "swipe", "lever", "switch", "door", "lift", "post", "start", "stop"]
 const BUSY_REACH := 1.6
 ## Sources further than this are left out, and from FADE_FROM they cool a little.
 const LAMP_REACH := 32.0

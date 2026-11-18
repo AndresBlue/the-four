@@ -54,7 +54,7 @@ const MILESTONES := [
 ## the planta is), errand (the tape report's), brief (the pause screen's)}.
 const STAGES := [
 	{"objectives": ["files"], "level": "NIVEL 1", "department": "PERSONAL", "errand": "PIDE TU FICHA", "brief": "Pide tu ficha en la ventanilla de Personal, recógela en su estación y pásala por el lector del montacargas."},
-	{"objectives": ["power"], "level": "NIVEL 2", "department": "REGISTRO Y ARCHIVO", "errand": "ARRANCA EL MONTACARGAS", "brief": "Da la corriente desde el cuadro, sube la palanca roja del montacargas y baja cuando acabe el reloj."},
+	{"objectives": ["power"], "level": "NIVEL 2", "department": "REGISTRO Y ARCHIVO", "errand": "ARRANCA EL MONTACARGAS", "brief": "Da la corriente al sector de la sala de maniobra desde el cuadro, abre su puerta y baja la palanca del montacargas."},
 	{"objectives": ["air"], "level": "NIVEL 3", "department": "DIRECCIÓN", "errand": "SAL POR EL DUCTO", "brief": "Enciende la climatización desde seguridad, abre la compuerta del ducto principal y llega al pozo."},
 ]
 

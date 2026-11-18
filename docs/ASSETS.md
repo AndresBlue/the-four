@@ -465,6 +465,10 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 | `chair_roll.wav` | `oga_nicolemariet_office_chair_roll.wav` | Nicole Marie T, [OpenGameArt](https://opengameart.org/content/office-chair-roll-sfx-sound-effect), en los créditos del juego (conviene confirmar la licencia en su propia página antes de publicar) | CC BY 4.0 |
 | `starter.wav` (sus primeros 3 s) | `pixabay_61228_faulty_fluorescent_starter_hum_everydaysounds.mp3` | EverydaySounds, Freesound (CC0), en Pixabay | Pixabay Content License |
 | `ladder.wav` | `pixabay_76052_ladder_aluminum_erik90.mp3` | erik90, Pixabay | Pixabay Content License |
+| `heavy_door.wav` (la puerta motorizada de la sala de maniobra: la grabación entera, más lenta hasta durar 4,5 s y más grave) | `bsb_2355_metal_barrier_opening_1.flac` | Joseph SARDIN, BigSoundBank | CC0 |
+| `door_thud.wav` (esa puerta sin corriente: su primer segundo, más lento y más grave) | `bsb_2358_metal_barrier_closure_1.flac` | Joseph SARDIN, BigSoundBank | CC0 |
+
+Las dos últimas se decodificaron el 18 de noviembre de 2026 con el decodificador de audio de Blender 5.2, porque en el equipo no había ffmpeg. Después se cortaron con las mismas funciones del guion, que las lista en `CLIPS`: con ffmpeg, el guion las rehace.
 
 ## Sonidos de The Lurker (piso 2)
 

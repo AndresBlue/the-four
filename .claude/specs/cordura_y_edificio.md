@@ -404,6 +404,70 @@ Hecha. El autor dejó a la sesión elegir qué recursos quedan y añadir los nue
   - **El color se sale de la figura.** Una línea blanca (la huella, la placa) que cruza la caja de un superviviente en pantalla toma su color en ese tramo.
   - **No hay rótulos en el juego:** quien la lleva aprende el disco y los colores jugando, como pide «la interfaz dice poco».
 
+## Estado de la fase 6 (18 de noviembre de 2026)
+
+Hecha según 3.10, con un cambio sobre la propuesta: **los 250 m por tramo no caben en este edificio.** Con dos supervivientes la llegada y el montacargas de la planta 2 quedan a unos 210 m andando, y ninguna sala está a más de 250 m de los dos a la vez (sonda `evidence/planta/fase6/walks_probe.gd`). En su lugar, el recorrido cruza el edificio tres veces:
+- **El cuadro, al fondo:** `ELECTRICAL_DEPTH` pasa de 0,4–0,7 a 0,6–0,85, cerca del montacargas.
+- **La sala de maniobra, de vuelta hacia la llegada** (`office_generator.pick_maneuver()`), con estas condiciones:
+  - una sola puerta, a un pasillo;
+  - ni en el sector de la llegada, ni en el del cuadro, ni en el del montacargas;
+  - en el edificio real, solo en una celda que el programa hizo despacho, almacén, archivo móvil o depósito, para no quitar sitio a las salas obligatorias;
+  - se sortea entre el mejor cuarto (`MANEUVER_TOP`) de las celdas, ordenadas por el más corto de sus dos caminos (al cuadro y al montacargas).
+- **Medido en 10 semillas con dos supervivientes:** tramos de 160 a 190 m, de 130 a 190 y de 160 a 220; de 480 a 600 m en total, frente a los 210 del directo. Cada punto queda en su sector.
+
+**Aceptación** (explorador ingenuo, 30 semillas, dos supervivientes, 3 pasadas; `evidence/planta/fase6/explorador_before.json` y `explorador_after.json`)
+
+| Mediana | Antes | Ahora |
+|---|---|---|
+| Planta 2, explorador | 10,7 min | **14,5 min** (meta: 13 o más) |
+| Planta 2, camino directo | 1,6 min (con el reloj de 60 s) | 2,3 min |
+| Piso entero, explorador | 34,5 min | 38,1 min |
+| Dibujar un piso, solo | 1.885 ms | 1.977 ms |
+
+- **Dibujar un piso** ronda el tope de 2 s que acepta el autor:
+  - con la máquina libre, de 1,9 a 2,1 s según la tirada, con los mismos intentos por piso (1,5 de media) con el cuadro al fondo que donde estaba (`evidence/planta/fase6/draw_probe.gd`);
+  - en `verify`, con la máquina ocupada, dio 2.784 y 3.212 ms en dos pasadas;
+  - el tope de `office_test` con la máquina ocupada pasa de 2.750 a 3.300 ms: los 2 s del autor con la carga de `verify`.
+- **Los bots:** `office_bots_test` sigue ganando el piso en las semillas 7 y 33. En la 33, la planta 2 les lleva 167 s simulados: suben el sector a los 229 s, abren la puerta a los 268 y bajan la palanca a los 280.
+- **La red:** `office_coop` lo comprueba en tres máquinas:
+  - tres sectores aguantan y el cuarto los tira todos;
+  - la puerta no se abre sin corriente y con ella se abre sola;
+  - la palanca suelta el montacargas.
+- **El piso a pie:** `office_walk_test` hace lo mismo con los pilotos. Comprueba además que nadie cierra la puerta después y que, apuntando a cualquier altura de la hoja, se enfoca el botón del motor.
+- **Las capturas:** `tools/capture/maneuver_capture.gd`, con ventana, deja `evidence/planta/fase6/40` a `47`, `sesion.txt` y `hoja_leyenda.png` (de `hoja_leyenda.py`). Enseñaron dos fallos, ya arreglados:
+  - la cafetera cercana a la llegada no evitaba los hitos y cayó delante del armario de la sala de maniobra. Ahora `coffee.place_offices()` la saca de los hitos, y la sala está en `coffee.landmarks()`;
+  - el botón de la puerta era una caja de 0,6 m a la altura del pecho. Apuntando arriba o abajo, la E iba a la hoja cerrada con llave. Ahora cubre la hoja entera (`DOOR_BOX`) y deja de tomar la puntería cuando el motor ha corrido.
+- **Sin resolver:**
+  - la palanca roja de la sala cuelga de la pared sin soporte propio, junto al armario;
+  - los dos sonidos de la puerta están sin oír.
+
+**Dónde está**
+- **El tipo nuevo**, `office_palette.MANEUVER` (26, «Sala de maniobra»), en cada tabla por tipo. Lleva paredes de bloque, suelo de baldosa industrial, regletas que se encienden con su sector y puerta de acero. `office_palette.VERSION` pasa a 5.
+- **El manifiesto:**
+  - `power.maneuver`: `{room, door, outside, lever}`;
+  - la puerta lleva `lock` `"motor"` y empieza cerrada;
+  - sale `power.lift_lever`.
+- **El validador**, `office_validator.power_ok()`, comprueba:
+  - una puerta, a un pasillo, motorizada y cerrada;
+  - la palanca en la pared;
+  - en el edificio real, su sector aparte.
+- **`power_objective.gd` rehecho:**
+  - `BACKUP` 3 en todas las dificultades: con una cuarta palanca se vacía `on_order`;
+  - el armario de la antigua palanca roja es el del RESPALDO, con tres pilotos;
+  - el cartel, en `paper_of()`;
+  - la puerta (`run_motor()`): la hoja del piso, cerrada con llave, que gira en `DOOR_TIME` (4,5 s) con la tween de la propia hoja. El anfitrión decide si abre (`{"open"}`) y un invitado que va por detrás queda igualado por el `settled` del anfitrión;
+  - el piloto sobre el marco y la palanca dentro (`freed`);
+  - las tareas de los bots (`bot_errands()`) y la instantánea (`motor`, `freed`).
+- **Fuera:** la palanca roja, el reloj, el tictac de la roja, `budget`, `lift_timer` y el soporte de la palanca roja del tablero (`power_equipment.gd`).
+- **El hito «maneuver»** (`office_landmarks.gd`): el cartel de peligro con «PUERTA MOTORIZADA», las rayas del umbral y su fila en la señal de la llegada.
+- **`lurker_routes.door_open()`:** la puerta abierta con llave cuenta como abierta.
+- **Las alucinaciones de palanca**, solo mientras el montacargas no está suelto.
+- **El explorador:** tres tramos y 5,5 s de puerta y palanca, en lugar del reloj.
+- **Los sonidos:**
+  - `heavy_door.wav` y `door_thud.wav`, de grabaciones CC0 de BigSoundBank que ya estaban descargadas;
+  - se decodificaron con el decodificador de audio de Blender (no hay ffmpeg en el equipo) y se cortaron con las funciones de `prepare_office_sfx.py`, que las lista;
+  - sin oír todavía.
+
 ## 5. Riesgos
 
 - **El coste del edificio grande** no se conoce hasta la fase 0. Puede obligar a montar las plantas de una en una.

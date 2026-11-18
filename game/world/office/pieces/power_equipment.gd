@@ -47,8 +47,9 @@ static func samples(builder: Node3D) -> Array:
 		["timer_switch", timer_switch(builder, SWITCH)],
 	]
 
-## The board on its wall: one cabinet per zone lever and the red one's apart,
-## with its meters, pilots and plates. Its zones are the objective's, 1 to 7.
+## The board on its wall: one cabinet per zone lever and the backup's apart
+## (the old red lever's, with its three pilots), with its meters, pilots and
+## plates. Its zones are the objective's, 1 to 7.
 static func power_board(builder: Node3D, size: Vector3, zones: int) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("power_board", size, str(zones)), func() -> ArrayMesh: return make_power_board(builder, size, zones))
 
@@ -60,7 +61,6 @@ static func make_power_board(builder: Node3D, size: Vector3, zones: int) -> Arra
 	var zf := -d / 2.0 + 0.12
 	var xr := FIRST + PITCH * n + GAP
 	var pc := red_plate_x(n)
-	var rb := minf(0.14, 2.0 * (w / 2.0 - 0.005 - xr))
 	var left := -w / 2.0 + 0.1
 	var zone_end := left + PITCH * n
 	var red_l := zone_end + 0.02
@@ -95,7 +95,6 @@ static func make_power_board(builder: Node3D, size: Vector3, zones: int) -> Arra
 	KIT.block(p, "black", Vector3(pc, PLATE_Y, zf + 0.002), Vector3(RED_PLATE, 0.1, 0.004))
 	for k in 3:
 		KIT.cylinder(p, "lamp_off", Vector3(pc - 0.05 + k * 0.05, 1.66, zf + 0.004), 0.011, 0.008, 10, KIT.along_z())
-	KIT.block(p, "black", Vector3(xr, 1.3, zf + 0.025), Vector3(rb, 0.34, 0.05), 0.004)
 	KIT.block(p, "metal", Vector3(pc, 0.95, zf + 0.002), Vector3(RED_PLATE, 0.12, 0.004))
 	for k in 4:
 		KIT.block(p, "black", Vector3(rx, 0.3 + k * 0.03, zf + 0.001), Vector3(minf(0.2, rw - 0.08), 0.012, 0.002))
