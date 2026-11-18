@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.10.2](#1102--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La voz del equipo: de cerca en la sala, de lejos por walkie. |
 | [1.10.1](#1101--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción en dos celdas, el café en los rincones y las luces de emergencia hacia el suelo. |
 | [1.10.0](#1100--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción más larga, las motas finas como un píxel, el café lejos del ascensor y The Lurker pulida en Versus. |
 | [1.9.0](#190--17-de-noviembre-de-2026)    | 17 de noviembre de 2026  | The Lurker en Versus se ve de nuevo: su cuerpo real en tercera persona sobre un azul marino oscuro, la interfaz de los controles y los ductos en 3D. |
@@ -80,6 +81,24 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.10.2 — 18 de noviembre de 2026
+
+*La voz del equipo: de cerca en la sala, de lejos por walkie.*
+
+Commits `f225af42`…`v1.10.2` (4). Protocolo de red `the-four-net-23`: no juega con la 1.10.1.
+
+### Novedades
+
+- **Voz del equipo en partidas en línea.** De cerca se oye desde donde está el compañero, amortiguada por paredes y puertas. Lejos o en otra planta llega por un walkie de la época, con la banda recortada, soplido, un bip al abrir y al cerrar y la cola del silenciador.
+- **El micrófono viene abierto y en automático.** La sensibilidad se ajusta en Audio (20 % por defecto) o se deja automática, y un medidor enseña si el micrófono capta y dónde está el umbral. Pulsar para hablar (**V** o **R3**) transmite al instante sin perder el comienzo.
+- **Los muertos escuchan** desde el compañero al que miran, sin poder hablar.
+- **Iconos en vez de texto:** quién habla, si llega directo o por radio, y si estás transmitiendo. Sobre la barra de resistencia, un hombrecito corriendo.
+
+### Arreglos
+
+- Los percheros ya no quedan en mitad de la recepción, ni otros muebles de rincón en el lado abierto de las salas de dos celdas.
+- Ningún mueble tapa el tablero eléctrico ni su palanca del montacargas.
 
 ## 1.10.1 — 17 de noviembre de 2026
 
