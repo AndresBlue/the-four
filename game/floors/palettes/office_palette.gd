@@ -234,6 +234,12 @@ static func area_for(survivors: int) -> float:
 ## Each planta's, first to last, as the hotel's.
 static func areas_for(survivors: int) -> Array:
 	var area := area_for(survivors)
+	# A tool may draw every planta bigger (--office-area=2.0: the scale test of
+	# .claude/specs/cordura_y_edificio.md, phase 0).
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--office-area="):
+			var forced := float(argument.get_slice("=", 1))
+			return [forced, forced, forced]
 	return [1.0 if clampi(survivors, 1, 5) == 1 else area, area, area]
 
 static func rooms_window(area: float) -> Vector2i:

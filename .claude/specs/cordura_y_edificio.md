@@ -250,6 +250,32 @@ Empieza cuando el autor diga qué queda y qué sale del anexo A.
 - La IA con clones.
 - Auditoría de los documentos contra el código.
 
+## Estado de la fase 0 (18 de noviembre de 2026)
+
+**El explorador.** `tools/dev/office_explorer.gd` hace las medidas sobre el plano, sin montarlo: 40 semillas en 38 s. Registros en `evidence/planta/fase0/`.
+
+| Plano | Salas por planta (con celdas de pasillo) | Explorador ingenuo, piso (mediana) | Por planta | Camino directo, piso | Dibujar un piso |
+|---|---|---|---|---|---|
+| Hoy (área 1, 2 supervivientes) | unas 120 | 15,3 min (8,5 a 19,2) | 4,0 · 4,1 · 7,0 | 4,8 min | menos de 1 s |
+| Área 2 | 242 | 25,4 min | 6,5 · 7,3 · 11,9 | 5,8 min | 1,4 s |
+| Área 3 | 356 | 31,2 min | 8,6 · 9,7 · 14,1 | 6,8 min | 2,4 s |
+
+- **Calibración.** El autor tarda hoy de 6 a 12 minutos, entre el camino directo (4,8) y el ingenuo (15,3), que no lee las señales. Un jugador real tarda unas 0,6 veces lo que tarda el ingenuo.
+- **Lo que sale de aquí:** el tamaño solo no basta. Con el triple de superficie, el ingenuo tarda el doble y el camino directo apenas crece, porque los hitos siguen colocados por su fracción del recorrido.
+  - Para 40 a 50 minutos de jugador real hacen falta, además del tamaño, los caminos en ese entre sectores (3.8) y los tramos nuevos de cada planta (3.9 a 3.11).
+  - La meta en el explorador: 25 minutos de ingenuo por planta.
+- **El coste del edificio de área 2**, en el banco en Alto con la semilla 81 (`--office-area=2.0`, una opción nueva de `office_palette.areas_for()` solo para herramientas):
+
+| Medida | Área 1 | Área 2 |
+|---|---|---|
+| Recorrido | 8,99 ms (banco de la 1.10.2, 1920 × 1080) | 9,97 ms |
+| Primitivas | 415.000 | 715.000 |
+| Objetos | 891 | 1.601 |
+| Carga del piso | unos 21 s | 24,5 s |
+| Memoria estática máxima | 1,11 GB | 1,32 GB |
+
+- **Conclusión:** cabe, así que no hace falta montar las plantas de una en una. La pasada de área 1 de esta prueba salió a 2560 × 1369 y no se compara.
+
 ## 5. Riesgos
 
 - **El coste del edificio grande** no se conoce hasta la fase 0. Puede obligar a montar las plantas de una en una.
