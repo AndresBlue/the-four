@@ -322,6 +322,53 @@ Hecha según 3.4 a 3.7, solo para quien la lleva en Versus (la IA del cooperativ
   - no hay capturas del doble ni de la bajada en una partida;
   - la pantalla de quien la lleva no marca sus dobles (fase 3).
 
+## Estado de las fases 4 y 5 (18 de noviembre de 2026)
+
+**Hecho**
+- **Sin códigos:**
+  - `office_palette.numbered()` es siempre falso;
+  - fuera `plaque()`, las letras de departamento, el tope de 96 salas numeradas (`cap_numbers()`), las placas junto a las puertas y el código de los circuitos («R-2»);
+  - las zonas se rotulan por su nombre.
+- **El edificio grande** (`office_palette.SCALE` 2,5, `AREA_MOST` 3):
+  - con dos o tres supervivientes, unas 300 celdas y 7.700 m² por planta;
+  - con cinco, unas 350;
+  - en solitario, la planta 1 grande y las otras dos a la mitad, como siempre;
+  - un cruce más cada 5 vanos en cada mitad (`SNAKE_BAYS`, cruces marcados `snake`, que no cuentan como el cruce central);
+  - una puerta cortafuegos en cualquier pasillo recto de más de 45 m (`runs_doored()`, al final, en `finish()`).
+- **El camino en ese** (`snake`), solo en el anillo y no en solitario: en cada tramo entre cruces, un pasillo principal (alternando de lado) y la galería tapiados cerca del medio. El edificio para uno es siempre de anillo: con la espina grande el montacargas no tenía dónde ir.
+- **Planta 1:** la ventanilla entre el 70 y el 98 % del recorrido (`WINDOW_DEPTH`) y de 16 a 28 estaciones del tubo.
+- **Arreglos que trajo el tamaño:**
+  - su guarida, siempre bajo falso techo;
+  - el cartel de dirección de un hito cuyo camino se separa del primero, en su propio camino;
+  - el café de las oficinas busca rincón entre las 8 salas más cercanas a la llegada y las 40 más apartadas, solo en salas de una celda.
+- `office_palette.VERSION` 4.
+
+**Medidas**
+- **Pisos válidos** (`tools/dev/open_run_probe.gd`, como los elige el juego): 30 de 30 en solitario, 40 de 40 con dos, 10 de 10 con cinco.
+- **El explorador ingenuo:**
+
+| Medida | Hoy | Ahora |
+|---|---|---|
+| Piso entero, explorador | 15,3 min | 33,1 min |
+| Piso entero, camino directo | 4,8 min | 7,8 min |
+| Planta 1, explorador | 4,0 min | 11,1 min |
+| Llegar a la ventanilla, explorador | 1,4 min | 5,2 min |
+
+- **El banco en Alto** (semilla 81, en solitario, área 2,5):
+
+| Medida | Antes | Ahora |
+|---|---|---|
+| Recorrido | 8,85 ms | 10,70 ms |
+| Llegada | 10,66 ms | 14,45 ms |
+| Carga | 14,8 s | 22,5 s |
+| Memoria | 1,0 GB | 1,26 GB |
+
+**Lo que aún no llega**
+- Por la calibración de la fase 0 (un jugador, unas 0,6 veces el explorador), el piso entero rondaría los 20 minutos, no los 40 a 50.
+- Faltan los tramos de las fases 6 a 8: el cuadro, la puerta y la sala de maniobra; las cámaras y las 8 salas; el laberinto.
+- La planta 1 no llega a los 8 minutos de ventanilla para un jugador real.
+- La meta de 400 m de camino hasta la ventanilla está por medir.
+
 ## 5. Riesgos
 
 - **El coste del edificio grande** no se conoce hasta la fase 0. Puede obligar a montar las plantas de una en una.

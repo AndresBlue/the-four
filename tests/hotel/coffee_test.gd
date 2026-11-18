@@ -139,11 +139,21 @@ func run() -> void:
 		var here: Array = office.filter(func(one): return level.FLOOR.planta_of(one.global_position.y) == p)
 		var ways: Array = here.map(func(one): return float(metres.get(int(level.FLOOR.room_at(level.manifest.rooms, one.global_position).get("id", -1)), INF)))
 		ways.sort()
-		by_door.append(ways)
-		# The near one in the way in or the room beside it (the reception's annex is 18 m off its middle); the far one past half the planta's farthest room.
+		by_door.append(ways + [snappedf(float(metres.values().max()), 0.1)])
+		# The near one in the first 30 % of the planta's walk (its small rooms by the
+		# way in are full); the far one, by the doors, a fifth of that walk or more
+		# from the way in and from each of the planta's landmarks.
 		var farthest: float = metres.values().max()
-		if ways.size() < 2 or float(ways[0]) > 20.0 or float(ways[1]) < farthest * 0.5: far_enough = false
-	check("En cada planta, una en la llegada y otra lejos de ella", far_enough, str(by_door))
+		ways = ways.slice(0, 2)
+		var far_room := -1
+		for one in here:
+			var id := int(level.FLOOR.room_at(level.manifest.rooms, one.global_position).get("id", -1))
+			if is_equal_approx(float(metres.get(id, INF)), float(ways[ways.size() - 1])): far_room = id
+		var least := INF
+		for landmark in [entry] + level.coffee.landmarks(level.manifest, p): least = minf(least, float(level.FLOOR.route_metres(level.manifest, int(landmark)).get(far_room, INF)))
+		by_door[p].append(snappedf(least, 0.1))
+		if ways.size() < 2 or float(ways[0]) > farthest * 0.3 or least < farthest * 0.2: far_enough = false
+	check("En cada planta, una en la llegada y otra lejos de ella y de sus hitos", far_enough, str(by_door))
 	check("Beber el café dice que te sientes mejor", level.coffee.FELT == "Te sientes mejor...")
 	check("Ninguna delante del ascensor de la recepción ni de otro", clear_of_lifts(level, office))
 	check("Lo que cuelga de las paredes del piso 2 está anotado", level.hotel.hung.size() > 50, str(level.hotel.hung.size()))

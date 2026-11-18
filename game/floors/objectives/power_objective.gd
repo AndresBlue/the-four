@@ -107,7 +107,7 @@ func place() -> void:
 		# Its plate on its cabinet, over its meter; the red one's where its
 		# cabinet's plate is (spec_rediseno 6.13).
 		var plate_x: float = POWER_LOOK.red_plate_x(zones.size()) if i == red_index() else lever_at(i).x
-		plate_text("MONTACARGAS" if i == red_index() else "%s\n%s" % [String(zones[i].code), String(zones[i].name)], origin + basis * Vector3(plate_x, POWER_LOOK.PLATE_Y, POWER_LOOK.PLATE_Z), yaw, 18 if i == red_index() else 14)
+		plate_text("MONTACARGAS" if i == red_index() else String(zones[i].name), origin + basis * Vector3(plate_x, POWER_LOOK.PLATE_Y, POWER_LOOK.PLATE_Z), yaw, 18 if i == red_index() else 14)
 	# The red cabinet's middle pilot (power_board()), lit red while its lever
 	# waits to be pulled: the liveliest thing in the room (office_landmarks.gd).
 	var pilot_at := Transform3D(basis, origin + basis * Vector3(POWER_LOOK.red_plate_x(zones.size()), RED_PILOT_Y - RED_PILOT.y * 0.5, POWER_LOOK.PLATE_Z + 0.002))
@@ -149,7 +149,7 @@ func place() -> void:
 ## The board's legend: each zone's lever, the budget and the red lever.
 func paper_of(_index: int) -> Dictionary:
 	var lines: Array = []
-	for z in zones: lines.append("%s %s" % [String(z.code), String(z.name)])
+	for z in zones: lines.append(String(z.name))
 	lines.append("")
 	lines.append("NO MÁS DE %d ZONAS A LA VEZ." % budget)
 	lines.append("PALANCA ROJA: MONTACARGAS. CORTA LA PLANTA. ARRANQUE CON RETARDO.")

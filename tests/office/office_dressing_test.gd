@@ -147,7 +147,7 @@ func chairs_face_tables(rooms: Array, notes: Dictionary) -> void:
 ## Each thing with a front (office_models.FRONTED) that has a seat of its own
 ## piece within FRONT_REACH faces one of them within FRONT_MARGIN: a reader
 ## turned to the wall, a keyboard askew. One with no seat by it (a printer on its
-## cart) is not judged, nor one whose nearest seat is a fallen chair (its sitter
+## cart) is not judged, nor one with a fallen chair among its seats (its sitter
 ## gone, it may lie to a side, office_clutter.chair_pose()).
 const FRONT_REACH := 2.0
 const FRONT_MARGIN := deg_to_rad(60.0)
@@ -166,11 +166,13 @@ func fronts_face_seats(hotel, notes: Dictionary) -> void:
 		var near: Array = seats.get("%d:%s" % [int(thing.room), String(thing.holder)], []).filter(func(p: Vector3) -> bool: return Vector2(p.x - at.x, p.z - at.z).length() < FRONT_REACH)
 		if near.is_empty(): continue
 		near.sort_custom(func(p: Vector3, q: Vector3) -> bool: return Vector2(p.x - at.x, p.z - at.z).length() < Vector2(q.x - at.x, q.z - at.z).length())
-		if fallen.has(near[0]): continue
+		# The seat it faces may be the fallen one, though not the nearest (a
+		# director's chair fallen, the visitors' still, the bigger building's room 913).
+		if near.any(func(p: Vector3) -> bool: return fallen.has(p)): continue
 		judged += 1
 		var front := Vector2((thing.front as Vector3).x, (thing.front as Vector3).z)
 		if not near.any(func(p: Vector3) -> bool: return absf(front.angle_to(Vector2(p.x - at.x, p.z - at.z))) <= FRONT_MARGIN):
-			wrong.append("%s en sala %d" % [String(thing.kind), int(thing.room)])
+			wrong.append("%s en sala %d (%s, de %s)" % [String(thing.kind), int(thing.room), OFFICE.label(hotel.manifest.rooms[int(thing.room)]), String(thing.holder)])
 	check("Las máquinas, teléfonos y lámparas miran a un asiento de su mueble", judged > 0 and wrong.is_empty(), "%d juzgados, mal: %s" % [judged, str(wrong)])
 	# A download baked facing elsewhere is right where it is put and wrong as
 	# drawn: the reader's screen (its "filmscreen", tilted up) must face its +Z.

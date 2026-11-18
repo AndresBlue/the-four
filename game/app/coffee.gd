@@ -19,6 +19,10 @@ const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 ## Seconds from the cup to feeling it, and that it takes the mind to come back.
 const BREW := 2.5
 const EASE := 1.0
+## How many of the rooms nearest the way in, and of the farthest, are tried
+## for a corner before a wall's middle.
+const NEAR_CORNERS := 8
+const FAR_CORNERS := 40
 ## What the offices say when it is felt.
 const FELT := "Te sientes mejor..."
 ## What it sounds like making it: for now the copier's hum, cut short.
@@ -105,23 +109,20 @@ func put(spot: Dictionary) -> void:
 	machines.append(machine)
 
 ## The offices (the author, 18 November 2026: no mind comes back in the light
-## there, only with a cup): two a planta, one where it is walked into and one
-## in the room farthest by the doors from that and from its landmarks, a
-## corner of the plan away from everything that matters.
+## there, only with a cup): two a planta, one where it is walked into (or as
+## near it as one goes) and one in the rooms farthest by the doors from that
+## and from its landmarks, the far corner of the plan. Each in a corner of its
+## room where one of the first rooms tried has one (the author, 17 November).
 func place_offices(manifest: Dictionary, rng: RandomNumberGenerator) -> void:
-	var rooms: Array = candidates(manifest)
+	# Rooms of their own: a salon's cell has an open side where a corner looks to be.
+	var rooms: Array = candidates(manifest).filter(func(room): return int(room.get("hall", -1)) < 0)
 	for planta in FLOOR.PLANTAS:
 		var entry := FLOOR.entry_of(manifest, planta)
 		var from_entry := FLOOR.route_metres(manifest, entry)
-		# The way in first, else the room nearest it that takes one.
 		var near: Array = rooms.filter(func(room): return int(room.get("wing", -1)) == planta and from_entry.has(int(room.id)))
 		near.sort_custom(func(a, b): return float(from_entry[int(a.id)]) < float(from_entry[int(b.id)]))
 		var arrival: Array = [manifest.rooms[entry]] if entry >= 0 and entry < manifest.rooms.size() else []
-		for room in arrival + near:
-			var spot := free_spot(room, rng)
-			if spot.is_empty(): continue
-			put(spot)
-			break
+		pick(arrival + near, NEAR_CORNERS, rng)
 		var away: Array = [from_entry]
 		for landmark in landmarks(manifest, planta): away.append(FLOOR.route_metres(manifest, landmark))
 		var far: Array = near.filter(func(room): return not is_landmark(manifest, int(room.id)))
@@ -130,11 +131,21 @@ func place_offices(manifest: Dictionary, rng: RandomNumberGenerator) -> void:
 			for metres: Dictionary in away: least = minf(least, float(metres.get(int(room.id), 0.0)))
 			return least
 		far.sort_custom(func(a, b): return score.call(a) > score.call(b))
-		for room in far:
-			var spot := free_spot(room, rng)
-			if spot.is_empty(): continue
+		pick(far, FAR_CORNERS, rng)
+
+## A machine in the first of `rooms` with a corner free among the first
+## `corners` of them, else in the first that takes one anywhere.
+func pick(rooms: Array, corners: int, rng: RandomNumberGenerator) -> void:
+	for room in rooms.slice(0, corners):
+		var spot := free_spot(room, rng, true)
+		if not spot.is_empty():
 			put(spot)
-			break
+			return
+	for room in rooms:
+		var spot := free_spot(room, rng)
+		if not spot.is_empty():
+			put(spot)
+			return
 
 ## A planta's rooms that matter: its errand's and its way out.
 func landmarks(manifest: Dictionary, planta: int) -> Array:
@@ -179,7 +190,7 @@ func candidates(manifest: Dictionary) -> Array:
 ## doorway), nothing in the way nor hung behind, a floor to stand on in front,
 ## and no other machine near: a corner first, then mid wall. {position, yaw},
 ## or nothing.
-func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+func free_spot(room: Dictionary, rng: RandomNumberGenerator, corners_only := false) -> Dictionary:
 	var half := FLOOR.size_of(room) * 0.5
 	# [side, along]: each corner of each wall, then shares of the wall, each lot in its own order.
 	var middles: Array = []
@@ -187,7 +198,7 @@ func free_spot(room: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 		var length: float = half.y if side < 2 else half.x
 		for share: float in [0.5, 0.3, 0.7, 0.2, 0.8]: middles.append([side, (share - 0.5) * 2.0 * maxf(length - 1.0, 0.0)])
 	var tries: Array = []
-	for lot: Array in [corners(room), middles]:
+	for lot: Array in ([corners(room)] if corners_only else [corners(room), middles]):
 		for i in range(lot.size() - 1, 0, -1):
 			var j := rng.randi_range(0, i)
 			var swap = lot[i]

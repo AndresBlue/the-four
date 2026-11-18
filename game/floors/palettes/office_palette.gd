@@ -9,7 +9,7 @@ extends RefCounted
 ## preloads it, and the generator and the validator load it headless.
 
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
-const VERSION := 3
+const VERSION := 4
 
 ## The real building's typologies (planta_real.md 13.7), a table each: its rows
 ## from the front wall to the back, [role, sizes] ("main" and "gallery" are
@@ -223,13 +223,17 @@ const TV_ROOM := -1
 const EMPTY_SALON := -1
 
 ## How much floor each planta is by the survivors who play it, and its rooms:
-## the hotel's (hotel_palette.gd says why).
+## the hotel's (hotel_palette.gd says why), times SCALE (the author, 18
+## November 2026: each planta about a quarter of an hour; the bench on area 3,
+## .claude/specs/cordura_y_edificio.md phase 4, is why AREA_MOST).
 const AREA := {1: 0.5, 4: 1.2, 5: 1.35}
+const SCALE := 2.5
+const AREA_MOST := 3.0
 const ROOMS := Vector2i(81, 99)
 const NUMBERED_MOST := 96
 
 static func area_for(survivors: int) -> float:
-	return float(AREA.get(clampi(survivors, 1, 5), 1.0))
+	return minf(float(AREA.get(clampi(survivors, 1, 5), 1.0)) * SCALE, AREA_MOST)
 
 ## Each planta's, first to last, as the hotel's.
 static func areas_for(survivors: int) -> Array:
@@ -240,7 +244,7 @@ static func areas_for(survivors: int) -> Array:
 		if argument.begins_with("--office-area="):
 			var forced := float(argument.get_slice("=", 1))
 			return [forced, forced, forced]
-	return [1.0 if clampi(survivors, 1, 5) == 1 else area, area, area]
+	return [SCALE if clampi(survivors, 1, 5) == 1 else area, area, area]
 
 static func rooms_window(area: float) -> Vector2i:
 	var rooms: Vector2i = TYPOLOGIES.get(typology, {}).get("rooms", REAL_ROOMS)
@@ -319,8 +323,9 @@ const HALL_HEIGHT := 4.8
 ## window, the security post and the rooms with only an emergency light or
 ## none. Salons may be dark.
 const NEVER_DARK := [0, 9, 10, 17, 18, 19, 20, 21, 22, 23]
-## Doors with no plaque (numbered(), plaque()).
-const NO_NUMBER := [0, 9, 10, 11, 12, 19, 20, 23, 25]
+## The hotel palette's name, kept for the shared contract (office_test): no
+## office is numbered (numbered()), whatever its type.
+const NO_NUMBER := []
 ## What the hotel's finish() draws (step 1a's generator); step 1b's own draws
 ## from PLANTA_MIX, HALL_MIX and SERVICE_BY_PLANTA.
 const TIDY_ROOMS := [3, 3, 3, 4, 7, 14, 15]
@@ -457,8 +462,6 @@ const SYSTEMS := ["mail", "power", "air"]
 const POWER := ["mains", "emergency", "none"]
 const PLANTA_NAMES := ["PERSONAL", "REGISTRO Y ARCHIVO", "DIRECCIÓN"]
 ## Plaques: the planta's letter, or the type's own.
-const LETTERS := ["P", "R", "D"]
-const TYPE_LETTERS := {21: "S", 8: "M", 18: "M", 22: "M"}
 ## Where the creature never goes and nobody is taken.
 const OFF_LIMITS := [9, 10, 19]
 ## Carpet (floor_finish(), spec_rediseno 0): on wing 2 under the rugs of the
@@ -504,8 +507,10 @@ const TROFFER_LOOKS := ["prismatic", "narrow", "parabolic", "wrap"]
 const NARROW_TROFFERS := [BOARDROOM]
 const PARABOLIC_TROFFERS := [SECRETARY]
 const WRAP_TROFFERS := [EXEC_OFFICE]
-## Where the special rooms lie, as a share of the walk.
-const WINDOW_DEPTH := Vector2(0.15, 0.45)
+## Where the special rooms lie, as a share of the walk. The window far from the
+## reception (the author, 18 November 2026: it took a minute to find; now the
+## far end of the planta's walk).
+const WINDOW_DEPTH := Vector2(0.7, 0.98)
 const ELECTRICAL_DEPTH := Vector2(0.4, 0.7)
 const SECURITY_DEPTH := Vector2(0.25, 0.55)
 ## Metres over the planta's floor. duct: the trunk [width, height]; branch:
@@ -516,7 +521,7 @@ const PLENUM := {"ceiling": 2.95, "slab": 4.4, "duct_y": 3.7, "main": 1.2, "duct
 const TUBE_Y := 2.8
 ## A station's mouth and tray (its point); the hub's mouth too.
 const STATION_Y := 1.25
-const STATIONS := Vector2i(8, 14)
+const STATIONS := Vector2i(16, 28)
 ## Walking metres between two stations, times sqrt(area).
 const STATION_APART := 15.0
 ## Tube metres from the hub to any station.
@@ -1080,21 +1085,15 @@ static func troffer_look(room: Dictionary) -> String:
 static func domestic(_room: Dictionary) -> bool:
 	return false
 
-## Whether a room carries a plaque: not a corridor, not in NO_NUMBER, and of a
-## salon only the room it is named by (its hall).
-static func numbered(room: Dictionary) -> bool:
-	var hall := int(room.get("hall", -1))
-	return not bool(room.get("corridor", false)) and not int(room.type) in NO_NUMBER and (hall < 0 or hall == int(room.get("id", -1)))
+## No room of the offices carries a number (the author, 18 November 2026: the
+## codes looked wrong and gave nothing): none is numbered, so none has a
+## plaque nor counts towards NUMBERED_MOST.
+static func numbered(_room: Dictionary) -> bool:
+	return false
 
 ## Where one hides here.
 static func hide_kind(_room: Dictionary) -> String:
 	return "locker"
-
-## A door's plaque: "P-114", or "" with no number.
-static func plaque(room: Dictionary) -> String:
-	var number := int(room.get("number", 0))
-	if number == 0: return ""
-	return "%s-%d" % [String(TYPE_LETTERS.get(int(room.type), LETTERS[int(room.get("wing", 0))])), number]
 
 ## Where the creature never goes and nobody is taken (OFF_LIMITS).
 static func off_limits(room: Dictionary) -> bool:
@@ -1131,14 +1130,14 @@ static func stripe_color(manifest: Dictionary, room: Dictionary) -> Color:
 			if int(entry.get("sector", -1)) == int(room.get("sector", -2)): return STRIPES[int(entry.get("colour", 0))]
 	return Color("6f6a5e")
 
-## What a zone is called on its signs: on wing 1 its circuit ("R-2 ARCHIVO"),
+## What a zone is called on its signs: on wing 1 its circuit ("ARCHIVO"),
 ## on the others its department ("NÓMINAS"); "" when nothing matches.
 static func zone_label(manifest: Dictionary, room: Dictionary) -> String:
 	var wing := int(room.get("wing", 0))
 	var sector := int(room.get("sector", -2))
 	if wing == 1:
 		for circuit in manifest.get("power", {}).get("circuits", []):
-			if int(circuit.get("sector", -1)) == sector: return "%s %s" % [String(circuit.get("code", "")), String(circuit.get("name", ""))]
+			if int(circuit.get("sector", -1)) == sector: return String(circuit.get("name", ""))
 		return ""
 	var departments: Array = manifest.get("departments", [])
 	if wing < departments.size():

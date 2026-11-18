@@ -57,7 +57,7 @@ func run() -> void:
 	level.player.global_position = Vector3(0, -60, 0)
 	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
 	await wait(0.3)
-	check("Lleva su cuerpo un conductor y empieza en el plénum, con la cámara sobre ella", lurker.control == "player" and lurker.motion.plenum and driver.mode == "above", "%s %s" % [lurker.motion.plenum, driver.mode])
+	check("Lleva su cuerpo un conductor y empieza en el plénum, con la cámara sobre ella", lurker.control == "player" and lurker.motion.plenum and driver.mode == "above", "%s %s; sala %d (techo falso %s), guarida %d, empezó %s, en ducto %s, superficie %s, cruce %s" % [lurker.motion.plenum, driver.mode, lurker.motion.room(), str(OFFICE.false_ceiling(level.manifest.rooms[lurker.motion.room()])) if lurker.motion.room() >= 0 else "-", lurker.den_room(1), str(driver.started), str(lurker.motion.in_duct), str(lurker.motion.surface()), str(lurker.motion.transit)])
 	await crawl_case()
 	for planta in 3:
 		lines.append("--- planta %d" % (planta + 1))

@@ -382,14 +382,18 @@ func doubles_case() -> void:
 		var bolts: int = lurker.doubles.bolts
 		var flat := Vector3(head.x, float(spot.py), head.z)
 		if lit:
-			# Six metres off, looking at it in the light.
-			var off: Vector3 = (Vector3(survivor.global_position.x, flat.y, survivor.global_position.z) - flat).normalized()
-			survivor.global_position = flat + off * 6.0
+			# From the far side of its room, looking at it in the light (a bigger
+			# building's room is no wider: six metres off was through its wall).
+			var centre: Vector3 = spot.centre
+			var off: Vector3 = Vector3(centre.x - flat.x, 0, centre.z - flat.z)
+			survivor.global_position = Vector3(centre.x, float(spot.py), centre.z) + off.normalized() * minf(off.length() * 0.8, 3.0)
 			var to: Vector3 = head - survivor.camera.global_position
 			survivor.rotation.y = atan2(-to.x, -to.z)
 			survivor.camera.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+			# Its torch on it: a corridor's light is its line's, not its cell's.
+			survivor.torch.visible = true
 			var gone: bool = await until(func() -> bool: return lurker.doubles.bolts > bolts, 1.5)
-			check("Su doble, visto con luz, huye al techo y baja un poco la cordura, sin saltar", gone and lurker.doubles.pounces == pounces and survivor.sanity < 100.0 and survivor.sanity > 90.0, "huye %s, saltos %d, cordura %.1f" % [gone, lurker.doubles.pounces - pounces, survivor.sanity])
+			check("Su doble, visto con luz, huye al techo y baja un poco la cordura, sin saltar", gone and lurker.doubles.pounces == pounces and survivor.sanity < 100.0 and survivor.sanity > 90.0, "huye %s, saltos %d, cordura %.1f; a %.1f m, de frente %.2f, sin nada en medio %s, con luz %s, sala %d %s" % [gone, lurker.doubles.pounces - pounces, survivor.sanity, survivor.camera.global_position.distance_to(head), (-survivor.camera.global_basis.z).dot((head - survivor.camera.global_position).normalized()), str(lurker.doubles.SIGHT.clear(level, survivor.camera.global_position, head, [survivor.get_rid(), lurker.get_rid()])), str(lurker.doubles.SIGHT.lit_point(level, head)), room, str(spot.centre)])
 		else:
 			# Walking under it in the dark, its back to it.
 			var away: Vector3 = (spot.way as Vector3)

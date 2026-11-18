@@ -27,7 +27,7 @@ const RECIPES := preload("res://game/world/generation/office_recipes.gd")
 const OFFICE_METRICS := preload("res://tools/dev/office_metrics.gd")
 ## What geometry and the systems call of the palette (spec_f1_geometry.md
 ## 0.2, spec_f1_systems.md 0.2).
-const CONTRACT := ["false_ceiling", "floor_finish", "wall_material", "lamp_of", "plaque", "stripe_color", "zone_label", "hide_kind", "always_lit", "ceiling_rect", "full_tiles", "troffers", "free_tiles", "tile_of", "tile_centre", "crawl_boxes", "shaft_box", "POWER", "STRIPES", "LETTERS", "TYPE_LETTERS", "PLENUM", "FURNITURE", "FURNITURE_TOP", "TILE", "MODULE_SET", "FUSE_ROOMS", "TUBE_Y", "STATION_Y", "AIR_UNIT", "HATCH", "STUB"]
+const CONTRACT := ["false_ceiling", "floor_finish", "wall_material", "lamp_of", "stripe_color", "zone_label", "hide_kind", "always_lit", "ceiling_rect", "full_tiles", "troffers", "free_tiles", "tile_of", "tile_centre", "crawl_boxes", "shaft_box", "POWER", "STRIPES", "PLENUM", "FURNITURE", "FURNITURE_TOP", "TILE", "MODULE_SET", "FUSE_ROOMS", "TUBE_Y", "STATION_Y", "AIR_UNIT", "HATCH", "STUB"]
 ## The rules run_score.meets() knows.
 const RULES := ["won", "solo", "clean", "brave", "time_under", "team_out", "restarted", "mine", "unseen", "mvp", "grade", "versus_out", "hunter_won"]
 ## The office's furniture sets along the walls (spec_f1_geometry.md 9.5).
@@ -135,16 +135,18 @@ func palette_tables() -> void:
 	lockers.sort()
 	check("Taquillas en aseos, almacén, correo, descanso y seguridad", lockers == [4, 8, 14, 15, 21], str(lockers))
 	check("Ningún mueble suelto pasa de FURNITURE_TOP", OFFICE.FURNITURE.values().all(func(piece): return float(piece.height) < OFFICE.FURNITURE_TOP))
-	check("Placas: P-114, S-322, M-215, y ninguna sin número", OFFICE.plaque({"type": OFFICE.OFFICE, "wing": 0, "number": 114}) == "P-114" and OFFICE.plaque({"type": OFFICE.SECURITY, "wing": 2, "number": 322}) == "S-322" and OFFICE.plaque({"type": OFFICE.ELECTRICAL, "wing": 1, "number": 215}) == "M-215" and OFFICE.plaque({"type": OFFICE.OFFICE, "wing": 0, "number": 0}) == "")
-	check("Llevan número: no un pasillo, no lo de NO_NUMBER, y de un salón solo la sala que le da nombre", OFFICE.numbered({"type": OFFICE.OFFICE, "hall": -1, "id": 4}) and not OFFICE.numbered({"type": OFFICE.OFFICE, "hall": -1, "id": 4, "corridor": true}) and not OFFICE.numbered({"type": OFFICE.LANDING, "hall": -1, "id": 4}) and OFFICE.numbered({"type": OFFICE.OPEN_OFFICE, "hall": 7, "id": 7}) and not OFFICE.numbered({"type": OFFICE.OPEN_OFFICE, "hall": 7, "id": 8}))
+	# No codes (the author, 18 November 2026): no room is numbered, so none has a plaque.
+	check("Ninguna sala lleva número ni placa", not OFFICE.numbered({"type": OFFICE.OFFICE, "hall": -1, "id": 4}) and not OFFICE.numbered({"type": OFFICE.OPEN_OFFICE, "hall": 7, "id": 7}) and not (load("res://game/floors/palettes/office_palette.gd") as Script).get_script_method_list().any(func(m: Dictionary) -> bool: return String(m.name) == "plaque"))
 	var sizes_same := true
+	# The offices are SCALE times the hotel's, up to AREA_MOST (the author, 18 November 2026).
 	for survivors in range(0, 7):
-		if OFFICE.area_for(survivors) != HOTEL.area_for(survivors) or OFFICE.areas_for(survivors) != HOTEL.areas_for(survivors): sizes_same = false
+		var bigger: Array = HOTEL.areas_for(survivors).map(func(a: float) -> float: return minf(a * OFFICE.SCALE, OFFICE.AREA_MOST))
+		if not is_equal_approx(OFFICE.area_for(survivors), minf(HOTEL.area_for(survivors) * OFFICE.SCALE, OFFICE.AREA_MOST)) or OFFICE.areas_for(survivors) != bigger: sizes_same = false
 	# The real building's window of rooms is its own (planta_real.md 13.20).
 	for area in [0.5, 1.0, 1.2, 1.35]:
 		var window: Vector2i = Vector2i(roundi(float(OFFICE.REAL_ROOMS.x) * area), roundi(float(OFFICE.REAL_ROOMS.y) * area))
 		if OFFICE.rooms_window(area) != window or OFFICE.rings(area) != HOTEL.rings(area) or OFFICE.tv_rooms(area) != 0: sizes_same = false
-	check("El tamaño del piso, sus ventanas y sus anillos son los del hotel, y no pide teles", sizes_same)
+	check("El tamaño del piso es el del hotel por SCALE, sus ventanas y sus anillos los suyos, y no pide teles", sizes_same)
 	check("Nada es doméstico, y uno se esconde en taquillas", range(TYPE_COUNT).all(func(type): return not OFFICE.domestic({"type": type})) and OFFICE.hide_kind({"type": OFFICE.TOILETS}) == "locker")
 	check("Un manifiesto del piso 2 es de la paleta de oficinas; uno sin piso, del hotel", FLOOR.palette({"floor": 2}) == OFFICE and FLOOR.palette({}) == HOTEL)
 
@@ -166,7 +168,7 @@ func palette_places() -> void:
 		{"id": 11, "type": 3, "wing": 0, "sector": 9},
 	]
 	var departments := [[{"sector": 0, "name": "ALTAS", "colour": 0}, {"sector": 1, "name": "NÓMINAS", "colour": 1}], [{"sector": 1, "name": "REGISTRO", "colour": 2}, {"sector": 2, "name": "ARCHIVO", "colour": 3}], [{"sector": 1, "name": "SEGURIDAD", "colour": 4}, {"sector": 2, "name": "DIRECCIÓN", "colour": 5}]]
-	var circuits := [{"code": "R-2", "name": "ARCHIVO", "sector": 2}, {"code": "R-1", "name": "REGISTRO", "sector": 1}]
+	var circuits := [{"name": "ARCHIVO", "sector": 2}, {"name": "REGISTRO", "sector": 1}]
 	var manifest := {"rooms": rooms, "departments": departments, "power": {"circuits": circuits}}
 	check("Lo vedado: el montacargas y los dos vestíbulos, en orden", OFFICE.off_limits_rooms(manifest) == [3, 4, 5, 8], str(OFFICE.off_limits_rooms(manifest)))
 	check("Personal, con corriente, siempre encendida menos el vacío", OFFICE.always_lit(manifest, 0) == [0, 1, 11], str(OFFICE.always_lit(manifest, 0)))
@@ -175,7 +177,7 @@ func palette_places() -> void:
 	var first: Color = OFFICE.stripe_color(manifest, rooms[0])
 	var second: Color = OFFICE.stripe_color(manifest, rooms[1])
 	check("Cada sector su franja, y gris donde no hay departamento", first == OFFICE.STRIPES[0] and second == OFFICE.STRIPES[1] and first != second and OFFICE.stripe_color(manifest, rooms[11]) == Color("6f6a5e"))
-	check("En Registro, la zona es su circuito", OFFICE.zone_label(manifest, rooms[7]) == "R-2 ARCHIVO" and OFFICE.zone_label(manifest, rooms[5]) == "R-1 REGISTRO")
+	check("En Registro, la zona es su circuito, sin código", OFFICE.zone_label(manifest, rooms[7]) == "ARCHIVO" and OFFICE.zone_label(manifest, rooms[5]) == "REGISTRO")
 	check("En Personal y Dirección, su departamento", OFFICE.zone_label(manifest, rooms[1]) == "NÓMINAS" and OFFICE.zone_label(manifest, rooms[10]) == "DIRECCIÓN")
 	check("Sin departamento ni circuito, nada", OFFICE.zone_label(manifest, rooms[11]) == "" and OFFICE.zone_label({}, rooms[7]) == "" and OFFICE.zone_label({}, rooms[1]) == "")
 
@@ -299,7 +301,7 @@ func kind_checks() -> void:
 	var made = (load(KIND.CREATURE) as PackedScene).instantiate()
 	check("Su criatura se carga y es una criatura del contrato", made != null and made is CREATURE)
 	if made != null: made.free()
-	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 3", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 3)
+	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 4", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 4)
 	check("Sus etapas se llaman niveles; las del hotel, sectores", KIND.title_of(2) == "NIVEL 2" and HOTEL_KIND.title_of(2) == "SECTOR 2")
 
 # --- Generador ---------------------------------------------------------------
@@ -598,7 +600,7 @@ func floor_power(m: Dictionary, tag: String) -> void:
 	var count := {}
 	for i in power.circuits.size():
 		var c: Dictionary = power.circuits[i]
-		if int(c.lever) != i or String(c.code) != "R-%d" % (i + 1): note(T_CIRCUITS, "%s: palanca %d" % [tag, i])
+		if int(c.lever) != i or c.has("code"): note(T_CIRCUITS, "%s: palanca %d" % [tag, i])
 		for id in c.rooms: count[int(id)] = int(count.get(int(id), 0)) + 1
 	if int(power.lift_lever) != power.circuits.size(): note(T_CIRCUITS, "%s: palanca del montacargas" % tag)
 	var lit := OFFICE.always_lit(m, 1)

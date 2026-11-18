@@ -31,6 +31,7 @@ const SHORTCUT_MIN := 0.55
 const EXPRESS_PER := 30       # straight trunks over the rooms, per planta
 const EXPRESS_CELLS := Vector2i(2, 12) # how many cells one spans
 const EXPRESS_MOST := 0.9     # a straight trunk cuts the walk to this or less
+const SNAKE_BAYS := 5         # a big ring's bays between two of its crosses
 const EXPRESS_STARTS := 80    # cells tried as a trunk's start, per planta
 const NAVE_LONG := 0.6       # a nave of 2 x 3 tried before one of 2 x 2 this often
 
@@ -627,6 +628,7 @@ const FIRST_VIEW_SPREAD := 90.0
 ## planta, the structure and the special pieces, the salons and the modules by
 ## their department's focus, what each planta must have, and the corners.
 func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoration: RandomNumberGenerator) -> void:
+	runs_doored(f)
 	# Sectors first: the departments, and with them what each room becomes, hang on them.
 	zones(f, entries)
 	var typed := {}
@@ -665,7 +667,6 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 			if int(room.type) == palette.VOID or room.corridor or typed.has(int(room.id)): continue
 			var planta := int(room.wing)
 			room.type = int(building.programme[planta].types.get(int(room.id) - int(f.plantas[planta].base), palette.STORE))
-	cap_numbers(f, locked)
 	finish_rooms(f, decoration)
 
 ## Today's plan's types (step 1b): the salons by HALL_MIX, the rest by their
@@ -976,7 +977,7 @@ func place_musts(f: Dictionary, planta: int, locked: Dictionary) -> void:
 				f.rooms[int(id)].type = int(t)
 				locked[int(id)] = true
 	# What the musts count on stays, lowest id first and a salon as one:
-	# toilets and cap_numbers() take only unlocked rooms, and one drawn by the
+	# toilets take only unlocked rooms, and one drawn by the
 	# mix can be the planta's only one.
 	for t in types:
 		var units := {}
@@ -1046,34 +1047,6 @@ func salons(rooms: Array, locked: Dictionary) -> Array:
 		if members.any(func(id): return locked.has(int(id))): continue
 		out.append({"anchor": int(anchor), "members": members})
 	return out
-
-## keep_to_hundred() for offices: what is over NUMBERED_MOST becomes a depot,
-## never a salon nor a room already settled, and nothing is drawn.
-func cap_numbers(f: Dictionary, locked: Dictionary) -> void:
-	var was := {"base": f.base, "width": f.width, "height": f.height, "grid": f.grid, "lines": f.lines, "edge_base": f.edge_base}
-	for planta in WINGS:
-		var dims: Dictionary = f.plantas[planta]
-		var let: Array = []
-		var count := 0
-		for local in int(dims.width) * int(dims.height):
-			var room: Dictionary = f.rooms[int(dims.base) + local]
-			if int(room.type) != palette.VOID and int(room.type) != palette.LANDING and numbers(room):
-				count += 1
-				if int(room.hall) < 0 and not locked.has(int(room.id)): let.append(room)
-		var over: int = count - int(palette.NUMBERED_MOST)
-		if over <= 0: continue
-		use(f, planta)
-		var rank := func(room: Dictionary) -> float:
-			var near_service := false
-			for way in WAYS:
-				var next := step(f, int(room.id) - int(dims.base), way)
-				if next >= 0 and bool(at(f, next).service): near_service = true
-			return float(room.order) - (0.3 if near_service else 0.0)
-		let.sort_custom(func(a, b): return rank.call(a) < rank.call(b) or (is_equal_approx(rank.call(a), rank.call(b)) and int(a.id) < int(b.id)))
-		for room in let.slice(0, over):
-			room.service = true
-			room.type = palette.DEPOT
-	f.merge(was, true)
 
 # --- Systems (furnish) -------------------------------------------------------------------
 
@@ -1418,7 +1391,7 @@ func furnish_power(job: Dictionary) -> String:
 			if palette.off_limits(room) or int(room.id) == el: continue
 			members.append(int(room.id))
 		members.sort()
-		circuits.append({"code": "R-%d" % (lever + 1), "name": String(entry.name), "sector": int(entry.sector), "colour": int(entry.colour), "lever": lever, "rooms": members})
+		circuits.append({"name": String(entry.name), "sector": int(entry.sector), "colour": int(entry.colour), "lever": lever, "rooms": members})
 	# The timers: one a corridor stretch drawn, then the longest until enough
 	# of the corridor is covered.
 	var b := int(f.plantas[1].base)
@@ -3206,10 +3179,12 @@ func typology_of(run_seed: int) -> String:
 func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([run_seed, "building", attempt])
-	var typology := typology_of(run_seed)
-	var table: Dictionary = palette.TYPOLOGIES[typology]
 	var area: float = areas.max()
 	var closing: bool = areas.min() < area
+	# A floor for one is a ring: the spine's big half plantas left their freight
+	# lifts nowhere the wall walk does not find (.claude/specs/cordura_y_edificio.md, phase 4).
+	var typology := "ring" if closing and area > 1.0 and palette.forced_typology().is_empty() else typology_of(run_seed)
+	var table: Dictionary = palette.TYPOLOGIES[typology]
 	# The bays along the building (13.3) and where the middle cross splits them:
 	# not always in the middle. A floor for one keeps its halves even (13.15).
 	var half := maxi(int(table.half_bays), roundi(float(table.half_bays) * area))
@@ -3268,6 +3243,19 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 		var longer: int = 0 if int(counts[0]) >= int(counts[1]) else 1
 		var between: int = int(counts[longer]) - 2
 		if between >= 4: halves[longer].insert(2 + rng.randi_range(2, between - 2), "middle")
+	# A snake (the author, 18 November 2026: a long way round that seems to go
+	# against the signs): a building past its first size has a cross every
+	# SNAKE_BAYS bays of each half (no salon nor corridor runs on past OPEN_RUN),
+	# and a ring for more than one has, in each stretch between two crosses, one
+	# of its main corridors and its gallery walled (snake below; on a floor for
+	# one the walls left its freight lifts nowhere to go).
+	var snake_ring: bool = typology == "ring" and area > 1.0 and not closing
+	if area > 1.0:
+		for side in 2:
+			var at := 2 + SNAKE_BAYS
+			while at < halves[side].size() - 2:
+				if not halves[side][at - 1] in ["middle", "snake"] and not halves[side][at] in ["middle", "snake"]: halves[side].insert(at, "snake")
+				at += SNAKE_BAYS + 1
 	var ends: Array = table.ends
 	var crosses: Array = table.crosses
 	var cross := float(crosses[rng.randi_range(0, crosses.size() - 1)])
@@ -3277,7 +3265,7 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	east.reverse()
 	for bays in [halves[0], ["middle"], east]:
 		for bay in bays:
-			if bay == "middle": columns.append({"lane": true, "size": cross, "role": "cross"})
+			if bay in ["middle", "snake"]: columns.append({"lane": true, "size": cross, "role": "cross", "snake": bay == "snake"})
 			elif bay in ["offices", "core_a", "core_b"]:
 				for k in 2: columns.append({"lane": false, "size": palette.BAY / 2.0, "role": String(bay)})
 			else: columns.append({"lane": false, "size": palette.BAY, "role": String(bay)})
@@ -3288,7 +3276,8 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 	var role_rows := func(role: String) -> Array: return range(rows.size()).filter(func(r): return rows[r].role == role)
 	var central: Array = role_rows.call("central")
 	var crossings: Array = range(width).filter(func(c): return columns[c].role == "cross")
-	var middle_cross: int = crossings[1]
+	# The cross between the halves: the second of those not the snake's.
+	var middle_cross: int = crossings.filter(func(c): return not bool(columns[c].get("snake", false)))[1]
 	var a_col: int = range(width).filter(func(c): return columns[c].role == "lift_a")[0]
 	var b_col: int = range(width).filter(func(c): return columns[c].role == "lift_b")[0]
 	var site := func(column: int, plant := false) -> Dictionary:
@@ -3395,10 +3384,28 @@ func draw_building(run_seed: int, attempt: int) -> Dictionary:
 		for k in range(ways_in.size() - 1):
 			var at: int = middle_cross if middle_cross > int(ways_in[k]) and middle_cross < int(ways_in[k + 1]) else (int(ways_in[k]) + int(ways_in[k + 1])) / 2
 			cuts[planta].append([gallery * width + at, gallery * width + at + 1])
+	# The snake's walls, on every planta: in each stretch between two crosses,
+	# the main corridor of one side (the other side the next stretch) and the
+	# gallery, each between two bays near the stretch's middle. Every cell is
+	# still reached (each piece of a walled corridor is on a cross), but from
+	# one cross to the next only by the other side.
+	var snake: Array = []
+	if snake_ring:
+		var mains: Array = role_rows.call("main")
+		var flip := rng.randi_range(0, 1)
+		for k in range(crossings.size() - 1):
+			var c0 := int(crossings[k])
+			var c1 := int(crossings[k + 1])
+			var spots: Array = range(c0 + 1, c1 - 1).filter(func(c): return not columns[c].lane and not columns[c + 1].lane and not String(columns[c].role).begins_with("lift") and not String(columns[c + 1].role).begins_with("lift"))
+			if spots.is_empty(): continue
+			var c := int(spots[spots.size() / 2])
+			var r := int(mains[(k + flip) % mains.size()])
+			snake.append([r * width + c, r * width + c + 1])
+			snake.append([gallery * width + c, gallery * width + c + 1])
 	# Between the two cores of a floor for one, the bays a smaller planta's
 	# through room takes (real_halls()).
 	var between: Array = range(mini(a_col, b_col) + 1, maxi(a_col, b_col)).filter(func(c): return String(columns[c].role) in ["hall", "offices"]) if closing else []
-	return {"typology": typology, "start_kind": start_kind, "columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "annex": annex, "gallery": gallery, "cuts": cuts, "between": between, "programme": [{}, {}, {}]}
+	return {"typology": typology, "start_kind": start_kind, "columns": columns, "rows": rows, "shape": shape, "voids": voids, "lifts": [a_site, b_site, air_site], "start": start, "annex": annex, "gallery": gallery, "cuts": cuts, "snake": snake, "between": between, "programme": [{}, {}, {}]}
 
 ## The zone of the programme a cell is in (palette.REAL_ZONES), "" for a lane.
 func zone_of(local: int) -> String:
@@ -3887,6 +3894,33 @@ func plant_service(f: Dictionary, planta: int, alive: Dictionary, arrival: int, 
 	for local in alive:
 		if building.rows[int(at(f, int(local)).z)].role == "service": at(f, int(local)).service = true
 
+## A fire door wherever a corridor of the building runs on straight and open
+## past OPEN_RUN (a big ring's gallery past its last cross, the validator's
+## open_run): along its lane rows and down its lane columns, on every planta,
+## once all their doors are hung.
+func runs_doored(f: Dictionary) -> void:
+	if building.is_empty(): return
+	for dims in f.plantas:
+		var base := int(dims.base)
+		var width := int(dims.width)
+		var height := int(dims.height)
+		for across in [true, false]:
+			var lines: Array = range(height).filter(func(r): return bool(building.rows[r].lane)) if across else range(width).filter(func(c): return bool(building.columns[c].lane))
+			for line in lines:
+				var run := 0.0
+				var previous := -1
+				for along in (width if across else height):
+					var id: int = base + (int(line) * width + along if across else along * width + int(line))
+					var room: Dictionary = f.rooms[id]
+					var size: float = float(room.span_x) if across else float(room.span_z)
+					if previous >= 0 and f.merged.has(pair_key(previous, id)):
+						run += size
+						if run > OPEN_RUN:
+							f.merged.erase(pair_key(previous, id))
+							run = size
+					else: run = size
+					previous = id
+
 ## The real building's doors (13.6, 13.10), each with a reason: corridor runs on
 ## into corridor but at this planta's cut, into the gallery through a door, and
 ## through a fire door where one department meets the next along a main
@@ -3904,7 +3938,7 @@ func open_doors(f: Dictionary, alive: Dictionary, corridor: Dictionary, arrival:
 	var base: int = f.base
 	var programme: Dictionary = building.programme[laying]
 	var cuts := {}
-	var walls: Array = building.cuts[laying] if laying != 2 else ([programme.cut] if not programme.cut.is_empty() else [])
+	var walls: Array = (building.cuts[laying] if laying != 2 else ([programme.cut] if not programme.cut.is_empty() else [])) + building.get("snake", [])
 	for pair in walls: cuts[pair_key(base + int(pair[0]), base + int(pair[1]))] = true
 	var gallery := int(building.gallery)
 	var sectors: Dictionary = programme.sectors

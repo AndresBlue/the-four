@@ -374,6 +374,9 @@ func den_room(stage: int) -> int:
 	var picks: Array = []
 	for r in walk:
 		if not shell.tray_of.has(int(r)) or int(manifest.rooms[int(r)].get("wing", -1)) != wing or top <= 0.0: continue
+		# Under a false ceiling: she starts in its plenum (lurker_versus.md 13.1);
+		# the bigger building's band held service rooms with none.
+		if not OFFICE.false_ceiling(manifest.rooms[int(r)]): continue
 		var share := float(walk[r]) / top
 		if share >= DEN_BAND.x and share <= DEN_BAND.y: picks.append(int(r))
 	if picks.is_empty(): return -1

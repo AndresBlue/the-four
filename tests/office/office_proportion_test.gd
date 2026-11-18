@@ -204,10 +204,13 @@ static func joined_kinds(items: Array) -> bool:
 		if kinds_of[group].size() >= 2: return true
 	return false
 
-## The first room of the first of these types with one (office_rooms_capture.room_of()).
+## The first room of the first of these types with one (office_rooms_capture.room_of()):
+## of a salon, the cell it is named by, which holds its furniture (the bigger
+## building's first director's office was the other half of one, bare).
 static func first_room(m: Dictionary, types: Array) -> Dictionary:
 	for kind in types:
 		for room in m.rooms:
+			if int(room.get("hall", -1)) >= 0 and int(room.hall) != int(room.id): continue
 			if int(room.type) == int(kind) and not FLOOR.is_void(room) and (not room.get("doors", []).is_empty() or int(room.type) == OFFICE.AIR_PLANT): return room
 	return {}
 

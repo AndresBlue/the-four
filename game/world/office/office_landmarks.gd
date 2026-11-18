@@ -55,8 +55,6 @@ const SIGNS := {
 const SIGN := Vector2(0.42, 0.3)
 const SIGN_HEAD := 0.34
 const SIGN_Y := 1.6
-## Its middle over a number plaque on its side (office_geometry PLAQUE_Y 1.55, 9 cm high).
-const SIGN_OVER_PLAQUE := 1.79
 ## On a glazed wall: the pane's face from the wall's (office_geometry
 ## glazed_run(), the glass GLASS_THICK in the wall's middle), and the plain wall
 ## kept either side of the security post's reader (READER_SOLID).
@@ -189,8 +187,8 @@ static func dress_door(b: Node3D, kind: String, inside: Dictionary, outside: Dic
 	var spec: Dictionary = KINDS[kind]
 	var holder: Node3D = b.room_nodes[int(outside.id)]
 	var face := face_of(b, outside, center, yaw)
-	# The number plaque is on the leaf's +X of the door (door_plaques()): the
-	# banner over it, the sign on the other side.
+	# The sign on the side away from the leaf's +X (where the number plaques
+	# were), the banner over the other.
 	var plaque := signf(Basis(Vector3.UP, yaw).x.dot(face.basis.x))
 	var sign_side := -plaque
 	var sign_x := FRAME_EDGE + SIGN_GAP + SIGN.x * 0.5
@@ -198,10 +196,8 @@ static func dress_door(b: Node3D, kind: String, inside: Dictionary, outside: Dic
 	# The wash on the door's middle, or between it and its sign.
 	var wash := Vector3(0, 1.3, 0)
 	if not String(spec.sign).is_empty():
-		# Over the plaque when it has to share its side: beside it, a long number
-		# ran under the sign's edge.
 		var x: float = sign_x
-		var y: float = SIGN_Y if sign_side != plaque else SIGN_OVER_PLAQUE
+		var y: float = SIGN_Y
 		var z := 0.0
 		if glazed(inside, outside):
 			# Past the door's frame the wall is glass (but the card door's stretch
@@ -524,10 +520,16 @@ static func ways(b: Node3D) -> Dictionary:
 		var landmarks: Array = targets(manifest, planta).filter(func(target: Array): return int(target[0]) >= 0)
 		if not landmarks.is_empty():
 			var cell := pick_cell(manifest, path_to(parent, int(landmarks[0][0])), made)
-			if cell >= 0:
-				for target: Array in landmarks:
-					var row := row_at(manifest, path_to(parent, int(target[0])), cell)
-					if not row.is_empty(): add_row(made, cell, [String(KINDS[String(target[1])].way), String(target[1]), row[0], row[1]])
+			for target: Array in landmarks:
+				var path := path_to(parent, int(target[0]))
+				var row := row_at(manifest, path, cell) if cell >= 0 else []
+				# A landmark whose way parts from the first one's (the bigger
+				# building's air room from its post) has its one sign on its own way.
+				var own := cell
+				if row.is_empty():
+					own = pick_cell(manifest, path, made)
+					if own >= 0: row = row_at(manifest, path, own)
+				if not row.is_empty(): add_row(made, own, [String(KINDS[String(target[1])].way), String(target[1]), row[0], row[1]])
 		# The company's other places on the planta, nearest of each first.
 		var taken := {}
 		for target: Array in landmarks: taken[int(target[0])] = true

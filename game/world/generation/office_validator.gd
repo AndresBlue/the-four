@@ -418,7 +418,7 @@ func power_ok(data: Dictionary, errors: Array[String]) -> void:
 	var got: Array = []
 	for i in power.circuits.size():
 		var c: Dictionary = power.circuits[i]
-		if int(c.lever) != i or String(c.code) != "R-%d" % (i + 1): errors.append("circuit_order")
+		if int(c.lever) != i: errors.append("circuit_order")
 		got.append_array(c.rooms.map(func(id): return int(id)))
 	got.sort()
 	want.sort()

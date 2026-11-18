@@ -115,7 +115,9 @@ Detalle y cifras en `.claude/specs/planta_real.md` (§13 y «Estado de la constr
 - **Los núcleos:** uno en cada extremo de la zona central, con su montacargas y sus aseos. El del montacargas A, lejos de la recepción, con la climatización de la planta 3; el del B, en el extremo de la recepción. Ninguno toca el perímetro: la mano en la pared no los encuentra.
 - **La galería de servicio**, de 2,4 m y sin falso techo, por detrás de todo el edificio, con la banda de servicio (almacenes, depósitos, cuartos técnicos). En la planta 2 se tabica junto al núcleo de B: del cuadro eléctrico al B hay que cruzar tres zonas de circuito o más.
 - **La recepción**, en el extremo de B, en una esquina de la banda delantera (en el anillo, también de la trasera): una sala de dos celdas (el autor, 17 de noviembre de 2026): la de su vano, de 7,2, y la del muñón del cruce que la separa del extremo, de 2,4 o 3,0, que solo en la planta 1 se excava y se abre a ella sin pared; en total, 9,6 o 10,2 × 6,0 m. Los vanos siguen midiendo 7,2 en las tres plantas: el montacargas B y lo que cae en esa columna en las otras plantas no crecen. En la celda del vano están el ascensor del hotel por el que se llega y el mostrador; la espera, al fondo, en la celda del cruce.
-- **Un superviviente:** el edificio es el de la planta mayor, y las plantas 2 y 3, de media superficie, cierran la mitad sin núcleos tras un cortafuegos.
+- **El edificio grande** (el autor, 18 de noviembre de 2026: cada planta unos 15 minutos; `.claude/specs/cordura_y_edificio.md`, fase 4): el área de cada planta es la del hotel por 2,5 (`office_palette.SCALE`), con un tope de 3 (`AREA_MOST`, por el coste medido en el banco): con dos o tres supervivientes, unas 300 celdas por planta y 7.700 m² de mediana. Cada mitad lleva un cruce más cada 5 vanos (`SNAKE_BAYS`), y nada corre recto y abierto más de 45 m (`runs_doored()` pone una puerta cortafuegos donde haría falta).
+- **El camino en ese:** en el anillo para más de un superviviente, cada tramo entre dos cruces tiene tapiado uno de sus dos pasillos principales (uno de cada lado, alternando) y su galería de servicio, cerca del medio del tramo (`snake` en `draw_building()`). Todo sigue a mano por algún cruce, pero de un cruce al siguiente solo se pasa por el otro lado. En la espina y en el edificio para uno no hay tapias (allí dejaban los montacargas sin sitio).
+- **Un superviviente:** el edificio es siempre un anillo (con la espina grande, el montacargas de la mitad no tenía dónde ir), el de la planta mayor, y las plantas 2 y 3, de media superficie, cierran la mitad sin núcleos tras un cortafuegos.
 - **La planta de reserva:** si ningún intento del edificio pasa el validador y la comprobación física (12 intentos), sale el plano de antes (la rejilla del hotel con módulos de 6 a 9 m). En 60 semillas no sale ninguna (`evidence/planta/ronda10/`).
 
 ### Las salas (catálogo propuesto)
@@ -174,6 +176,7 @@ En el edificio, «módulo» es una celda (3,6 o 7,2 m por el fondo de su banda) 
 
 ### Numeración y rótulos
 
+- **Sin códigos de sala** (el autor, 18 de noviembre de 2026: se veían mal y no aportaban): ninguna sala de las oficinas lleva número ni placa junto a la puerta (`office_palette.numbered()` es siempre falso), y las zonas de la planta 2 se rotulan solo con su nombre («ARCHIVO»), en el cuadro y en los pasillos. Siguen los números de las estaciones del tubo. Lo que sigue de esta sección sobre placas es historia.
 - Cada sala con número por planta, como el hotel: 101 a 199, 201 a 299, 301 a 399, lo que el plano y las pistas ya saben leer.
 - La placa lleva **la letra del departamento** (adoptado por el autor, por ahora): P-114 Personal, R-207 Registro, D-318 Dirección, S-322 Seguridad, M Mantenimiento.
 - Rótulos de La Oficina: «ACCESO RESTRINGIDO», «PROHIBIDO EL PASO», «ARCHIVO CENTRAL», «SALIDA». En el juego están «ACCESO RESTRINGIDO» (puesto de seguridad) y «ARCHIVO CENTRAL» (departamento); «PROHIBIDO EL PASO» no se ha puesto en ninguna puerta, y «SALIDA» es el grabado de la señal de salida.
@@ -230,13 +233,13 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - Para bajar hay que estar dado de alta.
 
 **El encargo (cada uno el suyo):**
-1. **Pedir tu ficha** en la ventanilla de Personal.
+1. **Pedir tu ficha** en la ventanilla de Personal, al fondo de la planta: entre el 70 y el 98 % del recorrido desde la recepción (`WINDOW_DEPTH`; el autor, 18 de noviembre de 2026: antes se llegaba en un minuto).
    - Se escribe la solicitud a máquina: sostener unos 5 s, **de espaldas a la sala**.
    - El tecleo se oye lejos, también ella.
    - Mientras escribes, **la cámara del techo te saca la foto de la ficha**: por detrás y desde arriba, como sacan las cámaras.
    - El resguardo dice adónde va: «ENVIADA A ESTACIÓN 7».
 2. **Seguir la cápsula.**
-   - La ficha viaja por el **tubo neumático**, por los techos y las paredes, hasta una de 8 a 14 estaciones repartidas por la planta.
+   - La ficha viaja por el **tubo neumático**, por los techos y las paredes, hasta una de 16 a 28 estaciones repartidas por la planta.
    - Se sabe cuál de dos maneras:
      - leyendo el **mapa de la red** colgado junto a la ventanilla y el resguardo;
      - o **siguiendo el ruido** de la cápsula, un siseo que corre por encima y acaba en un timbre. La estación que la recibe enciende su lucecita.

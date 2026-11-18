@@ -86,18 +86,9 @@ const COUNTER_LEDGE := 0.2
 const BLIND_COLOR := Color("cbbf9f")
 const BLIND := preload("res://game/presentation/shaders/venetian_blind.gdshader")
 const WIRED_GLASS := preload("res://game/presentation/shaders/wired_glass.gdshader")
-## A door's plaque on the wall (6.7): size, height, distance past the frame.
-const PLAQUE := Vector2(0.26, 0.09)
-## A door plaque's width per letter of its words and its margins (door_plaques()).
-const PLAQUE_LETTER := 0.065
-const PLAQUE_MARGIN := 0.06
-const PLAQUE_Y := 1.55
-const PLAQUE_FROM_JAMB := 0.22
-## The plaque's depth off the wall (proud of a panelled wall too), the
-## doorway's frame (jamb width, how far past each face of the wall), the
+## The doorway's frame (jamb width, how far past each face of the wall), the
 ## metal threshold strip across a doorway (the frame's depth, its height),
 ## and the share of wooden doors with a vision panel (vary salt 172).
-const PLAQUE_DEPTH := 0.019
 const JAMB_WIDE := 0.09
 const JAMB_PROUD := 0.02
 ## How far the frame's head comes down below the wall over the doorway (door_frame_mesh()).
@@ -2216,12 +2207,9 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 		light.set_meta("off", true)
 		light.visible = false
 
-## Door plaques (6.7, H2): not on the leaf but on the wall beside the door,
-## latch side, PLAQUE_FROM_JAMB past the frame: the number of the room behind
-## (OFFICE.plaque()) on the face of the room it is read from, parented to
-## that room so it batches and layers with it, proud enough to stand off a
-## panelled wall; not yet kept off reserved spots. The doorway's threshold
-## strip too.
+## What dresses a doorway: its light spilled into the corridor, its threshold
+## strip and, at a landmark's door, its sign and lamp. (The rooms' number
+## plaques went with the codes, the author, 18 November 2026.)
 func door_plaques(door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, yaw: float) -> void:
 	# A room's light out of the door into its corridor (door_spill()).
 	if gate_stage(manifest, int(a.id), int(b.id)) == 0:
@@ -2236,18 +2224,6 @@ func door_plaques(door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, y
 		var floor_holder: Node3D = room_nodes[int(room.id)]
 		var toward := signf((FLOOR.position_of(room) - center).dot(normal))
 		box(floor_holder, center + normal * toward * THRESHOLD.x * 0.25 + Vector3(0, THRESHOLD.y * 0.5, 0) - floor_holder.position, Vector3(FLOOR.PORTAL, THRESHOLD.y, THRESHOLD.x * 0.5), "threshold", false, "box", Vector3(0, yaw, 0))
-	for pair in [[a, b], [b, a]]:
-		var viewer: Dictionary = pair[0]
-		var behind: Dictionary = pair[1]
-		var words: String = OFFICE.plaque(behind)
-		if words.is_empty(): continue
-		var side := signf((FLOOR.position_of(viewer) - center).dot(normal))
-		var holder: Node3D = room_nodes[int(viewer.id)]
-		# As wide as its words (PLAQUE_LETTER each): a longer number ran off it.
-		var wide := maxf(PLAQUE.x, words.length() * PLAQUE_LETTER + PLAQUE_MARGIN)
-		var at := center + along * (FLOOR.PORTAL * 0.5 + JAMB_WIDE + PLAQUE_FROM_JAMB + wide * 0.5) + normal * side * (0.09 + PLAQUE_DEPTH * 0.5) + Vector3(0, PLAQUE_Y, 0) - holder.position
-		box(holder, at, Vector3(wide, PLAQUE.y, PLAQUE_DEPTH), "plaque", false, "box", Vector3(0, yaw, 0))
-		text(holder, words, at + normal * side * (PLAQUE_DEPTH * 0.5 + 0.001), yaw + (0.0 if side > 0 else PI), 20, NUMBER_REACH, Color("e8e4d6"))
 	# A landmark's door: its sign, its banner and its lamp, outside.
 	LANDMARKS.door(self, a, b, center, yaw)
 
