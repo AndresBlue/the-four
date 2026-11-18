@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.11.0](#1110--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La cordura manda: no vuelve con la luz, solo con café, y a 0 mirarla no salva. |
 | [1.10.2](#1102--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La voz del equipo: de cerca en la sala, de lejos por walkie. |
 | [1.10.1](#1101--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción en dos celdas, el café en los rincones y las luces de emergencia hacia el suelo. |
 | [1.10.0](#1100--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción más larga, las motas finas como un píxel, el café lejos del ascensor y The Lurker pulida en Versus. |
@@ -81,6 +82,24 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.11.0 — 18 de noviembre de 2026
+
+*La cordura manda: no vuelve con la luz, solo con café, y a 0 mirarla no salva.*
+
+Commits `d068a5ac`…`v1.11.0` (5). Primera fase del gran cambio del piso 2 (`.claude/specs/cordura_y_edificio.md`).
+
+### Novedades
+
+- **En las oficinas la cordura ya no vuelve con la luz.** Solo con café y al cambiar de planta.
+- **Dos máquinas de café por planta:** una en la llegada y otra en la sala más apartada de la llegada y de los hitos. Al notarse el café sale «Te sientes mejor...».
+- **A cordura 0, mirarla o alumbrarla no te salva:** The Lurker te avisa igual y te coge. Salvan correr y la linterna o la mirada de un compañero que conserve cordura.
+- **Lo que cuesta verla, de nuevo:** verla, 1,5; que te mire, 3,5; su asomo, 6; su chillido, 3; parar un ataque, 8, y menos cada vez que te ataca a ti seguido. Quien juega solo paga el 60 %.
+- **Su espera entre ataques, por jugadores:** 5 s con uno, hasta 1,25 s con cinco.
+
+### Para desarrollar
+
+- `tools/dev/office_explorer.gd` mide cuánto se tarda en cada planta sin montarla, y `--office-area` dibuja el edificio más grande para las herramientas.
 
 ## 1.10.2 — 18 de noviembre de 2026
 
