@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.12.0](#1120--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | The Lurker deja dobles en las esquinas, bebe la luz en 3 × 3 y baja de planta a la vista. |
 | [1.11.0](#1110--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La cordura manda: no vuelve con la luz, solo con café, y a 0 mirarla no salva. |
 | [1.10.2](#1102--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La voz del equipo: de cerca en la sala, de lejos por walkie. |
 | [1.10.1](#1101--17-de-noviembre-de-2026)  | 17 de noviembre de 2026  | La recepción en dos celdas, el café en los rincones y las luces de emergencia hacia el suelo. |
@@ -82,6 +83,22 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.12.0 — 18 de noviembre de 2026
+
+*The Lurker deja dobles en las esquinas, bebe la luz en 3 × 3 y baja de planta a la vista.*
+
+Commits `f38e043e`…`v1.12.0` (3). Segunda fase del gran cambio del piso 2. Protocolo de red `the-four-net-24`: no juega con la 1.11.0.
+
+### Novedades (Versus, quien lleva a The Lurker)
+
+- **Doppelgänger (E):** deja un doble suyo colgado boca abajo en la esquina de la sala. Si alguien pasa cerca sin verlo, le salta a la cara y le quita mucha cordura; si lo ven antes, huye al techo y quita un poco. Uno cada 10 s, sin límite (con 12, el más viejo se deshace). Nunca coge a nadie.
+- **Sin ductos:** su tecla E ya no la mete en la red.
+- **Beber la luz cada 10 s,** desde abajo o desde el plénum: su sala y todas las que la tocan, 6 s a oscuras.
+
+### Novedades (también la IA)
+
+- **Baja de planta a la vista:** por el tronco de ductos sobre el pasillo más cercano, atravesando el forjado, con su cámara siguiéndola.
 
 ## 1.11.0 — 18 de noviembre de 2026
 
