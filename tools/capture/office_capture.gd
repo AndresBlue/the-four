@@ -280,7 +280,7 @@ func run() -> void:
 		var timer_spot: Dictionary = timers[0]
 		var t_at := Vector3(float(timer_spot.point[0]), float(timer_spot.point[1]), float(timer_spot.point[2]))
 		var t_out: Vector3 = Basis(Vector3.UP, float(timer_spot.yaw)).z
-		power.apply("switch", power.red_index() + 1, 1, {}, true)
+		power.apply("switch", power.zones.size(), 1, {}, true)
 		power.tick(0.0)
 		look(t_at + t_out * 1.1 + Vector3(t_out.z, 0, -t_out.x) * 0.4 + Vector3(0, 0.4, 0), t_at)
 		await shot("minutero")

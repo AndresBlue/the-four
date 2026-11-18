@@ -105,29 +105,26 @@ const FOOTPRINT_IN := 0.2
 ## (Faint: in an open office most rooms round her are lit, so it is a grid.)
 const FOOTPRINT_PALE := 0.4
 ## Heat (a reading): a fitting, an emergency unit, a landmark's lamp, a
-## furniture lamp, an objective's machine and its lamp, a running air handler,
-## a torch. A machine in use beats by BEAT.
+## furniture lamp, an objective's machine and its lamp, a torch. A machine in use beats by BEAT.
 const FITTING_HEAT := 0.72
 const EMERGENCY_HEAT := 0.66
 const LANDMARK_HEAT := 0.74
 const ACCENT_HEAT := 0.64
 const MACHINE_HEAT := 0.8
 const LAMP_HEAT := 0.95
-const FAN_HEAT := 0.86
 const TORCH_HEAT := 1.15
 const BEAT := 0.35
 ## The half sizes of what is not a troffer (metres): an emergency unit, a lamp,
-## a station's or a pilot's lamp, a rotor, a torch's head. A usable's is most
+## a station's or a pilot's lamp, a torch's head. A usable's is most
 ## of its focus box.
 const UNIT_HALF := Vector3(0.16, 0.08, 0.08)
 const LAMP_HALF := Vector3(0.15, 0.15, 0.15)
 const PILOT_HALF := Vector3(0.05, 0.05, 0.05)
-const ROTOR_HALF := Vector3(0.45, 0.45, 0.45)
 const TORCH_HALF := Vector3(0.06, 0.06, 0.06)
 const USABLE_SHARE := 0.4
 ## What an objective's usable does that runs on electricity; somebody this near
 ## one is using it.
-const ELECTRIC := ["type", "take", "swipe", "lever", "switch", "door", "lift", "post", "start", "stop"]
+const ELECTRIC := ["type", "take", "swipe", "lever", "switch", "door", "lift", "post", "sit"]
 const BUSY_REACH := 1.6
 ## Sources further than this are left out, and from FADE_FROM they cool a little.
 const LAMP_REACH := 32.0
@@ -185,6 +182,21 @@ const FOOT := -0.4
 const RANGE := 1.6
 ## Survivors drawn as figures, lit rooms lifted.
 const FIGURES := 16
+## The decoys of the security post's console (air_objective.gd, cordura_y_
+## edificio.md 3.11): in a room lit from it, one or two figures made for her
+## eyes alone, a body's size, walking about it at a body's pace till its light
+## goes out (her coming near puts it out); outlined in a whole mind's colour,
+## and each with a torch DECOY_TORCH over its feet, looking ahead and a little
+## down: her beacon through the walls and its beam, as a survivor's is (the
+## walls hide the figure itself from afar).
+const DECOY_RADIUS := 0.28
+const DECOY_HEIGHT := 1.75
+const DECOY_PACE := 0.9
+const DECOY_INSET := 0.8
+const DECOY_MIND := 80.0
+const DECOY_TORCH := 1.3
+const DECOY_TORCH_DOWN := 0.2
+const DECOY_BEAM := 26.0
 const LITS := 32
 const LIT_REACH := 30.0
 ## Over the false ceiling of her planta, not drawn on her machine: a room's
@@ -244,6 +256,9 @@ var beacons := {}
 var torch_view := {}
 var beam_reach := {}
 var cold: Array = []
+## Room id -> its decoy figures, each [node, where it walks to].
+var decoys := {}
+var decoy_rng := RandomNumberGenerator.new()
 var dazzle := 0.0
 var dazzled := false
 var flash_clock := -1.0
@@ -449,6 +464,7 @@ func _process(delta: float) -> void:
 		gather()
 	listen(delta)
 	tread()
+	walk_decoys(delta)
 	dazzle = move_toward(dazzle, 1.0 if dazzled else 0.0, DAZZLE_RATE * delta)
 	place(delta)
 	place_marks()
@@ -457,6 +473,63 @@ func _process(delta: float) -> void:
 	hud.queue_redraw()
 
 func _exit_tree() -> void: ceilings(-1)
+
+## The decoys' figures made, walked and done with as the console's lights go.
+func walk_decoys(delta: float) -> void:
+	var air = level.objective(&"air") if level.has_method("objective") else null
+	var lit: Dictionary = air.lights if air != null and "lights" in air else {}
+	for room_id in decoys.keys():
+		if lit.has(room_id): continue
+		for one in decoys[room_id]: (one[0] as Node3D).queue_free()
+		decoys.erase(room_id)
+	for room_id in lit:
+		var room: Dictionary = level.manifest.rooms[int(room_id)]
+		if not decoys.has(room_id):
+			decoys[room_id] = []
+			for k in 1 + int(room_id) % 2:
+				var body := MeshInstance3D.new()
+				var shape := CapsuleMesh.new()
+				shape.radius = DECOY_RADIUS
+				shape.height = DECOY_HEIGHT
+				body.mesh = shape
+				body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				level.add_child(body)
+				body.global_position = decoy_spot(room) + Vector3(0, DECOY_HEIGHT * 0.5, 0)
+				decoys[room_id].append([body, decoy_spot(room)])
+		for one in decoys[room_id]:
+			var body: Node3D = one[0]
+			var feet := body.global_position - Vector3(0, DECOY_HEIGHT * 0.5, 0)
+			var to: Vector3 = one[1]
+			if Vector2(to.x - feet.x, to.z - feet.z).length() < 0.2: one[1] = decoy_spot(room)
+			else: body.global_position += (Vector3(to.x, feet.y, to.z) - feet).normalized() * DECOY_PACE * delta
+
+## A floor point in a room, DECOY_INSET in from its walls.
+func decoy_spot(room: Dictionary) -> Vector3:
+	var half := FLOOR.size_of(room) * 0.5 - Vector2(DECOY_INSET, DECOY_INSET)
+	return Vector3(float(room.px) + decoy_rng.randf_range(-half.x, half.x), float(room.py), float(room.pz) + decoy_rng.randf_range(-half.y, half.y))
+
+## The decoys' torches on her planta, [where, which way it looks]: ahead as
+## each walks, a little down.
+func decoy_torches(here: int) -> Array:
+	var found: Array = []
+	for room_id in decoys:
+		for one in decoys[room_id]:
+			var feet: Vector3 = (one[0] as Node3D).global_position - Vector3(0, DECOY_HEIGHT * 0.5, 0)
+			if FLOOR.planta_of(feet.y + 1.0) != here: continue
+			var to: Vector3 = one[1]
+			var ahead := Vector3(to.x - feet.x, 0.0, to.z - feet.z)
+			var look: Vector3 = (ahead.normalized() if ahead.length() > 0.05 else Vector3.FORWARD) + Vector3(0, -DECOY_TORCH_DOWN, 0)
+			found.append([feet + Vector3(0, DECOY_TORCH, 0), look.normalized()])
+	return found
+
+## The decoys' feet within her reach on her planta.
+func decoy_feet(at: Vector3, here: int) -> Array:
+	var feet: Array = []
+	for room_id in decoys:
+		for one in decoys[room_id]:
+			var point: Vector3 = (one[0] as Node3D).global_position - Vector3(0, DECOY_HEIGHT * 0.5, 0)
+			if FLOOR.planta_of(point.y + 1.0) == here and Vector2(point.x - at.x, point.z - at.z).length() <= driver.PREY_REACH: feet.append(point)
+	return feet
 
 # --- What she sees down into ----------------------------------------------------------
 
@@ -565,8 +638,6 @@ func gather() -> void:
 			if not key in objective: continue
 			for lamp in objective.get(key):
 				if lamp is Light3D and lamp.visible and FLOOR.planta_of(lamp.global_position.y) == here: found.append([lamp.global_position, PILOT_HALF, 0.0, LAMP_HEAT, Kind.LAMP, false])
-		if "rotors" in objective and objective.running():
-			for rotor in objective.rotors: found.append([(rotor as Node3D).global_position, ROTOR_HALF, 0.0, FAN_HEAT, Kind.LAMP, false])
 	if level.get("coffee") != null:
 		for machine in level.coffee.machines:
 			if not is_instance_valid(machine) or FLOOR.planta_of(machine.global_position.y + 1.0) != here: continue
@@ -593,10 +664,12 @@ func glowing(id: int) -> bool:
 	var light: OmniLight3D = hotel.lights[id]
 	return not light.has_meta("off") and not light.has_meta("void")
 
-## Somebody at a machine: using it, or about to.
+## Somebody at a machine: using it, or about to (not whoever sits camouflaged
+## at the security post's console: it reads as idle as the rest).
 func busy(point: Vector3) -> bool:
+	var at: Vector3 = creature.motion.anchor()
 	for one in level.survivors():
-		if is_instance_valid(one) and level.survivor_active(one) and absf(one.global_position.y - point.y) < BUSY_REACH + 1.0 and Vector2(one.global_position.x - point.x, one.global_position.z - point.z).length() < BUSY_REACH: return true
+		if is_instance_valid(one) and not driver.camouflaged(one, at) and level.survivor_active(one) and absf(one.global_position.y - point.y) < BUSY_REACH + 1.0 and Vector2(one.global_position.x - point.x, one.global_position.z - point.z).length() < BUSY_REACH: return true
 	return false
 
 ## [in view, metres behind what hides it] of a point from her eye. From over
@@ -638,8 +711,9 @@ func look_at_survivors(eye: Vector3) -> void:
 	# Her face behind a shut tile, or deep in a duct: nothing; but from over
 	# the ceiling she has the torches (13.6 A2).
 	var eyes: bool = senses != null and (senses.eye_point() != Vector3.INF or above())
+	var at: Vector3 = creature.motion.anchor()
 	for one in level.survivors():
-		if not is_instance_valid(one) or not level.survivor_active(one) or bool(one.get("hidden")): continue
+		if not is_instance_valid(one) or not level.survivor_active(one) or bool(one.get("hidden")) or driver.camouflaged(one, at): continue
 		var torch = one.get("torch")
 		if not eyes or not is_instance_valid(torch) or not torch.visible or senses.drank(one): continue
 		if (torch.global_position as Vector3).distance_to(eye) <= BEACON_REACH:
@@ -647,12 +721,14 @@ func look_at_survivors(eye: Vector3) -> void:
 			beacons[int(one.slot)] = one
 			torch_view[int(one.slot)] = in_view(eye, torch.global_position, mine)
 			beam_reach[int(one.slot)] = beam_stop(torch, mine)
-	cold = level.sanity.burnt_survivors() if level.get("sanity") != null else []
+	cold = (level.sanity.burnt_survivors() if level.get("sanity") != null else []).filter(func(one): return not driver.camouflaged(one, at))
 
 ## How far a torch's beam goes before something stops it (BEAM_REACH at most).
 func beam_stop(torch: Node3D, exclude: Array) -> float:
-	var from := torch.global_position
-	var query := PhysicsRayQueryParameters3D.create(from, from - torch.global_basis.z * BEAM_REACH, SIGHT.MASK)
+	return beam_from(torch.global_position, -torch.global_basis.z, exclude)
+
+func beam_from(from: Vector3, look: Vector3, exclude: Array) -> float:
+	var query := PhysicsRayQueryParameters3D.create(from, from + look * BEAM_REACH, SIGHT.MASK)
 	query.exclude = [creature.get_rid()] + exclude
 	var hit: Dictionary = camera.get_world_3d().direct_space_state.intersect_ray(query)
 	return BEAM_REACH if hit.is_empty() else from.distance_to(hit.position)
@@ -810,6 +886,11 @@ func place(delta: float) -> void:
 		if not is_instance_valid(one) or not is_instance_valid(one.get("torch")): continue
 		var view: Array = torch_view.get(seat_id, [false, 0.0])
 		put.call(one.torch.global_position, TORCH_HALF, 0.0, TORCH_HEAT, Kind.TORCH, bool(view[0]), float(view[1]))
+	for torch: Array in decoy_torches(planta()):
+		var point: Vector3 = torch[0]
+		if point.distance_to(eye) > BEACON_REACH: continue
+		var seen: Array = in_view(eye, point, [])
+		put.call(point, TORCH_HALF, 0.0, TORCH_HEAT, Kind.TORCH, bool(seen[0]), float(seen[1]))
 	for point in cold: put.call(point + Vector3(0, 0.95, 0), Vector3(0.0, 2.1, 0.0), 0.0, 0.0, Kind.COLD, false, 0.0)
 	# A machine somebody is at beats.
 	var beat := 1.0 - BEAT * (0.5 + 0.5 * sin(clock * 5.0))
@@ -856,6 +937,13 @@ func place_beams() -> void:
 		at[count] = Vector4(from.x, from.y, from.z, float(beam_reach.get(seat_id, BEAM_REACH)))
 		way[count] = Vector4(look.x, look.y, look.z, cos(deg_to_rad(angle * BEAM_SHARE)))
 		count += 1
+	for torch: Array in decoy_torches(planta()):
+		if count >= BEAMS: break
+		var from: Vector3 = torch[0]
+		var look: Vector3 = torch[1]
+		at[count] = Vector4(from.x, from.y, from.z, beam_from(from, look, []))
+		way[count] = Vector4(look.x, look.y, look.z, cos(deg_to_rad(DECOY_BEAM * BEAM_SHARE)))
+		count += 1
 	material.set_shader_parameter("beam_count", count)
 	material.set_shader_parameter("beam_at", at)
 	material.set_shader_parameter("beam_way", way)
@@ -882,6 +970,14 @@ func place_tints() -> void:
 		var colour := mind_colour(0.0 if spent else float(sanity.sanity_of(one)))
 		boxes[count] = box
 		colours[count] = Vector4(colour.r, colour.g, colour.b, 1.0)
+		count += 1
+	var whole := mind_colour(DECOY_MIND)
+	for feet: Vector3 in decoy_feet(at, here):
+		if count >= TINTS: break
+		var box := screen_box(feet, size)
+		if box == Vector4.ZERO: continue
+		boxes[count] = box
+		colours[count] = Vector4(whole.r, whole.g, whole.b, 1.0)
 		count += 1
 	sensor_material.set_shader_parameter("tint_count", count)
 	sensor_material.set_shader_parameter("tint_box", boxes)
@@ -932,6 +1028,10 @@ func place_figures() -> void:
 		if count >= FIGURES or not driver.markable(one, at, here): continue
 		var mark := 1.0 if int(one.slot) == driver.prey or int(one.slot) == driver.struck else 0.0
 		figures[count] = Vector4(one.global_position.x, one.global_position.y, one.global_position.z, mark)
+		count += 1
+	for feet: Vector3 in decoy_feet(at, here):
+		if count >= FIGURES: break
+		figures[count] = Vector4(feet.x, feet.y, feet.z, 0.0)
 		count += 1
 	material.set_shader_parameter("figure_count", count)
 	material.set_shader_parameter("figure_at", figures)

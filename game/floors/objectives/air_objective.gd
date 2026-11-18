@@ -1,12 +1,14 @@
 extends "res://game/floors/objectives/objective.gd"
-## Planta 3 of the offices, the air (spec_f1_systems section 4): the hatch of
-## the main duct, the climb up into it and back, and the shaft ladder at its far
-## end that ends the floor; before that, the security post opened with a
-## card from level 1, its console starting the fans on the battery's few
-## charges (which lifts the lockdown), and the isolator by the air handler
-## that stops them: the hatch opens only once they have run and stand still.
-## The equipment looks as its references (spec_rediseno 6.12 and 6.14, area 5:
-## pieces/air_equipment.gd).
+## Planta 3 of the offices, the air (spec_f1_systems section 4, remade by
+## .claude/specs/cordura_y_edificio.md 3.11): the security post opened with a
+## card from level 1; sat at its console, the cameras (security_cams.gd): the
+## planta's plan, the eight rooms behind electric locks one of which is the air
+## room, and the light of any room, LIGHTS_MOST at a time, each a decoy that
+## goes out after DECOY_TIME or once she is DECOY_NEAR. The air room unlocked,
+## the hatch of the main duct, the climb up into it and back, and the shaft
+## ladder at its far end that ends the floor. The fans are a machine of the
+## room and no step any more. The equipment looks as its references
+## (spec_rediseno 6.12 and 6.14, area 5: pieces/air_equipment.gd).
 const ID := &"air"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
@@ -16,8 +18,15 @@ const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const AIR_LOOK := preload("res://game/world/office/pieces/air_equipment.gd")
 const MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
 const WALL := preload("res://game/world/office/pieces/wall.gd")
+const MODELS := preload("res://game/world/office/office_models.gd")
+## The console's monitors: the green-screen terminals of the kit (office_models
+## "crt"), on its back shelf, in its frame (x across, z out of the wall).
+const MONITORS := [Vector3(-0.55, 0.12, -0.05), Vector3(0.0, 0.12, -0.05), Vector3(0.55, 0.12, -0.05)]
+## Its chair's middle, out from the desk's wall.
+const SEAT_OUT := 1.0
 
-const ACTIONS := ["hatch", "climb", "ladder", "post", "start", "stop"]
+const ACTIONS := ["hatch", "climb", "ladder", "post", "sit", "stand", "lock", "light", "unlit"]
+const CAMS := preload("res://game/ui/security_cams.gd")
 ## The instructions memo's paper id.
 const MEMO_ID := 2001
 ## How long each is held, and how long a climb takes.
@@ -33,31 +42,35 @@ const SLACK := 0.5
 ## The air handler's in-line fan and its round duct (tools/props/build_catalogue.gd).
 const FAN_MODEL := "res://assets/props/hotel/modular_airduct_circular_01_fan.res"
 const ROUND_DUCT_MODEL := "res://assets/props/hotel/modular_airduct_circular_01_duct.res"
-## The post's reader, the console and the isolator; the fans' spin up and
-## down (s), and how much of every sound on planta 3 they cover.
+## The post's reader.
 const POST_SWIPE := 0.5
-const START_HOLD := 1.0
-const STOP_HOLD := 1.0
-const FAN_SPIN := 2.5
-const AIR_MASK := 0.65
+## The battery's lights at once, how long one lasts, and how near her a lit
+## room puts itself out (the decoy she came to).
+const LIGHTS_MOST := 4
+const DECOY_TIME := 60.0
+const DECOY_NEAR := 6.0
 ## How far from the mouth a crawler may climb back down.
 const MOUTH_REACH := 1.0
 ## The leaf swings this far on its side hinge, over this long.
 const HATCH_SWING := deg_to_rad(100.0)
 const SWING_TIME := 1.0
 
-## The battery's charges and how long the fans run on one (tuning().fan_charges
-## and fan_time to come, 1.8: Equilibrada's).
-var charges := 2
-var fan_time := 80.0
-## session.elapsed when the fans stop; 0: stopped.
-var running_until := 0.0
-## The lockdown lifted: the fans have been started once.
-var released := false
 var post_open := false
 var hatch_open := false
-## 0..1, how far the fans are running, eased (every machine).
-var spin := 0.0
+## Per camera (manifest air.cams), its room's lock open; its doors' nodes and,
+## over each outside, its pilot's lenses [red, green].
+var unlocked: Array = []
+var cam_doors: Array = []
+var cam_pilots: Array = []
+## The rooms lit from the console: room id -> session.elapsed when lit.
+var lights := {}
+## The seat sat at the console, -1 nobody; the local one's screen, and when
+## it last stood up: the key that stands is the key that sits, and must not
+## sit again in the same press.
+var operator := -1
+var console = null
+var stood_msec := -100000
+const RESIT_MS := 400
 var post_door = null
 ## The post reader's pilot: its red lens and its green one.
 var post_pilot: Array = []
@@ -65,12 +78,9 @@ var post_pilot: Array = []
 const PILOT_X := 0.055
 const PILOT_Y := 0.235
 const PILOT := Vector3(0.03, 0.03, 0.012)
-var rotors: Array = []
-## The fans' roar at the air handler while they run.
-var fans_voice = null
 ## The usables: 0 the plant ladder (the hatch's release, then the climb), 1
 ## the climb back down at the mouth, 2 the shaft ladder, 3 the post's reader,
-## 4 the console, 5 the isolator.
+## 4 the console's seat, 5 the memo.
 var usables: Array = []
 var leaf: Node3D
 var leaf_body: StaticBody3D
@@ -81,8 +91,10 @@ func manifest() -> Dictionary: return level.manifest
 func built() -> bool: return manifest().has("air") and manifest().air.has("main")
 
 func place() -> void:
+	close_console()
+	operator = -1
+	lights.clear()
 	usables.clear()
-	rotors.clear()
 	if not built(): return
 	var m := manifest()
 	var out := MAIN_DUCT.facing(float(m.air.hatch.yaw))
@@ -97,8 +109,7 @@ func place() -> void:
 		[Transform3D(Basis(Vector3.UP, float(m.air.hatch.yaw) + PI), hatch_at - out * 0.05 + Vector3(0, 0.45, 0)), "climb", Vector3.INF, NAN],
 		[Transform3D(Basis(Vector3.UP, float(m.air.shaft.ladder.yaw)), Vector3(float(ladder_p[0]), MAIN_DUCT.floor_y(m) + 0.9, float(ladder_p[2]))), "ladder", Vector3.INF, NAN],
 		wall_use(m.air.security.reader, "post", 0.0),
-		wall_use(m.air.security.desk, "start", 0.95),
-		wall_use(m.air.stop, "stop", 0.0),
+		wall_use(m.air.security.desk, "sit", 0.95),
 	]
 	for i in spots.size():
 		var usable := USABLE.new()
@@ -113,8 +124,8 @@ func place() -> void:
 		level.hotel.add_child(usable)
 		usables.append(usable)
 	# The equipment (spec_rediseno 6.12 and 6.14): the post's reader and its
-	# console on the desk, the air handler and its two fans' rotors, and the
-	# control box that stops them.
+	# console on the desk with its monitors and its chair, the air handler and
+	# its two fans' rotors, and its control box.
 	var reader: Dictionary = m.air.security.reader
 	var reader_at := wall_xform(MAIL.READER, spot_point(reader), spot_point(reader).y - MAIL.READER.y * 0.5, float(reader.yaw))
 	equipment(MAIL.card_reader(level.hotel, MAIL.READER), reader_at)
@@ -123,7 +134,14 @@ func place() -> void:
 	var pilot_at := reader_at * Transform3D(Basis.IDENTITY, Vector3(PILOT_X, PILOT_Y - PILOT.y * 0.5, MAIL.READER.z * 0.5 - 0.002))
 	post_pilot = [equipment(MAIL.lamp_lens(level.hotel, PILOT, "glow_red"), pilot_at), equipment(MAIL.lamp_lens(level.hotel, PILOT, "glow_green"), pilot_at)]
 	var desk_spot: Dictionary = m.air.security.desk
-	equipment(AIR_LOOK.security_console(level.hotel, AIR_LOOK.CONSOLE), Transform3D(Basis(Vector3.UP, float(desk_spot.yaw)), spot_point(desk_spot) + MAIN_DUCT.facing(float(desk_spot.yaw)) * AIR_LOOK.DESK_MIDDLE + Vector3(0, AIR_LOOK.DESK_TOP, 0)))
+	var console_at := Transform3D(Basis(Vector3.UP, float(desk_spot.yaw)), spot_point(desk_spot) + MAIN_DUCT.facing(float(desk_spot.yaw)) * AIR_LOOK.DESK_MIDDLE + Vector3(0, AIR_LOOK.DESK_TOP, 0))
+	equipment(AIR_LOOK.security_console(level.hotel, AIR_LOOK.CONSOLE), console_at)
+	var crt: Mesh = MODELS.mesh_of(level.hotel, "crt")
+	if crt != null:
+		for spot in MONITORS: equipment(crt, console_at * Transform3D(Basis.IDENTITY, spot) * MODELS.fit_of("crt", crt))
+	# Its chair, turned to the desk, with no collider: whoever sits is put before it.
+	var seat: Mesh = MODELS.mesh_of(level.hotel, "office_chair")
+	if seat != null: equipment(seat, Transform3D(Basis(Vector3.UP, float(desk_spot.yaw) + PI), spot_point(desk_spot) + MAIN_DUCT.facing(float(desk_spot.yaw)) * SEAT_OUT) * MODELS.fit_of("office_chair", seat))
 	var unit: Dictionary = m.air.unit
 	var unit_face := MAIN_DUCT.facing(float(unit.yaw))
 	var unit_size: Vector3 = OFFICE.AIR_UNIT
@@ -132,13 +150,12 @@ func place() -> void:
 	var unit_body := equipment(AIR_LOOK.air_handler(level.hotel, unit_size), Transform3D(unit_basis, unit_middle))
 	plate_text("CLIMATIZADORA\nAH-1", plate_spot(unit_body), float(unit.yaw), 36)
 	for k in 2:
-		# Each rotor turns about its own middle (tick()): a pivot there.
+		# Each rotor on a pivot at its own middle (they stand still: the fans are no step any more).
 		var pivot := Node3D.new()
 		pivot.name = "FanRotor"
 		pivot.transform = Transform3D(unit_basis, unit_middle + unit_basis * Vector3(-AIR_LOOK.FAN_X + k * AIR_LOOK.FAN_X * 2.0, AIR_LOOK.FAN_Y, AIR_LOOK.ROTOR_Z))
 		level.hotel.add_child(pivot)
 		equipment(AIR_LOOK.fan_rotor(level.hotel, AIR_LOOK.ROTOR), Transform3D(Basis.IDENTITY, Vector3(0, -AIR_LOOK.ROTOR.y * 0.5, 0)), pivot)
-		rotors.append(pivot)
 	var stop: Dictionary = m.air.stop
 	equipment(AIR_LOOK.control_box(level.hotel, AIR_LOOK.CONTROL), wall_xform(AIR_LOOK.CONTROL, spot_point(stop), spot_point(stop).y - AIR_LOOK.CONTROL.y * 0.5, float(stop.yaw)))
 	# On the handler's top, the kit's in-line fan, axis up, and its round duct
@@ -162,7 +179,7 @@ func place() -> void:
 	reading.name = "AirUsable_memo"
 	reading.level = level
 	reading.handler = self
-	reading.index = 6
+	reading.index = usables.size()
 	reading.action = "read"
 	reading.transform = Transform3D(Basis(Vector3.UP, float(desk.yaw)), memo_at)
 	level.hotel.add_child(reading)
@@ -176,6 +193,28 @@ func place() -> void:
 				post_door = door
 				break
 	show_post()
+	# The cameras' rooms: every door of each shut and locked until the
+	# console opens it.
+	unlocked.clear()
+	cam_doors.clear()
+	cam_pilots.clear()
+	for cam in m.air.get("cams", []):
+		var nodes: Array = []
+		var lenses: Array = []
+		for door_key in cam.doors:
+			var pair: PackedStringArray = String(door_key).split(":")
+			var at: Vector3 = FLOOR.portal_between(m.rooms[int(pair[0])], m.rooms[int(pair[1])])
+			var out_room: Dictionary = m.rooms[int(pair[1]) if int(pair[0]) == int(cam.room) else int(pair[0])]
+			for door in level.hotel.doors:
+				if Vector2(door.doorway.x - at.x, door.doorway.z - at.z).length() < 0.1 and absf(door.doorway.y - at.y) < 1.0:
+					nodes.append(door)
+					var normal: Vector3 = Basis(Vector3.UP, door.closed_rotation).z
+					lenses.append(door_pilot_lenses(at, float(out_room.py), normal * signf((FLOOR.position_of(out_room) - at).dot(normal))))
+					break
+		cam_doors.append(nodes)
+		cam_pilots.append(lenses)
+		unlocked.append(false)
+	for i in unlocked.size(): show_lock(i)
 	# The hatch's leaf: a framed galvanised panel shutting the duct's end, on
 	# a hinge at its side.
 	var side := Vector3(out.z, 0, -out.x)
@@ -247,14 +286,58 @@ func show_post() -> void:
 	if post_open and not post_door.opened: post_door.set_state(true)
 	elif not post_open and post_door.opened: post_door.set_state(false)
 
-func running() -> bool: return running_until > 0.0
+## A camera room's doors shut and locked until the console opens its lock,
+## the pilot over each red till then and green after; opened, they are doors
+## like any other (the console never locks one again: nobody is shut in).
+func show_lock(i: int) -> void:
+	for lenses in cam_pilots[i]:
+		lenses[0].visible = not unlocked[i]
+		lenses[1].visible = bool(unlocked[i])
+	for door in cam_doors[i]:
+		if not is_instance_valid(door): continue
+		door.locked = not unlocked[i]
+		if door.locked and (door.opened or door.moving): door.set_state(false)
 
-## How much of every sound at a point the fans cover (phase 3 hooks it to
-## the creature's hearing and world_audio), and whether her ducts are shut.
-func sound_mask(point: Vector3) -> float:
-	return AIR_MASK * spin if FLOOR.planta_of(point.y) == 2 else 0.0
+## The camera of the air room, -1 with none.
+func vent_cam() -> int:
+	var cams: Array = manifest().air.get("cams", [])
+	for i in cams.size():
+		if int(cams[i].room) == int(manifest().air.room): return i
+	return -1
 
-func ducts_closed() -> bool: return spin > 0.5
+func vent_open() -> bool:
+	var i := vent_cam()
+	return i >= 0 and i < unlocked.size() and bool(unlocked[i])
+
+## Whether a room may be lit from the console: one of planta 3, not lit
+## always (the arrival, the post).
+func lightable(room_id: int) -> bool:
+	var rooms: Array = manifest().rooms
+	if room_id < 0 or room_id >= rooms.size(): return false
+	var room: Dictionary = rooms[room_id]
+	return int(room.get("wing", -1)) == 2 and not FLOOR.is_void(room) and not OFFICE.always_lit(manifest(), 2).has(room_id)
+
+## The room a light is kept by: the air room for its plant too (one space,
+## open to each other, the camera in the plant), any other its own.
+func lit_key(room_id: int) -> int:
+	return int(manifest().air.room) if room_id == int(manifest().air.plant) else room_id
+
+## A kept light given or taken in its rooms.
+func give_light(key: int, on: bool) -> void:
+	power_room(key, on)
+	if key == int(manifest().air.room): power_room(int(manifest().air.plant), on)
+
+## A room's light given or taken (every machine): out of the dark ones while
+## lit. Its power taken first: set_room_power() only acts on a change, and a
+## dark room of planta 3 has its power and its lamp built out.
+func power_room(room_id: int, on: bool) -> void:
+	if on:
+		level.hotel.set_room_power(room_id, false)
+		level.hotel.dark_ids.erase(room_id)
+		level.hotel.set_room_power(room_id, true)
+	else:
+		level.hotel.set_room_power(room_id, false)
+		level.hotel.dark_ids[room_id] = true
 
 ## The leaf shut or swung open, now or over SWING_TIME.
 func show_hatch(swing: bool) -> void:
@@ -272,10 +355,9 @@ func word_of(usable, seat: int) -> String:
 	var body = level.body_of_seat(seat)
 	if body == null: return ""
 	match String(usable.action):
-		"hatch": return "ABRIR" if released and spin == 0.0 and not running() and not hatch_open else ""
+		"hatch": return "ABRIR" if vent_open() and not hatch_open else ""
 		"post": return "PASAR FICHA" if not post_open and has_card(seat) else ""
-		"start": return "ENCENDER" if charges > 0 and not running() else ""
-		"stop": return "PARAR" if running() else ""
+		"sit": return "SENTARSE" if post_open and not seated(operator) and Time.get_ticks_msec() - stood_msec > RESIT_MS else ""
 		"read": return "LEER"
 		"climb":
 			if int(usable.index) == 0: return "ENTRAR" if hatch_open and not crawling_at(body.global_position) else ""
@@ -287,8 +369,6 @@ func hold_of(usable, _seat: int) -> float:
 	match String(usable.action):
 		"hatch": return HATCH_TIME
 		"post": return POST_SWIPE
-		"start": return START_HOLD
-		"stop": return STOP_HOLD
 		"climb": return CLIMB_HOLD
 		"ladder": return LADDER_HOLD
 	return 0.0
@@ -309,9 +389,20 @@ func in_shaft() -> int:
 		if MAIN_DUCT.on_landing(manifest(), body.global_position): count += 1
 	return count
 
-## What the host checks before anybody's use is applied.
+## Whether a seat sits at the console, alive.
+func seated(seat: int) -> bool:
+	return seat >= 0 and seat == operator and int(level.session.participants.get(seat, level.session.Life.DEAD)) != level.session.Life.DEAD
+
+## What the host checks before anybody's use is applied. The console's own
+## (a lock by its camera, a light by its room) only from whoever sits there.
 func allow(action: String, index: int, seat: int, body) -> bool:
-	if not built() or body == null or index < 0 or index >= usables.size() or not ACTIONS.has(action): return false
+	if not built() or body == null or not ACTIONS.has(action): return false
+	match action:
+		"stand": return seated(seat)
+		"lock": return seated(seat) and index >= 0 and index < unlocked.size() and not bool(unlocked[index])
+		"light": return seated(seat) and lightable(lit_key(index)) and (lights.has(lit_key(index)) or lights.size() < LIGHTS_MOST)
+		"unlit": return false
+	if index < 0 or index >= usables.size(): return false
 	if int(level.session.participants.get(seat, level.session.Life.DEAD)) == level.session.Life.DEAD: return false
 	if bool(body.get("hidden")) or level.lifts.riding.has(seat): return false
 	if FLOOR.planta_of(body.global_position.y) != 2: return false
@@ -320,10 +411,9 @@ func allow(action: String, index: int, seat: int, body) -> bool:
 	if body.global_position.distance_to(usable.global_position) > reach + 1.2: return false
 	if String(usable.action) != action: return false
 	match action:
-		"hatch": return released and spin == 0.0 and not running() and not hatch_open
+		"hatch": return vent_open() and not hatch_open
 		"post": return not post_open and has_card(seat)
-		"start": return charges > 0 and not running()
-		"stop": return running()
+		"sit": return post_open and not seated(operator)
 		"climb":
 			if index == 0: return hatch_open and not crawling_at(body.global_position)
 			return crawling_at(body.global_position)
@@ -342,17 +432,38 @@ func apply(action: String, index: int, seat: int, _data: Dictionary, quiet: bool
 			post_open = true
 			show_post()
 			if not quiet: sound_at("lever_1.wav", usables[3].global_position, -4.0)
-		"start":
-			charges -= 1
-			running_until = float(level.session.elapsed) + fan_time
-			released = true
-			if not quiet:
-				stop_loop(fans_voice)
-				fans_voice = loop_at("fans.wav", usables[5].global_position + Vector3(0, 1.0, 0), 0.0)
-		"stop", "stopped":
-			running_until = 0.0
-			stop_loop(fans_voice)
-			fans_voice = null
+		"sit":
+			operator = seat
+			# The test bots have no screen (as at the keypad, code_verdict()):
+			# sat, they open the air room and stand up again.
+			if level.bot_match and level.body_of_seat(seat) != level.player:
+				var i := vent_cam()
+				if i >= 0:
+					unlocked[i] = true
+					show_lock(i)
+				operator = -1
+			elif seat == level.player.slot: open_console()
+		"stand":
+			if operator == seat: operator = -1
+			if seat == level.player.slot: close_console()
+		"lock":
+			unlocked[index] = true
+			show_lock(index)
+			if not quiet and not cam_doors[index].is_empty() and is_instance_valid(cam_doors[index][0]): sound_at("lever_2.wav", cam_doors[index][0].doorway + Vector3(0, 1.2, 0), -6.0)
+		"light":
+			var key := lit_key(index)
+			if lights.has(key):
+				lights.erase(key)
+				give_light(key, false)
+			else:
+				lights[key] = float(level.session.elapsed)
+				give_light(key, true)
+				if not level.net.is_client(): lure(key)
+			if not quiet: sound_at("lever_1.wav", usables[4].global_position, -10.0)
+		"unlit":
+			if lights.has(index):
+				lights.erase(index)
+				give_light(index, false)
 		"climb":
 			if not quiet: sound_at("ladder.wav", MAIN_DUCT.foot(manifest()).origin + Vector3(0, 1.5, 0), -4.0)
 			var climber = level.body_of_seat(seat)
@@ -367,26 +478,77 @@ func apply(action: String, index: int, seat: int, _data: Dictionary, quiet: bool
 
 ## The post's instructions.
 func paper_of(_index: int) -> Dictionary:
-	return memo(MEMO_ID, "VENTILACIÓN", ["1. PASE LA FICHA.", "2. ARRANQUE DESDE ESTA CONSOLA. BATERÍA: %d CARGAS." % charges, "3. CON LOS VENTILADORES EN MARCHA NO SE ABRE LA COMPUERTA."])
+	return memo(MEMO_ID, "VIGILANCIA", ["CIERRES ELÉCTRICOS: SALAS TÉCNICAS Y DE ARCHIVO.", "BATERÍA DE EMERGENCIA: %d LUCES A LA VEZ, %d SEGUNDOS CADA UNA." % [LIGHTS_MOST, int(DECOY_TIME)]])
+
+## The local player sat at the console: held, crouched at the desk, and the
+## cameras on its screen.
+func open_console() -> void:
+	var player = level.player
+	player.reading = true
+	MOVEMENT.set_crouch(player, true)
+	var stand: Vector3 = usables[4].stand
+	player.transit = {"from": player.global_position, "to": stand, "yaw_from": player.rotation.y, "yaw_to": usables[4].face_yaw, "time": 0.0, "length": 0.3}
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	# In the interface's own layer: under the tape, and under the menus.
+	if console == null:
+		console = CAMS.new()
+		console.setup(level, self)
+		level.ui.add_child(console)
+
+## The local player up from the console at once (a pause, a capture, the floor
+## over), and the host told.
+func leave_console() -> void:
+	if console == null: return
+	close_console()
+	level.match_net.use_office(ID, "stand", 4)
+
+func close_console() -> void:
+	if console != null:
+		console.queue_free()
+		console = null
+		stood_msec = Time.get_ticks_msec()
+		level.cams_eye = Vector3.INF
+		# The floor round the player again at once, not at the next round.
+		level.visibility_clock = 1.0
+		level.player.reading = false
+		MOVEMENT.set_crouch(level.player, false)
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+## The host: a room lit from the console is a presence she may go and look
+## at, as likely as her difficulty says (tuning "decoy"); only the AI's.
+func lure(room_id: int) -> void:
+	var creature = level.get("creature")
+	if creature == null or not creature.has_method("investigate") or String(creature.get("control")) != "ai": return
+	var odds := float(creature.get("tuning").get("decoy", 0.0)) if creature.get("tuning") is Dictionary else 0.0
+	if odds >= 1.0 or randf() < odds: creature.investigate(FLOOR.position_of(manifest().rooms[room_id]) + Vector3(0, 1.0, 0))
 
 ## Whether a seat holds a card from level 1 (the files handler's).
 func has_card(seat: int) -> bool:
 	var files = level.objective(&"files")
 	return files != null and files.has_card(seat)
 
-## Every machine: the fans ease up and down; the host stops them when their
-## time is out.
-func tick(delta: float) -> void:
-	if not built(): return
-	spin = move_toward(spin, 1.0 if running() else 0.0, delta / FAN_SPIN)
-	for rotor in rotors: rotor.rotate_object_local(Vector3(0, 0, 1), spin * delta * 18.0)
-	if not level.net.is_client() and running() and float(level.session.elapsed) >= running_until:
-		apply("stopped", 4, -1, {}, false)
-		level.match_net.tell_office(ID, "stopped", 4, -1, {})
+## The host: a lit room goes out after DECOY_TIME, or once she stands within
+## DECOY_NEAR of it; whoever sat and died, or left the game, stands up.
+func tick(_delta: float) -> void:
+	if not built() or level.net.is_client(): return
+	if operator >= 0 and (not seated(operator) or level.match_net.away.has(operator)):
+		apply("stand", 4, operator, {}, false)
+		level.match_net.tell_office(ID, "stand", 4, operator, {})
+	if lights.is_empty(): return
+	# (The null creature of the floor without her is nowhere.)
+	var creature = level.get("creature")
+	var her: Vector3 = creature.global_position if creature is Node3D and creature.is_inside_tree() and creature.has_method("kind_id") and creature.kind_id() != &"none" else Vector3.INF
+	for room_id in lights.keys():
+		var middle := FLOOR.position_of(manifest().rooms[int(room_id)])
+		# Over its ceiling counts: on its planta, near it in plan.
+		var near: bool = her != Vector3.INF and FLOOR.planta_of(her.y) == FLOOR.planta_of(middle.y + 1.0) and Vector2(her.x - middle.x, her.z - middle.z).length() < DECOY_NEAR
+		if near or float(level.session.elapsed) - float(lights[room_id]) >= DECOY_TIME:
+			apply("unlit", int(room_id), -1, {}, false)
+			level.match_net.tell_office(ID, "unlit", int(room_id), -1, {})
 
-## The bots: a card holder opens the post and starts the fans, somebody
-## stops them, the hatch; then each climbs up, crawls the duct to the landing,
-## and once the quota is there the ladder down.
+## The bots: a card holder opens the post, somebody sits at the console
+## (which opens the air room for a bot), the hatch; then each climbs up,
+## crawls the duct to the landing, and once the quota is there the ladder down.
 func bot_errands(team) -> Array:
 	var errands: Array = []
 	if not built() or level.session.stage != 3 or usables.is_empty(): return errands
@@ -396,14 +558,11 @@ func bot_errands(team) -> Array:
 				errands.append(team.office_task("air:post", usables[3], brain.seat))
 				break
 		return errands
-	if not released:
-		if charges > 0 and not running(): errands.append(team.office_task("air:start", usables[4]))
-		return errands
-	if running():
-		errands.append(team.office_task("air:stop", usables[5]))
+	if not vent_open():
+		if not seated(operator): errands.append(team.office_task("air:sit", usables[4]))
 		return errands
 	if not hatch_open:
-		if spin == 0.0: errands.append(team.office_task("air:hatch", usables[0]))
+		errands.append(team.office_task("air:hatch", usables[0]))
 		return errands
 	var m := manifest()
 	var line: Array = []
@@ -438,15 +597,14 @@ func climb(index: int) -> void:
 
 func progress(stage: int) -> Dictionary:
 	if not built() or not level.kind.asks(stage, String(ID)): return idle()
-	return {"ready": hatch_open, "done": int(post_open) + int(released) + int(hatch_open), "needed": 3, "kind": "air", "lines": [["CARGAS", "%d" % charges]], "extra": {}}
+	return {"ready": hatch_open, "done": int(post_open) + int(vent_open()) + int(hatch_open), "needed": 3, "kind": "air", "lines": [["LUCES", "%d / %d" % [lights.size(), LIGHTS_MOST]]], "extra": {}}
 
 func goal_points(stage: int) -> Array[Vector3]:
 	var points: Array[Vector3] = []
 	if not built() or not level.kind.asks(stage, String(ID)): return points
 	var m := manifest()
 	if not post_open: points.append(usables[3].global_position)
-	elif not released: points.append(usables[4].global_position)
-	elif running(): points.append(usables[5].global_position)
+	elif not vent_open(): points.append(usables[4].global_position)
 	points.append(MAIN_DUCT.foot(m).origin)
 	var p: Array = m.air.shaft.point
 	points.append(Vector3(float(p[0]), MAIN_DUCT.floor_y(m), float(p[2])))
@@ -455,12 +613,13 @@ func goal_points(stage: int) -> Array[Vector3]:
 ## A stage given back: the hatch shut, and whoever is in the duct put back at
 ## the ladder's foot (each machine its own player).
 func reset() -> void:
-	stop_loop(fans_voice)
-	fans_voice = null
-	charges = 2
-	running_until = 0.0
-	spin = 0.0
-	released = false
+	close_console()
+	operator = -1
+	for room_id in lights.keys(): give_light(int(room_id), false)
+	lights.clear()
+	for i in unlocked.size():
+		unlocked[i] = false
+		show_lock(i)
 	post_open = false
 	show_post()
 	hatch_open = false
@@ -471,13 +630,21 @@ func reset() -> void:
 
 func snapshotted() -> bool: return true
 
-func snapshot() -> Dictionary: return {"charges": charges, "running_until": running_until, "released": released, "post": post_open, "hatch": hatch_open}
+## The console's operator is not kept: whoever comes back stands.
+func snapshot() -> Dictionary: return {"post": post_open, "hatch": hatch_open, "unlocked": unlocked.duplicate(), "lights": lights.duplicate()}
 
 func restore(data: Dictionary) -> void:
-	charges = int(data.get("charges", charges))
-	running_until = float(data.get("running_until", 0.0))
-	released = bool(data.get("released", false))
 	post_open = bool(data.get("post", false))
 	hatch_open = bool(data.get("hatch", false))
+	var kept: Array = data.get("unlocked", [])
+	for i in unlocked.size():
+		unlocked[i] = i < kept.size() and bool(kept[i])
+		show_lock(i)
+	for room_id in lights.keys(): give_light(int(room_id), false)
+	lights.clear()
+	var lit: Dictionary = data.get("lights", {})
+	for room_id in lit:
+		lights[int(room_id)] = float(lit[room_id])
+		give_light(int(room_id), true)
 	show_post()
 	show_hatch(false)

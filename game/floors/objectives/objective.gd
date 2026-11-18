@@ -158,6 +158,20 @@ func plate_spot(node: MeshInstance3D) -> Vector3:
 	var normal: Vector3 = spot[2]
 	return node.transform * (centre + normal * PLATE_OFF)
 
+## A door's pilot over its frame's head (the maneuver room's, the camera
+## rooms'): its lens, its middle's height and how far off the wall's face.
+const DOOR_PILOT := Vector3(0.03, 0.03, 0.012)
+const DOOR_PILOT_Y := 2.69
+const DOOR_PILOT_OUT := 0.07
+const PILOT_LENS := preload("res://game/world/office/pieces/mail_equipment.gd")
+const PILOT_WALL: float = preload("res://game/floors/palettes/office_palette.gd").WALL_HALF
+
+## Its two lenses, [red, green], over a doorway on the face `away` points out
+## of (a room's floor at `floor_y`): the handler shows one at a time.
+func door_pilot_lenses(doorway: Vector3, floor_y: float, away: Vector3) -> Array:
+	var at := Transform3D(Basis(Vector3.UP, atan2(away.x, away.z)), Vector3(doorway.x, floor_y, doorway.z) + away * (PILOT_WALL + DOOR_PILOT_OUT) + Vector3(0, DOOR_PILOT_Y - DOOR_PILOT.y * 0.5, 0))
+	return [equipment(PILOT_LENS.lamp_lens(level.hotel, DOOR_PILOT, "glow_red"), at), equipment(PILOT_LENS.lamp_lens(level.hotel, DOOR_PILOT, "glow_green"), at)]
+
 ## Words on a plate, lit as the building's signs are, at `at` in `parent`'s
 ## frame (the floor when none), turned to `yaw`.
 func plate_text(words: String, at: Vector3, yaw: float, font: int, ink := PLATE_INK, parent: Node3D = null) -> Label3D:

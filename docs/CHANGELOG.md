@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.17.0](#1170--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La planta 3 se juega desde las cámaras de seguridad: ocho salas con cierre eléctrico, luces que son señuelos y un operador camuflado. |
 | [1.16.0](#1160--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Veinte documentos nuevos en el hotel, veinticuatro en total, y salen seis por partida. |
 | [1.15.0](#1150--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La planta 2 se cruza tres veces: tres sectores en el cuadro, una puerta motorizada y la palanca del montacargas en su sala. |
 | [1.14.0](#1140--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La pantalla de quien lleva a The Lurker, rehecha: el disco del ataque y la cordura de cada uno en color. |
@@ -87,6 +88,36 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.17.0 — 18 de noviembre de 2026
+
+*La planta 3 se juega desde las cámaras de seguridad: ocho salas con cierre eléctrico, luces que son señuelos y un operador camuflado.*
+
+Commits `dca25a70`…`v1.17.0`. Fase 7 del gran cambio del piso 2 (`.claude/specs/cordura_y_edificio.md`). Versión del generador del piso 2: 6 (los pisos guardados con la 5 se rechazan).
+
+### Novedades
+
+- **Sentarse a la consola de seguridad** abre las cámaras de la planta 3: el plano con la luz de cada sala y, de una en una, la imagen en directo de ocho salas con cierre eléctrico.
+- **Ocho salas cerradas:** la de climatización y siete técnicas o de archivo. Hay que reconocer la climatizadora en su cámara y abrir ese cierre: la compuerta del ducto solo se abre con su sala desbloqueada.
+- **La luz de cualquier sala, desde el plano:** cuatro a la vez, 60 s cada una. La planta está a oscuras, así que sin luz la cámara no enseña nada.
+- **Las luces son señuelos para The Lurker:** la IA va a mirarlas según su dificultad; quien la lleva en Versus ve en la sala figuras con linterna que andan, hasta que llega a 6 m y se apagan.
+- **Quien opera queda camuflado en Versus:** sin borde, sin baliza y sin poder marcarse como presa mientras ella esté a más de 6 m.
+- **Tres terminales de pantalla verde** sobre la mesa del puesto, en lugar de los monitores hechos a mano, y una silla delante.
+- **Un piloto sobre cada puerta con cierre eléctrico:** rojo cerrada, verde cuando la consola la abre.
+
+### Cambios
+
+- **Los ventiladores ya no se arrancan ni se paran.** La climatizadora queda como la máquina de su sala.
+- Ninguna cafetera cae en una sala con cierre eléctrico.
+
+### Herramientas y documentación
+
+- `tools/capture/cams_capture.gd` fotografía el puesto y las cámaras (`evidence/planta/fase7/`); `tools/dev/lurker_hunt_drive.gd --part=decoy`, el señuelo desde la vista de ella.
+
+### Sin comprobar al cerrar la versión
+
+- Una partida con personas: si la climatizadora se reconoce bien en una imagen tan pequeña, y cuánto tarda la planta.
+- El mando en la consola.
 
 ## 1.16.0 — 18 de noviembre de 2026
 

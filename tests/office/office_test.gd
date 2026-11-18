@@ -301,7 +301,7 @@ func kind_checks() -> void:
 	var made = (load(KIND.CREATURE) as PackedScene).instantiate()
 	check("Su criatura se carga y es una criatura del contrato", made != null and made is CREATURE)
 	if made != null: made.free()
-	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 5", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 5)
+	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 6", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 6)
 	check("Sus etapas se llaman niveles; las del hotel, sectores", KIND.title_of(2) == "NIVEL 2" and HOTEL_KIND.title_of(2) == "SECTOR 2")
 
 # --- Generador ---------------------------------------------------------------
@@ -1005,6 +1005,9 @@ func validator_checks() -> void:
 				m.adjacency[n].append(sec)
 				return
 	mutation(v, "La seguridad con otra puerta", "security_doors", change_6)
+	mutation(v, "Siete cámaras", "cams", func(m): m.air.cams.pop_back())
+	mutation(v, "Una sala de cámara sin su cierre eléctrico", "cam_", func(m): m.doors[String(m.air.cams[0].doors[0])].erase("lock"))
+	mutation(v, "La sala de maniobra sin el cierre de su motor", "maneuver", func(m): m.doors[String(m.power.maneuver.door)].erase("lock"))
 	var change_7 := func(m: Dictionary) -> void:
 		var lobby: Dictionary = m.rooms[int(m.entries[1])]
 		var e: Dictionary = m.ducts.exits.filter(func(x): return String(x.kind) == "ceiling")[0]

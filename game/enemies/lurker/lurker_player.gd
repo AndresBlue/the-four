@@ -645,8 +645,19 @@ func mark_prey() -> void:
 
 func markable(one, at: Vector3, here: int) -> bool:
 	if not is_instance_valid(one) or not "slot" in one or not level.survivor_active(one) or bool(one.get("hidden")) or not SIGHT.alive(level, one): return false
+	if camouflaged(one, at): return false
 	var feet: Vector3 = one.global_position
 	return FLOOR.planta_of(feet.y + 1.0) == here and Vector2(feet.x - at.x, feet.z - at.z).length() <= PREY_REACH
+
+## Whoever sits at the security post's console is camouflaged from her
+## (cordura_y_edificio.md 3.11): no outline, no beacon, no prey, till she is
+## within CAMO_REACH of it in plan, as near as her coming puts a decoy out.
+const CAMO_REACH := 6.0
+func camouflaged(one, at: Vector3) -> bool:
+	var air = level.objective(&"air") if level.has_method("objective") else null
+	if air == null or not "operator" in air or not "slot" in one or int(air.operator) != int(one.slot): return false
+	var feet: Vector3 = one.global_position
+	return Vector2(feet.x - at.x, feet.z - at.z).length() > CAMO_REACH
 
 ## Survivors alive and in play on her planta, at least one (lurker_senses.team_here()).
 func team_here() -> int:

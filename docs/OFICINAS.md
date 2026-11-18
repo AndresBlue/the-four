@@ -78,7 +78,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
   - escribir la solicitud en la ventanilla;
   - recoger la ficha de una estación;
   - quedarse en el cuadro mientras los demás cruzan;
-  - encender los ventiladores;
+  - sentarse a las cámaras de seguridad;
   - ir el último por el ducto;
   - leer un papel;
   - esconderse;
@@ -90,7 +90,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 |---|---|---|---|
 | 1 | **Personal**: la planta «presentable», con recepción interna, oficinas abiertas, cubículos, despachos acristalados, la ventanilla y el tubo neumático | **La luz se da**: casi toda encendida, salas oscuras ~23 % | Se presenta: se la oye en los ductos, asoma en los marcos, cruza un techo al borde de la vista, y sale en tu foto |
 | 2 | **Registro y Archivo**: archivos con estanterías y pasillos de un metro, correo, microfichas, el cuarto eléctrico | **La luz se raciona**: corriente de emergencia y unas pocas zonas a la vez | Caza de verdad. Pasillos estrechos donde avanza **sostenida entre las dos estanterías** (la pose de la imagen, por fin en su sitio). Se la pastorea con la luz |
-| 3 | **Dirección**: despachos con madera y alfombras, sala de juntas, puesto de seguridad y **la sala de climatización** | **No hay luz**: cierre de seguridad, sin corriente | En su casa. Los ventiladores la sacan a las salas, y el final es meterse en su ducto |
+| 3 | **Dirección**: despachos con madera y alfombras, sala de juntas, puesto de seguridad y **la sala de climatización** | **No hay luz**: cierre de seguridad, sin corriente | En su casa. Las luces de las cámaras la llaman, y el final es meterse en su ducto |
 
 ---
 
@@ -141,7 +141,7 @@ En el edificio, «módulo» es una celda (3,6 o 7,2 m por el fondo de su banda) 
 | **Sala de descanso** | Módulo | Fluorescente | Máquina expendedora, fuente de agua, mesas, nevera | La máquina zumba: tapa el sonido |
 | **Aseos y vestuario** | Módulo | Fluorescente | **Taquillas metálicas (escondite)** | Espera encima |
 | **Sala de climatización** (planta 3) | Salón | Nada | Climatizadora, **ductos a escala humana**, la compuerta del ducto principal | Su nido |
-| **Puesto de seguridad** (planta 3) | Módulo | La batería de seguridad | Mesa de control con monitores apagados, armero vacío; se abre con la ficha y desde aquí se encienden los ventiladores; como un despacho, puede tener una cristalera a un pasillo, de vidrio armado y sin persiana | |
+| **Puesto de seguridad** (planta 3) | Módulo | La batería de seguridad | Mesa de control con tres terminales de pantalla verde, armero vacío; se abre con la ficha y desde aquí se llevan las cámaras, las luces y los cierres de la planta; como un despacho, puede tener una cristalera a un pasillo, de vidrio armado y sin persiana | |
 | **Vestíbulo del montacargas** | Como el del ascensor del hotel | Siempre con luz (también en la 2) | El montacargas con reja; en la 1, su lector de fichas | Nunca entra |
 
 - **Pasillos:** de 3 a 3,6 m (alguno de 2,4), con un friso de dos tonos igual en todos (arrimadero de roble color miel hasta 1 m bajo una moldura de nogal, greige encima) y, en cada celda de pasillo, un rótulo negro de letras claras a 1,6 m con el nombre de su zona y un cuadradito del color de su departamento.
@@ -304,29 +304,34 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - No hay montacargas más abajo.
 - **La única salida es el pozo de ventilación**, desde **la sala de climatización**: su nido.
 
-**El encargo, en tres tiempos:**
-1. **Encender la climatización desde el puesto de seguridad.**
-   - Se abre con la ficha de la planta 1.
-   - La batería de seguridad arranca los ventiladores **un rato** (60–90 s) y **tiene pocas cargas**: 2 en Apacible y Equilibrada, 1 en Desafiante y Pesadilla.
-   - **Con los ventiladores en marcha:**
-     - el aire **la echa de los ductos** y sale a las salas;
-     - por primera vez está fuera, cazando con la vista en la oscuridad;
-     - todo el edificio **ruge**: ella no oye a nadie, y nadie la oye ni a ella ni a los ductos.
-   - **Se pierde la mejor señal**, y a cambio ella no puede seguir a nadie por el oído.
-2. **Parar los ventiladores y abrir la compuerta del ducto principal** en la sala de climatización.
-   - Con los ventiladores en marcha no se abre, por la presión.
-   - Al pararlos **ella vuelve a los ductos**, y es una carrera por entrar antes.
-3. **El ducto:**
+**El encargo, en tres tiempos** (el autor, 18 de noviembre de 2026; `air_objective.gd`, `game/ui/security_cams.gd`, `.claude/specs/cordura_y_edificio.md` 3.11):
+1. **El puesto de seguridad.** Se abre con la ficha de la planta 1. Sobre su mesa, tres terminales de pantalla verde; delante, su silla.
+2. **Sentarse a la consola** (SENTARSE) abre el sistema de cámaras, a pantalla completa y bajo el filtro de la cinta:
+   - **El plano de la planta**, con cada sala: gris a oscuras, ámbar con luz, el puesto en blanco.
+   - **Ocho salas con cierre eléctrico**, marcadas CAM 1 a CAM 8 en rojo (verde al abrirlas): la sala de climatización y siete salas técnicas o de archivo (almacenes, depósitos, reprografía, archivos, sala de descanso), nunca dos pegadas ni más de tres del mismo tipo mientras haya otros. Sus puertas no se abren con la mano, y sobre cada una, por fuera, hay un piloto rojo que pasa a verde cuando la consola abre su cierre.
+   - **Una cámara a la vez, en directo**, pequeña y con poca definición, desde una esquina del techo de su sala. La planta está a oscuras: sin luz, la cámara no enseña nada.
+   - **La luz de cualquier sala** (un clic en el plano): la batería da para **4 a la vez**, y cada una dura 60 s o hasta que ella llega a 6 m.
+   - **Abrir el cierre** de la sala que se mira. No se vuelve a cerrar: nadie queda encerrado.
+   - Hay que **reconocer la climatizadora** en una de las ocho cámaras y abrir esa. Las otras siete no llevan a nada.
+   - Sentado no se ve el edificio ni se puede girar: quien opera oye su aviso de la espalda con las cámaras delante, y tiene que levantarse para salvarse.
+3. **La compuerta del ducto principal**, en la sala de climatización, se abre con su sala desbloqueada. Después, **el ducto:**
    - 25 a 45 m de ducto de 1,2 m, **a gatas**, con codos y un cruce, hasta el pozo;
    - por detrás puede venir ella, porque es su casa;
    - quien va el último puede ir mirando hacia atrás, más despacio;
    - al llegar al pozo, una escalerilla hacia abajo: con la cuota en el pozo, se acaba el piso.
 
+**Las luces son señuelos para ella:**
+- **La IA** toma una sala encendida desde la consola como una presencia que ir a mirar, con la probabilidad de su dificultad (`decoy`: 0,4 en Apacible, 0,6 en Equilibrada, 0,8 en Desafiante, 0,9 en Pesadilla).
+- **Quien la lleva en Versus** ve en esa sala una o dos figuras como las de los supervivientes, con el borde de una cordura entera, que andan por ella. Se apagan con la sala cuando llega a 6 m.
+- **Quien opera, camuflado en Versus:** sentado a la consola no lleva borde ni baliza, no se le marca como presa y su consola se lee tan quieta como las demás, hasta que ella está a 6 m. Más cerca es una presa como cualquiera.
+
+**Los ventiladores ya no son un paso:** ni se arrancan ni se paran. La climatizadora queda como la máquina de su sala, que es por lo que se la reconoce.
+
 **Alguien estuvo antes** (confirmado: en todos los pisos hay restos de personas):
 - en Dirección quedan las notas de quien intentó lo mismo;
 - **en el ducto, sus restos**. No llegó.
 
-**Alucinaciones de la planta:** ventiladores que arrancan y no han arrancado; golpes en un ducto con los ventiladores parados.
+**Alucinaciones de la planta:** ventiladores que arrancan y no han arrancado; golpes en un ducto.
 
 ### Lo que esto pide al motor (detalle en la sección 11)
 
@@ -518,7 +523,7 @@ Como ya no tiene aura (sección 1), son ellas las que la hacen sentir encima cua
   - una silla de ruedas que rueda sola.
 - La sombra de algo que pasa por detrás de una persiana.
 - Una sola lámpara que tiembla. Nunca la sala entera.
-- Las propias de cada planta (cápsulas que no llegan, palancas y tictacs que no son, ventiladores que no arrancan): en la sección 3.
+- Las propias de cada planta (cápsulas que no llegan, palancas y tictacs que no son, ventiladores que arrancan sin haber arrancado): en la sección 3.
 - **El propio cuerpo:** el latido del jugador ya no depende de la distancia de ella, sino de lo que ha visto y oído (la tensión de la música) y de su cordura: con la cordura entera no late; desde un 35 % perdido late solo, y más deprisa cuanto más se pierde. La respiración propia que se agita no suena todavía: falta la grabación (`docs/PLAN.md`, sección 4).
 - Con «Efectos reducidos», la placa, la tinta y las sombras se ven a la mitad.
 
@@ -526,7 +531,7 @@ Como ya no tiene aura (sección 1), son ellas las que la hacen sentir encima cua
 - el aviso de la espalda (decisión del autor: nada de avisos falsos, por ahora);
 - las luces de una sala temblando juntas;
 - la interfaz, la hoja ni el plano;
-- el timbre de una estación con su luz, el tictac del montacargas ni los ventiladores de verdad.
+- el timbre de una estación con su luz ni el tictac de un minutero de verdad.
 
 Así lo que se aprende sigue sirviendo.
 
@@ -891,6 +896,7 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
   - El montacargas de bajada solo arranca con la roja cumplida (desde la 1.15.0, con la palanca de la sala de maniobra).
   - Todo pasa por el anfitrión y se reparte como el estado de las teles.
 - **Planta 3:**
+  - Desde la 1.16.0 no hay ventiladores que arrancar: el puesto de seguridad lleva las cámaras, las luces y los cierres (sección 3, `air_objective.gd`). Lo que sigue hasta el ducto es el plan anterior.
   - `air_handler.gd`: cargas, tiempo en marcha.
     - Con los ventiladores en marcha: ruido de toda la planta que tapa sonidos (el oído de ella y el de todos baja con un factor); `conduit_graph` cerrado para ella, que sale por la boca más cercana.
   - `duct_hatch.gd`: se abre solo con los ventiladores parados.

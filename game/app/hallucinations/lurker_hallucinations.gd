@@ -223,7 +223,6 @@ func fitting(gone: float) -> Dictionary:
 	var protected: bool = level.point_protected(body.global_position)
 	var air = level.objective(&"air")
 	var power = level.objective(&"power")
-	var fans_still: bool = air == null or float(air.get("spin")) == 0.0
 	if not protected and not here.is_empty() and OFFICE.false_ceiling(here):
 		out["garras"] = {"weight": WEIGHTS.garras, "room": here, "gone": gone}
 		out["polvo"] = {"weight": WEIGHTS.polvo, "room": here}
@@ -232,7 +231,7 @@ func fitting(gone: float) -> Dictionary:
 	if not protected and level.player.torch.visible:
 		var beam := beam_spot(body.camera)
 		if not beam.is_empty(): out["haz"] = {"weight": WEIGHTS.haz, "beam": beam}
-	if not protected and (wing != 2 or fans_still):
+	if not protected:
 		var path := duct_path(ear, wing, gone)
 		if not path.is_empty(): out["ducto"] = {"weight": DUCT_WEIGHT_HIGH if wing == 2 else WEIGHTS.ducto, "path": path}
 	var phone := room_near(ear, wing, 6.0, 20.0, func(r): return OFFICE.has_phone(r) and int(r.id) != int(here.get("id", -1)), "telefono")
@@ -255,7 +254,7 @@ func fitting(gone: float) -> Dictionary:
 		if board.has("point"): out["palanca"] = {"weight": WEIGHTS.palanca, "point": v3(board.point) + Vector3(0, 1.2, 0)}
 		var tick := tick_spot(ear)
 		if tick != Vector3.INF: out["tictac"] = {"weight": WEIGHTS.tictac, "point": tick}
-	if wing == 2 and air != null and fans_still:
+	if wing == 2 and air != null:
 		var unit: Dictionary = level.manifest.get("air", {}).get("unit", {})
 		if unit.has("point"): out["ventiladores"] = {"weight": WEIGHTS.ventiladores, "point": v3(unit.point) + Vector3(0, 1.2, 0)}
 	return out

@@ -308,30 +308,32 @@ func systems() -> void:
 	var high := {}
 	var off: Array = level.off_limits_rooms()
 	for r in level.manifest.rooms:
-		if int(r.get("wing", -1)) == 2 and not off.has(int(r.id)) and lurker.shell.tray_of.has(int(r.id)):
+		if int(r.get("wing", -1)) == 2 and not off.has(int(r.id)) and lurker.shell.tray_of.has(int(r.id)) and air != null and air.lightable(int(r.id)):
 			high = r
 			break
 	if air == null or high.is_empty():
-		check("Los ventiladores y una sala de la planta 3", false)
+		check("La consola de seguridad y una sala de la planta 3", false)
 	else:
+		# A room lit from the security post's console (cordura_y_edificio.md 3.11):
+		# a presence she goes to look at by her difficulty's odds, and out once
+		# she is over it.
+		var id := int(high.id)
 		var at := FLOOR.position_of(high)
+		var kept: Dictionary = lurker.tuning
+		lurker.brain.clue = {}
+		lurker.tuning = kept.merged({"decoy": 0.0}, true)
+		air.apply("light", id, -1, {}, true)
+		var ignored: bool = lurker.brain.clue.is_empty() and level.hotel.lit(id)
+		air.apply("light", id, -1, {}, true)
+		var out_again: bool = not level.hotel.lit(id) and air.lights.is_empty()
+		lurker.tuning = kept.merged({"decoy": 1.0}, true)
+		air.apply("light", id, -1, {}, true)
+		var clue: Dictionary = lurker.brain.clue
+		lurker.tuning = kept
+		check("Una luz encendida desde la consola de seguridad la atrae según su dificultad", ignored and out_again and not clue.is_empty() and (clue.point as Vector3).distance_to(at + Vector3(0, 1, 0)) < 0.01, "sin atraer %s, apagada %s, pista %s" % [str(ignored), str(out_again), str(clue)])
 		lurker.place_over(at, at + Vector3(1, 0, 0))
-		lurker.brain.forget_all(0.0)
-		lurker.brain.force(&"roam")
-		# Past FAN_SPIN both ways.
-		air.running_until = 1.0e9
-		for i in 200: await physics_frame
-		var shut_seen: bool = lurker.ducts_were_shut
-		air.running_until = 0.0
-		var stopped_at: float = lurker.brain.clock
-		var clued := false
-		for i in 200:
-			await physics_frame
-			var clue: Dictionary = lurker.brain.clue
-			if clue.is_empty() or float(clue.at) < stopped_at: continue
-			for e in lurker.ducts.exits:
-				if (e.position as Vector3).distance_to(clue.point) < 0.01: clued = true
-		check("Al parar los ventiladores va a la rejilla más cercana", shut_seen and clued, "cerrados %s, %s" % [str(shut_seen), lurker.brain.state_name()])
+		for i in 5: await physics_frame
+		check("Y se apaga cuando ella llega", not air.lights.has(id) and not level.hotel.lit(id), "luces %s, ella a %.1f m" % [str(air.lights.keys()), Vector2(lurker.global_position.x - at.x, lurker.global_position.z - at.z).length()])
 	main_duct()
 	var seat := int(level.player.slot)
 	lurker.brain.spurned[seat] = lurker.brain.clock + 30.0

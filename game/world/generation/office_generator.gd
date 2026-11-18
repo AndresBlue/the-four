@@ -19,6 +19,12 @@ const GLAZED_P := 0.55        # each eligible wall of a despacho, exec office or
 const READER_ALONG := 1.1     # a reader, from its door's centre along the wall (code_lock.gd:120's keypad)
 const READER_Y := 1.2
 const STOP_Y := 1.3
+## The rooms the security post's cameras watch on planta 3 (cordura_y_edificio.md
+## 3.11): the air room and seven more, each behind an electric lock; their
+## camera this far in from a corner's two walls and under its ceiling.
+const CAMS := 8
+const CAM_INSET := 0.4
+const CAM_DROP := 0.3
 const CAMERA_DROP := 0.15     # the ceiling camera under the ceiling
 const STAND_OUT := 0.6        # the typist's feet, out from the desk's point
 const TABLE_OFFSET := 1.55    # a meeting table's footprint, from the boardroom's centre (office_props)
@@ -1639,11 +1645,89 @@ func furnish_air(job: Dictionary) -> String:
 	var shaft := {"point": rounded(mouth), "side": [e.x, e.y], "rect": [snappedf(cc.x, 0.001), snappedf(cc.y, 0.001), snappedf(sx, 0.001), snappedf(sz, 0.001)], "floor_y": snappedf(floor_y, 0.001), "ladder": ladder}
 	job.gates[2]["kind"] = "shaft"
 	rooms[int(job.gates[2].beyond)].erase("lift")
-	job.out["air"] = {"security": {"room": sec, "door": key, "outside": outside, "desk": desk, "reader": reader}, "room": room, "plant": plant, "hatch": {"point": rounded(hatch), "yaw": LAYOUT.yaw_of(-d1)}, "unit": unit, "stop": stop, "shaft": shaft}
+	# (The standby floor, where every wall is a doorway, has what it has.)
+	var cams := camera_rooms(job, room, plant, sec, outside, unit)
+	if cams.size() < CAMS and not bool(job.standby): return "cams"
+	job.out["air"] = {"security": {"room": sec, "door": key, "outside": outside, "desk": desk, "reader": reader}, "room": room, "plant": plant, "hatch": {"point": rounded(hatch), "yaw": LAYOUT.yaw_of(-d1)}, "unit": unit, "stop": stop, "shaft": shaft, "cams": cams}
 	job["foot"] = foot
 	job["hatch_square"] = hatch_square
 	job["unit_box"] = unit_box
 	return ""
+
+## The eight rooms the post's cameras watch, in a drawn order: the air room
+## (its camera in the plant's corner across from the air handler) and seven
+## plain technical or archive rooms of one door on to a corridor (other plain
+## rooms where the planta is short of them), never beside one another while it can be helped;
+## every door of each shut behind an electric lock. [{room, doors, point,
+## look}], fewer when the planta has not the rooms for it.
+func camera_rooms(job: Dictionary, air_room: int, plant: int, sec: int, sec_out: int, unit: Dictionary) -> Array:
+	var f: Dictionary = job.f
+	var rooms: Array = f.rooms
+	var rng := stream(int(job.seed), int(job.attempt), "cams")
+	# The seven others: plain technical and archive rooms.
+	var kinds: Array = [palette.STORE, palette.DEPOT, palette.COPY_ROOM, palette.ARCHIVE, palette.MOBILE_ARCHIVE, palette.BREAK_ROOM]
+	var locked := func(id: int, skip: int) -> Array:
+		var keys: Array = []
+		for g in f.adjacency[id]:
+			if int(g) == skip: continue
+			var door := "%d:%d" % [mini(id, int(g)), maxi(id, int(g))]
+			if not job.doors.has(door): continue
+			job.doors[door].open = false
+			job.doors[door]["lock"] = "electric"
+			keys.append(door)
+		return keys
+	var p_room: Dictionary = rooms[plant]
+	var into := LAYOUT.inward(String(unit.wall))
+	var unit_at := Vector3(float(unit.point[0]), float(unit.point[1]), float(unit.point[2])) + Vector3(into.x, 0.0, into.y) * float(palette.AIR_UNIT.z) * 0.5
+	var cams: Array = [{"room": air_room, "doors": locked.call(air_room, plant), "point": rounded(cam_corner(p_room, unit_at)), "look": rounded(unit_at + Vector3(0, 1.1, 0))}]
+	# Of those types first; any other plain room of one door to a corridor is
+	# spare, for a planta short of them (the standby floor's).
+	var pool: Array = []
+	var spare: Array = []
+	for r in rooms:
+		var id := int(r.id)
+		if int(r.wing) != 2 or bool(r.corridor) or int(r.type) == palette.VOID or int(r.hall) >= 0 or palette.off_limits(r) or bool(r.get("landing", false)): continue
+		if id in [air_room, plant, sec, sec_out] or f.adjacency[id].size() != 1 or not bool(rooms[int(f.adjacency[id][0])].corridor): continue
+		if kinds.has(int(r.type)): pool.append(id)
+		else: spare.append(id)
+	pool.sort()
+	shuffle(pool, rng)
+	spare.sort()
+	shuffle(spare, rng)
+	# No more than three of a type while other types are to be had, so the
+	# eight look apart on the screens; never two beside each other, but on a
+	# planta with nothing else left.
+	var taken: Array = []
+	for step: Array in [[pool, 3, true], [pool, CAMS, true], [spare, 3, true], [pool + spare, CAMS, false]]:
+		for id in step[0]:
+			if taken.size() >= CAMS - 1: break
+			if taken.has(id) or taken.filter(func(t): return int(rooms[t].type) == int(rooms[id].type)).size() >= int(step[1]): continue
+			if bool(step[2]) and taken.any(func(t): return absi(int(rooms[t].x) - int(rooms[id].x)) + absi(int(rooms[t].z) - int(rooms[id].z)) <= 1): continue
+			taken.append(id)
+	for id in taken:
+		var r: Dictionary = rooms[id]
+		var middle := Vector3(float(r.px), float(r.py) + 0.8, float(r.pz))
+		var door_at := FLOOR.portal_between(r, rooms[int(f.adjacency[id][0])])
+		cams.append({"room": id, "doors": locked.call(id, -1), "point": rounded(cam_corner(r, door_at)), "look": rounded(middle)})
+	shuffle(cams, rng)
+	return cams
+
+## A camera's place in a room: up under the ceiling in the corner farthest
+## from `away`, CAM_INSET in from its two walls.
+func cam_corner(room: Dictionary, away: Vector3) -> Vector3:
+	var hx := float(room.span_x) * 0.5 - CAM_INSET
+	var hz := float(room.span_z) * 0.5 - CAM_INSET
+	var best := Vector3.ZERO
+	var far := -1.0
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			var corner := Vector3(float(room.px) + sx * hx, 0.0, float(room.pz) + sz * hz)
+			var d := Vector2(corner.x - away.x, corner.z - away.z).length()
+			if d > far:
+				far = d
+				best = corner
+	best.y = float(room.py) + minf(float(room.height), float(palette.PLENUM.ceiling)) - CAM_DROP
+	return best
 
 ## Spec 2.5f, the corner sockets; then the corner props that would stand on a
 ## locker, a wall fixture's clear rect, the hatch or the handler give way.

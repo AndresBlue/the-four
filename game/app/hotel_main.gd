@@ -697,6 +697,9 @@ func set_floor(number: int) -> void:
 ## --creature=<key> on the command line sets it.
 const CREATURE_SCENES := {"locust": "res://game/enemies/locust/locust.tscn", "lurker": "res://game/enemies/lurker/lurker_creature.tscn", "none": "res://game/enemies/null_creature.tscn"}
 var creature_scene := ""
+## Where the security post's camera on screen looks from, INF with the console
+## shut (air_objective, security_cams.gd): the floor is drawn round it then.
+var cams_eye := Vector3.INF
 
 static func creature_asked() -> String:
 	for argument in OS.get_cmdline_user_args():
@@ -1192,8 +1195,10 @@ func on_state() -> void:
 	# The keypad as well: left open under the pause it still took digits, and
 	# Escape shut it instead of resuming.
 	if not playing and lock_open: close_lock()
+	# And the security post's cameras (air_objective): up from the console.
+	if not playing and cams_eye != Vector3.INF and objective(&"air") != null: objective(&"air").leave_console()
 	var background_capture := automation and OS.get_cmdline_user_args().has("--background")
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible and not background_capture else Input.MOUSE_MODE_VISIBLE
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible and not background_capture and cams_eye == Vector3.INF else Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
 	if session.state in [session.State.MENU, session.State.LOADING, session.State.CUTSCENE]: clear_screen_cues()
 	if is_instance_valid(hotel) and not manifest.is_empty():
@@ -1851,7 +1856,7 @@ func step_frame(delta: float) -> void:
 		if is_instance_valid(hotel):
 			# Watching, nothing is hidden: the whole floor is drawn wherever the
 			# camera is, which is the point of looking at it from outside.
-			var eye: Vector3 = observer_view.global_position if observer and observer_view != null else world_audio.listener_position()
+			var eye: Vector3 = observer_view.global_position if observer and observer_view != null else cams_eye if cams_eye != Vector3.INF else world_audio.listener_position()
 			# One planta at a time: the watcher's, or the one the eye is on.
 			var shown: int = observer_view.planta if observer and observer_view != null else -1
 			# Walking about, one reflection probe a round at most: each is its

@@ -115,7 +115,9 @@ func put(spot: Dictionary) -> void:
 ## room where one of the first rooms tried has one (the author, 17 November).
 func place_offices(manifest: Dictionary, rng: RandomNumberGenerator) -> void:
 	# Rooms of their own: a salon's cell has an open side where a corner looks to be.
-	var rooms: Array = candidates(manifest).filter(func(room): return int(room.get("hall", -1)) < 0)
+	# Nor behind planta 3's electric locks: a cup nobody could reach.
+	var shut: Array = manifest.get("air", {}).get("cams", []).map(func(cam): return int(cam.room))
+	var rooms: Array = candidates(manifest).filter(func(room): return int(room.get("hall", -1)) < 0 and not shut.has(int(room.id)))
 	for planta in FLOOR.PLANTAS:
 		var entry := FLOOR.entry_of(manifest, planta)
 		var from_entry := FLOOR.route_metres(manifest, entry)

@@ -308,6 +308,7 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		level.ui.tear_away()
 		if sheet_up: level.toggle_sheet()
 		if level.lock_open: level.close_lock()
+		if level.cams_eye != Vector3.INF and level.objective(&"air") != null: level.objective(&"air").leave_console()
 		if level.reading_paper(): level.close_document()
 		if sheet_up: level.ui.tear_sheet()
 		level.ui.hint.text = ""

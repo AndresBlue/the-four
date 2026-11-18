@@ -35,12 +35,18 @@ var bots: Array = []
 var log_lines: Array = []
 var shots: Array = []
 var clock := 0.0
+## Where the pictures go: OUT, or the security post's decoys alone
+## (--part=decoy, .claude/specs/cordura_y_edificio.md phase 7) in OUT_DECOY.
+var out_dir := OUT
+const OUT_DECOY := "res://evidence/planta/fase7/versus/"
 
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
 	DisplayServer.window_set_size(SIZE)
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
+	var decoy_only: bool = OS.get_cmdline_user_args().has("--part=decoy")
+	if decoy_only: out_dir = OUT_DECOY
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	for i in 3600:
@@ -82,6 +88,14 @@ func run() -> void:
 	lurker.grace = 0.0
 	level.camcorder.announce("")
 	note("en sus manos; %d bots quietos" % bots.size())
+	if decoy_only:
+		await decoy_part()
+		var only := FileAccess.open(out_dir + "sesion.txt", FileAccess.WRITE)
+		if only != null:
+			for line in log_lines: only.store_line(line)
+		print("SESSION done, %d lines" % log_lines.size())
+		quit(0)
+		return
 	await crawl_part()
 	await screen_part()
 	await lit_part()
@@ -94,7 +108,7 @@ func run() -> void:
 	await top_part()
 	await pad_part()
 	await reduced_part()
-	var file := FileAccess.open(OUT + "sesion.txt", FileAccess.WRITE)
+	var file := FileAccess.open(out_dir + "sesion.txt", FileAccess.WRITE)
 	if file != null:
 		for line in log_lines: file.store_line(line)
 	sheet()
@@ -197,7 +211,7 @@ func shot(title: String) -> void:
 	for i in 12: await process_frame
 	await RenderingServer.frame_post_draw
 	var image := root.get_texture().get_image()
-	image.save_png(OUT + "%s.png" % title)
+	image.save_png(out_dir + "%s.png" % title)
 	shots.append(["%s.png" % title, image])
 	var info: Dictionary = driver.prey_info
 	note("captura %s.png (cámara %s, presa %d %s)" % [title, String(driver.mode), int(driver.prey), "lista" if bool(info.get("ok", false)) else String(info.get("why", ""))])
@@ -213,7 +227,7 @@ func sheet() -> void:
 		small.convert(Image.FORMAT_RGB8)
 		small.resize(cell.x, cell.y, Image.INTERPOLATE_BILINEAR)
 		out.blit_rect(small, Rect2i(Vector2i.ZERO, cell), Vector2i(cell.x * (i % 3), cell.y * (i / 3)))
-	out.save_png(OUT + "hoja.png")
+	out.save_png(out_dir + "hoja.png")
 
 # --- The parts ------------------------------------------------------------------------
 
@@ -657,6 +671,47 @@ func gallery_part() -> void:
 	await wait(0.3)
 	note("por la galería: %.2f m en 1 s, galería %s" % [Vector2(at().x - from.x, at().z - from.z).length(), str(driver.gallery())])
 	await shot("24_galeria_avanza")
+
+## The security post's decoys: a room of planta 3 lit from its console, seen
+## from over a ceiling 9 to 14 m off with its figures walking in it; then her
+## over it, and its light and its figures gone.
+func decoy_part() -> void:
+	var air = level.objective(&"air")
+	var rooms: Array = level.manifest.rooms
+	var pick := -1
+	var from := -1
+	for room in rooms:
+		var id := int(room.id)
+		if int(room.get("wing", -1)) != 2 or bool(room.get("corridor", false)) or not air.lightable(id) or not OFFICE.false_ceiling(room) or FLOOR.size_of(room).x * FLOOR.size_of(room).y < 25.0: continue
+		for other in rooms:
+			var oid := int(other.id)
+			if int(other.get("wing", -1)) != 2 or not lurker.shell.tray_of.has(oid) or not OFFICE.false_ceiling(other): continue
+			var d := middle(id).distance_to(middle(oid))
+			if d >= 9.0 and d <= 14.0:
+				from = oid
+				break
+		if from >= 0:
+			pick = id
+			break
+	if pick < 0:
+		note("sin sala para el señuelo en la planta 3")
+		return
+	air.apply("light", pick, -1, {}, true)
+	driver.to_plenum(centre(from) + Vector3(0, 1, 0), from)
+	await wait(1.5)
+	await turn_to(centre(pick) - at())
+	await frame(centre(pick) + Vector3(0, 1.0, 0), 0.45)
+	await wait(1.0)
+	var view = driver.view
+	var figures: int = view.decoys.get(pick, []).size() if view != null else -1
+	note("señuelo en la sala %d (%.1f m): luz %s, figuras %d, al alcance %d" % [pick, Vector2(centre(pick).x - at().x, centre(pick).z - at().z).length(), str(air.lights.has(pick)), figures, view.decoy_feet(at(), driver.planta()).size() if view != null else -1])
+	await shot("60_senuelo_figuras")
+	await wait(2.0)
+	await shot("61_senuelo_se_mueven")
+	driver.to_plenum(centre(pick) + Vector3(0, 1, 0), pick)
+	await wait(1.5)
+	note("ella sobre la sala: luz %s, figuras %d" % [str(air.lights.has(pick)), view.decoys.get(pick, []).size() if view != null else -1])
+	await shot("62_senuelo_apagado")
 
 ## Planta 3 in the dark, from over its ceiling.
 func top_part() -> void:

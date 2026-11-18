@@ -3,8 +3,9 @@ extends RefCounted
 ## cache and materials (pieces/kit.gd).
 const KIT := preload("res://game/world/office/pieces/kit.gd")
 
-## The sizes and places air_objective.gd uses.
-const CONSOLE := Vector3(1.6, 0.45, 0.42)
+## The sizes and places air_objective.gd uses. The console's shelf and its
+## keys: its monitors are models put on it.
+const CONSOLE := Vector3(1.6, 0.12, 0.42)
 ## The security desk's middle off the wall and its top (office_geometry.gd
 ## SECURITY_DESK).
 const DESK_MIDDLE := 0.225
@@ -141,13 +142,8 @@ static func make_security_console(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var w := size.x
 	var d := size.z
 	KIT.block(p, "steel_olive", Vector3(0.0, 0.06, -d / 2.0 + 0.11), Vector3(w, 0.12, 0.22), 0.004)
-	for k in 4:
-		var x := -0.6 + k * 0.4
-		KIT.block(p, "black", Vector3(x, 0.27, -d / 2.0 + 0.15), Vector3(0.36, 0.3, 0.28), 0.012)
-		KIT.block(p, "steel_dark", Vector3(x, 0.27, 0.075), Vector3(0.36, 0.3, 0.01), 0.006)
-		KIT.block(p, "screen", Vector3(x, 0.28, 0.0805), Vector3(0.27, 0.21, 0.001))
-		for j in 3:
-			KIT.block(p, "ceramic", Vector3(x + 0.1 + j * 0.022, 0.14, 0.0805), Vector3(0.012, 0.008, 0.001))
+	# Its monitors are the kit's models, put on this shelf by air_objective.gd
+	# (MONITORS): the ones made here flickered, their glass on their bezel.
 	KIT.block(p, "black", Vector3(0.45, 0.035, 0.13), Vector3(0.4, 0.07, 0.16), 0.004)
 	KIT.block(p, "screen", Vector3(0.4, 0.05, 0.2105), Vector3(0.18, 0.008, 0.001))
 	KIT.block(p, "glow_green", Vector3(0.58, 0.05, 0.2105), Vector3(0.06, 0.014, 0.001))

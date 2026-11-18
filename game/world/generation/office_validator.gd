@@ -478,6 +478,34 @@ func air_ok(data: Dictionary, errors: Array[String]) -> void:
 	if not on_wall(out_room, rp, rwall) or along_gap > 1.5 + 0.001 or not near(rp.y, float(out_room.py) + 1.2, 0.01): errors.append("security_reader")
 	var gate: Dictionary = data.gates[2]
 	if String(gate.get("kind", "")) != "shaft" or rooms[int(gate.beyond)].has("lift"): errors.append("shaft")
+	# The post's cameras: eight rooms of planta 3 (the standby floor, of no
+	# typology, what it has), the air room one of them, every door of each shut
+	# behind its electric lock, the room's every door.
+	var cams: Array = air.get("cams", [])
+	if (cams.size() != 8 and not OFFICE.typology.is_empty()) or cams.size() > 8 or cams.filter(func(c): return int(c.room) == int(air.room)).size() != 1: errors.append("cams")
+	for cam in cams:
+		var cam_room: Dictionary = rooms[int(cam.room)]
+		var ok: bool = int(cam_room.wing) == 2 and not cam.doors.is_empty()
+		for door_key in cam.doors:
+			var spec: Dictionary = data.doors.get(String(door_key), {})
+			if String(spec.get("lock", "")) != "electric" or bool(spec.get("open", true)): ok = false
+		for g in data.adjacency[int(cam.room)]:
+			var pair := "%d:%d" % [mini(int(cam.room), int(g)), maxi(int(cam.room), int(g))]
+			if data.doors.has(pair) and not cam.doors.has(pair): ok = false
+		if not ok: errors.append("cam_%d" % int(cam.room))
+	# Locked, none of them is the only way on: from the planta's arrival the
+	# post's door and a door of each are reached through none of them.
+	var shut := {int(air.plant): true}
+	for cam in cams: shut[int(cam.room)] = true
+	var reached := {int(data.entries[2]): true}
+	var queue: Array = [int(data.entries[2])]
+	while not queue.is_empty():
+		var id: int = queue.pop_front()
+		for g in data.adjacency[id]:
+			if reached.has(int(g)) or shut.has(int(g)): continue
+			reached[int(g)] = true
+			queue.append(int(g))
+	if not reached.has(outside) or cams.any(func(c): return not data.adjacency[int(c.room)].any(func(g): return reached.has(int(g)))): errors.append("cams_reach")
 	# The hatch over the plant, toward the main duct's first cell.
 	var main: Dictionary = air.main
 	var cells: Array = main.cells

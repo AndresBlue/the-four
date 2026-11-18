@@ -254,7 +254,7 @@ func drive_local(delta: float) -> void:
 		return
 	# Not over the keypad: closing the sheet let the body walk off with the
 	# keypad still on screen taking digits.
-	if Input.is_action_just_pressed("sheet") and not level.online_menu and not level.lock_open: toggle_sheet()
+	if Input.is_action_just_pressed("sheet") and not level.online_menu and not level.lock_open and level.cams_eye == Vector3.INF: toggle_sheet()
 	if level.ui.sheet.visible:
 		# Looking at the sheet: the character stands still, the world goes on.
 		level.camcorder.focus("")
@@ -295,6 +295,11 @@ func drive_local(delta: float) -> void:
 		level.camcorder.focus("")
 		level.ui.hint.text = ""
 		level.hints.aimed("typing")
+		return
+	# At the security post's console: its screen takes the keys (security_cams.gd).
+	if level.cams_eye != Vector3.INF:
+		level.camcorder.focus("")
+		level.ui.hint.text = ""
 		return
 	# What the hand is on, looked for once: a lock, a drawer, a set, a paper
 	# and a wardrobe are all found by the same ray.

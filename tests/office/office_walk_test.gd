@@ -3,7 +3,7 @@ extends SceneTree
 ## on level 1 the request typed, the card taken from its station and through
 ## the reader; on level 2 the board, a minutero and the maneuver room; the
 ## freight lift down each time; and on the third the post opened with the
-## card, the fans started and stopped, the hatch, the climb into the main duct
+## card, its console's cameras, lights and the air room's lock, the hatch, the climb into the main duct
 ## and back, the crouched body passing all of it, and the shaft's
 ## ladder ending the floor.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -76,7 +76,7 @@ func walk(seed_asked: int) -> void:
 	var player = level.player
 	check("%s: el nivel 3 pide el aire" % tag, String(session.goal.get("kind", "")) == "air")
 	var memo = air.usables.back()
-	check("%s: en la seguridad, las instrucciones" % tag, String(memo.action) == "read" and String(air.paper_of(memo.index).form.subject) == "VENTILACIÓN")
+	check("%s: en la seguridad, las instrucciones" % tag, String(memo.action) == "read" and String(air.paper_of(memo.index).form.subject) == "VIGILANCIA")
 	# The post: its door locked until the card from level 1 goes through.
 	check("%s: la puerta de la seguridad, cerrada con llave" % tag, air.post_door != null and air.post_door.locked)
 	player.global_position = air.usables[3].stand + Vector3(0, 0.04, 0)
@@ -84,26 +84,38 @@ func walk(seed_asked: int) -> void:
 	check("%s: en el lector de la seguridad, PASAR FICHA" % tag, air.word_of(air.usables[3], player.slot) == "PASAR FICHA")
 	level.match_net.use_office(&"air", "post", 3)
 	check("%s: con la ficha se abre la seguridad" % tag, air.post_open and not air.post_door.locked and air.post_door.opened)
-	player.global_position = air.usables[4].stand + Vector3(0, 0.04, 0)
-	await frames(3)
-	level.match_net.use_office(&"air", "start", 4)
-	await frames(30)
-	check("%s: la consola enciende los ventiladores con una carga" % tag, air.running() and air.released and air.charges == 1 and air.spin > 0.0)
-	for i in 200:
-		await physics_frame
-		if air.spin >= 1.0: break
-	var below: Vector3 = player.global_position
-	check("%s: en marcha tapan el sonido de la planta 3 y no el de la 2" % tag, is_equal_approx(level.sound_mask(below), air.AIR_MASK) and level.sound_mask(below + Vector3(0, 6, 0)) == 0.0 and air.ducts_closed() and level.world_audio.mask_db(below) < -8.0)
+	# The cameras' eight rooms, each shut and locked; the air room one of them.
+	var vent: int = air.vent_cam()
+	check("%s: ocho salas con cierre eléctrico, la de ventilación entre ellas, todas cerradas" % tag, air.unlocked.size() == 8 and vent >= 0 and air.cam_doors.all(func(nodes): return not nodes.is_empty() and nodes.all(func(door): return door.locked and not door.opened)))
 	player.global_position = MAIN_DUCT.foot(m).origin + Vector3(0, 0.04, 0)
 	await frames(3)
-	check("%s: con los ventiladores en marcha la compuerta no se abre" % tag, air.word_of(air.usables[0], player.slot) == "")
-	player.global_position = air.usables[5].stand + Vector3(0, 0.04, 0)
+	check("%s: con la sala de ventilación cerrada la compuerta no se abre" % tag, air.word_of(air.usables[0], player.slot) == "")
+	player.global_position = air.usables[4].stand + Vector3(0, 0.04, 0)
 	await frames(3)
-	level.match_net.use_office(&"air", "stop", 5)
-	for i in 300:
-		await physics_frame
-		if air.spin == 0.0: break
-	check("%s: parados, se quedan quietos" % tag, not air.running() and air.spin == 0.0)
+	check("%s: en la consola, SENTARSE" % tag, air.word_of(air.usables[4], player.slot) == "SENTARSE")
+	level.match_net.use_office(&"air", "sit", 4)
+	await frames(3)
+	check("%s: sentado, las cámaras en pantalla y el cuerpo quieto" % tag, air.operator == player.slot and air.console != null and player.reading and level.cams_eye != Vector3.INF)
+	air.console.show_cam(vent)
+	var cam: Dictionary = m.air.cams[vent]
+	check("%s: la cámara de la sala de ventilación mira desde su esquina" % tag, level.cams_eye.distance_to(Vector3(float(cam.point[0]), float(cam.point[1]), float(cam.point[2]))) < 0.01)
+	# The lights: four at once, a fifth refused; each a room lit.
+	var lit: Array = []
+	for room in m.rooms:
+		if lit.size() >= air.LIGHTS_MOST + 1: break
+		if air.lightable(int(room.id)) and not bool(room.get("corridor", false)): lit.append(int(room.id))
+	for id in lit: level.match_net.use_office(&"air", "light", int(id))
+	await frames(2)
+	check("%s: cuatro luces a la vez y la quinta no" % tag, air.lights.size() == air.LIGHTS_MOST and lit.slice(0, air.LIGHTS_MOST).all(func(id): return level.hotel.lit(int(id))) and not level.hotel.lit(int(lit[-1])))
+	air.lights[int(lit[0])] = float(session.elapsed) - air.DECOY_TIME - 1.0
+	await frames(3)
+	check("%s: una luz se apaga sola pasado su tiempo" % tag, not air.lights.has(int(lit[0])) and not level.hotel.lit(int(lit[0])) and air.lights.size() == air.LIGHTS_MOST - 1)
+	level.match_net.use_office(&"air", "lock", vent)
+	await frames(2)
+	check("%s: desde la consola se abre el cierre de la sala de ventilación" % tag, air.vent_open() and air.cam_doors[vent].all(func(door): return not door.locked))
+	level.match_net.use_office(&"air", "stand", 4)
+	await frames(3)
+	check("%s: al levantarse, las cámaras se van" % tag, air.operator == -1 and air.console == null and not player.reading and level.cams_eye == Vector3.INF)
 	player.global_position = MAIN_DUCT.foot(m).origin + Vector3(0, 0.04, 0)
 	await frames(3)
 	check("%s: al pie de la escalerilla, ABRIR" % tag, air.word_of(air.usables[0], player.slot) == "ABRIR")

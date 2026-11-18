@@ -9,7 +9,7 @@ extends RefCounted
 ## preloads it, and the generator and the validator load it headless.
 
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
-const VERSION := 5
+const VERSION := 6
 
 ## The real building's typologies (planta_real.md 13.7), a table each: its rows
 ## from the front wall to the back, [role, sizes] ("main" and "gallery" are

@@ -171,15 +171,17 @@ Cada fase acaba con sus pruebas, una pasada de `tools/verify.ps1`, sus capturas 
 | 0 | Medir antes de decidir | pequeña | ninguna |
 | 1 | Cordura, café y el ataque | mediana | 1.11.0 |
 | 2 | Doppelgänger, sin ductos, beber 3 × 3, la bajada | grande | 1.12.0 |
-| 3 | Interfaz y vista de quien la lleva | grande | 1.13.0 |
-| 4 | Sin códigos y el edificio grande | muy grande | 1.14.0 |
+| 3 | Interfaz y vista de quien la lleva | grande | 1.14.0 |
+| 4 | Sin códigos y el edificio grande | muy grande | 1.13.0 |
 | 5 | Planta 1 lejana | mediana | con la 4 |
 | 6 | Planta 2: sectores, puerta y sala de maniobra | grande | 1.15.0 |
-| 7 | Planta 3: seguridad y cámaras | muy grande | 1.16.0 |
-| 8 | Planta 3: alerta y laberinto | grande | con la 7 |
-| 9 | Tiempos, la IA con clones, remates | mediana | 1.17.0 |
+| 7 | Planta 3: seguridad y cámaras | muy grande | 1.17.0 |
+| 8 | Planta 3: alerta y laberinto | grande | 1.18.0 |
+| 9 | Tiempos, la IA con clones, remates | mediana | 1.19.0 |
 
 El tamaño es relativo. No doy horas: no tengo forma fiable de estimarlas.
+
+Las versiones son las que salieron, no las del plan: las fases 4 y 5 se cerraron antes que la 3, y la 1.16.0 es de otra tanda del mismo día (veinte documentos del hotel, hecha por otra sesión).
 
 ### Fase 0. Medir antes de decidir
 
@@ -467,6 +469,62 @@ Hecha según 3.10, con un cambio sobre la propuesta: **los 250 m por tramo no ca
   - `heavy_door.wav` y `door_thud.wav`, de grabaciones CC0 de BigSoundBank que ya estaban descargadas;
   - se decodificaron con el decodificador de audio de Blender (no hay ffmpeg en el equipo) y se cortaron con las funciones de `prepare_office_sfx.py`, que las lista;
   - sin oír todavía.
+
+## Estado de la fase 7 (18 de noviembre de 2026)
+
+Hecha según 3.11, menos la alerta y el laberinto, que son la fase 8. Con cinco cambios sobre la propuesta:
+- **El cierre solo se abre.** La propuesta decía «abrir o cerrar»; el autor pidió «desbloquear». Cerrarlo de nuevo dejaba encerrar a un compañero.
+- **Sin luz, la cámara no enseña nada.** La planta 3 está a oscuras, así que para reconocer la climatizadora hay que gastar una de las cuatro luces en su sala, y esa luz es un señuelo.
+- **Los señuelos llevan linterna.** Las paredes tapan las figuras desde lejos, y a 6 m ya se han apagado: sin más, quien la lleva no las vería nunca. Cada figura lleva una linterna, que ella ve a través de las paredes como la de un superviviente, con su haz.
+- **El camuflaje acaba a 6 m.** Sin eso, quien se sienta no se podía marcar como presa y era intocable.
+- **Las pantallas son las del kit:** tres terminales de pantalla verde (`crt`, el IBM 3278 que ya estaba), sin descarga nueva.
+
+**Dónde está**
+- **El generador** (`office_generator.camera_rooms()`, desde `furnish_air()`):
+  - ocho salas de la planta 3: la de climatización y siete entre almacenes, depósitos, reprografía, archivos y sala de descanso;
+  - cada una con una sola puerta, a un pasillo, nunca dos pegadas, y no más de tres del mismo tipo mientras haya otros;
+  - si la planta no da siete de esos tipos, valen otras salas corrientes de una puerta, y al final también pegadas;
+  - cada puerta, cerrada y con `lock` `"electric"`;
+  - la cámara, en la esquina del techo más lejana de la puerta (en la de climatización, en la sala de la climatizadora, mirándola);
+  - el orden de CAM 1 a CAM 8 se sortea;
+  - `manifest.air.cams`: `[{room, doors, point, look}]`. `office_palette.VERSION` pasa a 6.
+- **El validador** (`air_ok()`): ocho cámaras, la de climatización entre ellas, y todas las puertas de cada sala con su cierre.
+- **`air_objective.gd` rehecho:**
+  - acciones `sit`, `stand`, `lock`, `light` y, del anfitrión, `unlit`;
+  - `unlocked` por cámara, `lights` por sala (con su hora), `operator`;
+  - `vent_open()` es lo que pide la compuerta;
+  - la sala de climatización y la de su climatizadora se encienden juntas (`lit_key()`, `give_light()`);
+  - el anfitrión apaga una luz a los 60 s o con ella a 6 m, y levanta a quien muere o se va (`tick()`);
+  - una pausa, una captura o el fin del piso levantan a quien está sentado (`leave_console()`);
+  - un bot, que no tiene pantalla, abre la sala de climatización al sentarse y se levanta;
+  - la instantánea guarda `unlocked` y `lights`, no quién está sentado.
+  - sobre cada puerta con cierre, por fuera, un piloto rojo que pasa a verde (`objective.door_pilot_lenses()`, el mismo de la puerta de la sala de maniobra);
+  - la silla de la consola, sin colisión, y la tecla que levanta no vuelve a sentar en la misma pulsación (`RESIT_MS`).
+- **La pantalla** (`game/ui/security_cams.gd`): un `Control` en la capa de la interfaz, bajo el filtro de la cinta. El plano, la cámara mostrada (un `SubViewport` a un tercio de resolución, con la máscara de capas de la cámara del jugador) y sus teclas. `level.cams_eye` hace que el piso se dibuje alrededor de la cámara mostrada.
+- **Los señuelos:**
+  - la IA: `air_objective.lure()` llama a `lurker.investigate()` con la probabilidad `decoy` de su dificultad (`difficulty.gd`);
+  - quien la lleva: `lurker_view.walk_decoys()`, `decoy_torches()` y `decoy_feet()`; son solo de su máquina y no viajan por la red.
+- **El camuflaje:** `lurker_player.camouflaged()`, que usan `markable()` y, en su vista, las balizas, las mentes a 0 y el latido de la consola.
+- **Fuera:** arrancar y parar los ventiladores, las cargas, la máscara de sonido de la planta 3 y el calor de la climatizadora en marcha en la vista de ella. El cierre de sus ductos con los ventiladores (`lurker_motion.fans()`) queda sin nada que lo active: se decide en la fase 8 si se reutiliza para la alerta o se quita.
+- **El café** no cae en una sala con cierre eléctrico.
+
+**Aceptación**
+- **Una partida entera con bots:** `office_bots_test` gana el piso en las semillas 7 y 33 (6 de 6). En la 33, la planta 3 les lleva 114 s simulados (120 con los ventiladores).
+- **Capturas de la interfaz:** `tools/capture/cams_capture.gd` (con ventana) deja `evidence/planta/fase7/50` a `56`, `sesion.txt` y `hoja_leyenda.png` (de `hoja_leyenda.py`).
+- **En Versus, el señuelo y su desaparición:** `tools/dev/lurker_hunt_drive.gd --part=decoy` deja `evidence/planta/fase7/versus/60` a `62`: la linterna del señuelo a través de las paredes a 9 m, movida 2 s después, y la sala apagada y sin figuras con ella encima.
+- **Pruebas, cada una sola:**
+  - `office_walk_test`, 108 de 108: las ocho salas cerradas, la compuerta que no se abre sin la suya, sentarse, la cámara en su esquina, cuatro luces y la quinta no, la luz que caduca, el cierre, levantarse;
+  - `lurker_senses_test`, 39 de 39: la luz que la atrae con `decoy` 1 y no con 0, y que se apaga cuando ella llega;
+  - `lurker_player_test`, 27 de 27: una o dos figuras con linterna que andan por la sala, y el camuflaje a más y a menos de 6 m;
+  - `office_lies_test`, 24 de 24; `office_light_test`, 136 de 136; `office_pieces_test`, 1.550 de 1.550.
+- **El validador** tiene tres mutaciones nuevas en `office_test`: siete cámaras, una sala sin su cierre y la sala de maniobra sin el suyo.
+- **El explorador ingenuo** (30 semillas): la planta 3, 10,5 min de mediana (antes 11,9); el piso, 37,2 (antes 38,1). Dibujar un piso, 1.870 ms.
+
+**Sin resolver**
+- **El orden de las ocho salas se sortea, pero no hay prueba de que un jugador reconozca la climatizadora** en una imagen de un tercio de resolución. Hay que verlo jugando.
+- **El explorador ya no cuenta los 81 s de ventiladores:** la planta 3 baja en su medida. La devuelven el laberinto (fase 8) y el ajuste de tiempos (fase 9).
+- **El mando en la consola** está escrito (cruceta, A, X, B) y sin probar con un mando.
+- **El piso de reserva** (la semilla fija 404, donde cada pared es una puerta) solo tiene la cámara de la sala de climatización: sus demás salas tienen varias puertas, y una sala con cierre ha de tener una sola. Se juega igual, con una cámara.
 
 ## 5. Riesgos
 

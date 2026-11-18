@@ -22,13 +22,13 @@ const LOOK := 1.0
 ## How much nearer the explorer reckons a corridor than a room.
 const CORRIDOR_PULL := 0.8
 ## The errands' fixed seconds: typing, the capsule's way, taking and swiping
-## the card; the maneuver room's door on its motor and its lever; the fans
-## running, then the hatch and the climb; the crawl's pace.
+## the card; the maneuver room's door on its motor and its lever; the post's
+## cameras looked through, then the hatch and the climb; the crawl's pace.
 const TYPE_HOLD := 5.0 + 1.2
 const CAPSULE_SPEED := 6.0
 const CARD_HOLDS := 1.5 + 0.5
 const MANEUVER_HOLDS := 4.5 + 1.0
-const FANS := 75.0 + 1.0 + 1.0 + 2.0 + 2.4
+const CAMS_HOLD := 20.0 + 2.0 + 2.4
 const CRAWL := 1.2
 
 func _initialize() -> void:
@@ -126,7 +126,7 @@ func plantas(data: Dictionary, run_seed: int, run: int, straight: bool, legs: Di
 		add(legs, "2_cuadro", a / 60.0)
 		add(legs, "2_maniobra", b / 60.0)
 		add(legs, "2_montacargas", c / 60.0)
-	# Planta 3: the post, the fans, the air room, the crawl.
+	# Planta 3: the post and its cameras, the air room, the crawl.
 	seen = {}
 	var air: Dictionary = data.get("air", {})
 	var post := int(air.get("security", {}).get("room", -1))
@@ -134,7 +134,7 @@ func plantas(data: Dictionary, run_seed: int, run: int, straight: bool, legs: Di
 	a = leg(data, int(data.entries[2]), post, seen, rng, straight)
 	b = leg(data, post, plant, seen, rng, straight)
 	var crawl := float(air.get("main", {}).get("length", 35.0)) / CRAWL
-	out[2] = (a + b + FANS + crawl) / 60.0
+	out[2] = (a + b + CAMS_HOLD + crawl) / 60.0
 	if not straight:
 		add(legs, "3_seguridad", a / 60.0)
 		add(legs, "3_climatizacion", b / 60.0)

@@ -587,7 +587,7 @@ func office_host() -> void:
 	var power = level.objective(&"power")
 	var air = level.objective(&"air")
 	check("El cuadro de los invitados se aplica en el anfitrión", await wait_for(func(): return power.on_order == [power.zone_of(power.maneuver_room)], 90.0))
-	check("Y el aire: la seguridad abierta, los ventiladores encendidos y parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 90.0))
+	check("Y el aire: la seguridad abierta y el cierre de la sala de ventilación, abierto desde la consola", await wait_for(func(): return air.post_open and air.vent_open() and air.operator == -1, 90.0))
 	# Bravo leaves and comes back: its seat is held for it, and it is put up
 	# to date when it has built the floor again.
 	var bravo_back := await wait_for(func(): return level.match_net.away.has(bravo), 60.0)
@@ -680,10 +680,21 @@ func office_guest(words: String, index: int) -> void:
 		var mz: int = power.zone_of(power.maneuver_room)
 		check("Sube el sector de la sala de maniobra", await asked.call("lever", mz, func(): return power.on_order == [mz], &"power"))
 		check("Ve abierta la seguridad que abrió Alpha", await wait_for(func(): return air.post_open and not air.post_door.locked, 60.0))
-		check("Enciende los ventiladores desde la consola", await asked.call("start", 4, func(): return air.running(), &"air"))
-		check("Y los para", await asked.call("stop", 5, func(): return not air.running(), &"air"))
+		check("Se sienta a la consola y tiene las cámaras", await asked.call("sit", 4, func(): return air.operator == seat and air.console != null, &"air"))
+		var vent: int = air.vent_cam()
+		var lit_room := -1
+		for room in level.manifest.rooms:
+			if air.lightable(int(room.id)) and not bool(room.get("corridor", false)):
+				lit_room = int(room.id)
+				break
+		level.match_net.use_office(&"air", "light", lit_room)
+		check("Enciende la luz de una sala desde la consola", await wait_for(func(): return air.lights.has(lit_room) and level.hotel.lit(lit_room), 10.0))
+		level.match_net.use_office(&"air", "lock", vent)
+		check("Abre el cierre de la sala de ventilación", await wait_for(func(): return air.vent_open() and air.cam_doors[vent].all(func(door): return not door.locked), 10.0))
+		level.match_net.use_office(&"air", "stand", 4)
+		check("Y se levanta", await wait_for(func(): return air.operator == -1 and air.console == null, 10.0))
 	check("El cuadro queda igual en todos", await wait_for(func(): return power.on_order == [power.zone_of(power.maneuver_room)], 60.0))
-	check("Y el aire también: la seguridad abierta, una carga gastada, parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 60.0))
+	check("Y el aire también: la seguridad abierta, el cierre de la ventilación abierto y nadie en la consola", await wait_for(func(): return air.post_open and air.vent_open() and air.operator == -1 and air.cam_doors[air.vent_cam()].all(func(door): return not door.locked), 60.0))
 	if words == "Bravo":
 		await office_return(words, index)
 	await office_rides(words)
@@ -741,7 +752,7 @@ func office_return(words: String, index: int) -> void:
 	air = level.objective(&"air")
 	check("Puesto al día: las dos fichas, pasadas, y la foto de Alpha", await wait_for(func(): return files.requests.size() == 2 and files.swiped.size() == 2 and files.photos.has(alpha_seat), 30.0))
 	check("El cuadro como lo tiene el anfitrión", power.on_order == board)
-	check("Y el aire: la seguridad abierta y su puerta sin llave", air.post_open and air.released and air.charges == 1 and not air.running() and not air.post_door.locked)
+	check("Y el aire: la seguridad abierta y su puerta sin llave, y el cierre de la ventilación abierto", air.post_open and not air.post_door.locked and air.vent_open() and air.cam_doors[air.vent_cam()].all(func(door): return not door.locked))
 
 func multiplayer_peers() -> Array:
 	return Array(level.multiplayer.get_peers())

@@ -125,6 +125,7 @@ func run() -> void:
 		"drink_dark": [0.0, 4.0, 5.0, 6.0],
 		"drink_cue": [0.0, 1.5, 1.2, 1.0],
 		"drink_every": [0.0, 60.0, 45.0, 35.0],
+		"decoy": [0.4, 0.6, 0.8, 0.9],
 	}
 	var lurker_wrong: Array = []
 	for step in DIFFICULTY.ORDER.size():

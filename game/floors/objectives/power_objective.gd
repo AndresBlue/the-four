@@ -34,12 +34,10 @@ const LEVER_SWING := deg_to_rad(70.0)
 ## cabinet): one lit for each sector up.
 const BACKUP_LENS := Vector3(0.026, 0.026, 0.012)
 const BACKUP_LENS_Y := 1.66
-## The maneuver room's door: how long its motor takes, and its pilot over the
-## frame's head outside (red without power, green with it).
+## The maneuver room's door: how long its motor takes. Its pilot over the
+## frame's head outside (objective.door_pilot_lenses()) is red without power,
+## green with it.
 const DOOR_TIME := 4.5
-const DOOR_PILOT := Vector3(0.03, 0.03, 0.012)
-const DOOR_PILOT_Y := 2.69
-const DOOR_PILOT_OUT := 0.07
 ## Its button is the whole leaf from the corridor (a box over it, just out):
 ## aimed anywhere at the door, E is the motor's, never the locked leaf's.
 const DOOR_BOX := Vector3(1.1, 2.2, 0.3)
@@ -188,12 +186,11 @@ func place_maneuver(m: Dictionary) -> void:
 	var face_yaw := atan2(away.x, away.z)
 	var face := Basis(Vector3.UP, face_yaw)
 	var floor_at := Vector3(portal.x, float(outside.py), portal.z)
-	var pilot_at := Transform3D(face, floor_at + away * (OFFICE.WALL_HALF + DOOR_PILOT_OUT) + Vector3(0, DOOR_PILOT_Y - DOOR_PILOT.y * 0.5, 0))
-	door_pilot = [equipment(MAIL.lamp_lens(level.hotel, DOOR_PILOT, "glow_red"), pilot_at), equipment(MAIL.lamp_lens(level.hotel, DOOR_PILOT, "glow_green"), pilot_at)]
+	door_pilot = door_pilot_lenses(portal, float(outside.py), away)
 	var glow := OmniLight3D.new()
 	glow.omni_range = 0.9
 	glow.light_energy = 0.3
-	glow.position = pilot_at * Vector3(0, DOOR_PILOT.y * 0.5, 0.08)
+	glow.position = (door_pilot[0] as Node3D).transform * Vector3(0, DOOR_PILOT.y * 0.5, 0.08)
 	level.hotel.add_child(glow)
 	door_pilot.append(glow)
 	add_usable(Transform3D(face, floor_at + away * 0.05 + Vector3(0, DOOR_BOX.y * 0.5, 0)), "door", floor_at + away * 0.9, atan2(-away.x, -away.z), DOOR_BOX)

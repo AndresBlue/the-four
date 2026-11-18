@@ -58,7 +58,7 @@ func dump(seed_asked: int) -> Dictionary:
 	var files = level.objective(&"files")
 	var power = level.objective(&"power")
 	var air = level.objective(&"air")
-	data["counts"] = {"lamps": files.lamps.size(), "stations": files.station_exits.size(), "handles": power.handles.size(), "pilots": power.pilots.size(), "zones": power.zones.size(), "rotors": air.rotors.size(), "lifts": level.hotel.lifts.size(), "gates": level.hotel.gates.size()}
+	data["counts"] = {"lamps": files.lamps.size(), "stations": files.station_exits.size(), "handles": power.handles.size(), "pilots": power.pilots.size(), "zones": power.zones.size(), "cams": air.unlocked.size(), "lifts": level.hotel.lifts.size(), "gates": level.hotel.gates.size()}
 	print("EQUIPMENT_ZONES ", seed_asked, " ", power.zones.size())
 	var lamps: Array = []
 	for lamp in files.lamps: lamps.append(lamp.visible)

@@ -65,6 +65,7 @@ func run() -> void:
 		await down_case(planta)
 		await double_case(planta)
 		if planta == 0: await screen_case()
+		if planta == 2: await decoy_case()
 	var file := FileAccess.open(OUT + "conductor.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"seed": seed_value, "checks": checks}, "\t"))
 	var text := FileAccess.open(OUT + "conductor.txt", FileAccess.WRITE)
@@ -406,3 +407,57 @@ func screen_case() -> void:
 		view.tread()
 	walker.global_position = was
 	check("Pantalla: un superviviente que anda 4 m deja sus pasos calientes", view.prints.size() - count >= 4, "%d pasos" % (view.prints.size() - count))
+
+## The security post's decoys and its camouflaged operator (cordura_y_edificio.md 3.11).
+func decoy_case() -> void:
+	var view = driver.view
+	var air = level.objective(&"air")
+	var here: int = driver.planta()
+	var pick := -1
+	for r in level.manifest.rooms:
+		var id := int(r.id)
+		if int(r.get("wing", -1)) != 2 or bool(r.get("corridor", false)) or not air.lightable(id): continue
+		var d := flat(FLOOR.position_of(r)).distance_to(flat(at()))
+		if d > float(air.DECOY_NEAR) + 2.0 and d < float(driver.PREY_REACH) - 2.0:
+			pick = id
+			break
+	if pick < 0 or here != 2:
+		check("Señuelo: una sala de la planta 3 a su alcance", false, "planta %d" % here)
+		return
+	air.apply("light", pick, -1, {}, true)
+	view.walk_decoys(0.1)
+	var feet: Array = view.decoy_feet(at(), here)
+	var room: Dictionary = level.manifest.rooms[pick]
+	var inside: bool = feet.all(func(p: Vector3) -> bool: return absf(p.x - float(room.px)) <= FLOOR.size_of(room).x * 0.5 and absf(p.z - float(room.pz)) <= FLOOR.size_of(room).y * 0.5)
+	var walked := 0.0
+	if not feet.is_empty():
+		var last: Vector3 = feet[0]
+		for i in 30:
+			view.walk_decoys(0.1)
+			var now: Vector3 = view.decoy_feet(at(), here)[0]
+			walked += now.distance_to(last)
+			last = now
+	var torches: Array = view.decoy_torches(here)
+	var carried: bool = torches.size() == feet.size() and torches.all(func(t: Array) -> bool: return absf((t[0] as Vector3).y - float(room.py) - float(VIEW.DECOY_TORCH)) < 0.01 and (t[1] as Vector3).y < 0.0)
+	check("Señuelo: una sala encendida desde la consola le enseña una o dos figuras que andan por ella, cada una con su linterna", feet.size() >= 1 and feet.size() <= 2 and inside and walked > 1.5 and carried, "%d figuras, dentro %s, %.2f m en 3 s, linternas %s" % [feet.size(), str(inside), walked, str(carried)])
+	air.apply("unlit", pick, -1, {}, true)
+	view.walk_decoys(0.1)
+	check("Señuelo: apagada la luz, se van", view.decoys.is_empty() and view.decoy_feet(at(), here).is_empty())
+	# The operator: camouflaged past CAMO_REACH, a prey like any other nearer.
+	var one = null
+	for body in level.survivors():
+		if is_instance_valid(body) and "slot" in body and level.survivor_active(body): one = body
+	if one == null:
+		lines.append("señuelo: sin superviviente para el camuflaje")
+		return
+	var was: Vector3 = one.global_position
+	var floor_y := FLOOR.planta_y(2)
+	one.global_position = Vector3(at().x + float(driver.CAMO_REACH) + 3.0, floor_y, at().z)
+	var plain: bool = driver.markable(one, at(), here)
+	air.operator = int(one.slot)
+	var hidden: bool = not driver.markable(one, at(), here) and driver.camouflaged(one, at())
+	one.global_position = Vector3(at().x + float(driver.CAMO_REACH) - 2.0, floor_y, at().z)
+	var near: bool = driver.markable(one, at(), here) and not driver.camouflaged(one, at())
+	air.operator = -1
+	one.global_position = was
+	check("Camuflaje: quien se sienta a la consola no se le marca a más de %d m, y sí más cerca" % int(driver.CAMO_REACH), plain and hidden and near, "sin sentarse %s, sentado lejos oculto %s, sentado cerca %s" % [str(plain), str(hidden), str(near)])
