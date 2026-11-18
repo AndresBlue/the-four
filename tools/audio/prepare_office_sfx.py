@@ -19,7 +19,7 @@ licence (the maneuver room's door).
   ladder.wav       a ladder climbed             pixabay_76052_ladder_aluminum_erik90.mp3
   heavy_door.wav   the maneuver door's motor    sef_hydraulic_lift.mp3, the whole of it (8.3 s)
   door_lock.wav    that door without power      sef_security_door_open_2.mp3: one beep of its
-                                                keypad, three times
+                                                keypad, four times, one every 0.25 s
 
 And the lies The Lurker tells (spec_f3_integration 4.3):
 
@@ -106,10 +106,12 @@ def cut(x, start, keep):
 
 def door_lock(pad):
     """An electric lock that will not open: one beep of the keypad (its third,
-    2.15 to 2.45 s) three times, 0.13 s apart."""
-    beep = fade(pad[int(2.15 * RATE): int(2.45 * RATE)], 0.004, 0.04)
-    gap = np.zeros(int(0.13 * RATE))
-    return np.concatenate([beep, gap, beep, gap, beep])
+    at 2.2 s: a tenth of a second and its tail) four times, one every 0.25 s,
+    the last with its whole tail (the author's choice by ear, 18 November 2026)."""
+    start = int(2.2 * RATE)
+    beep = fade(pad[start: start + int(0.21 * RATE)], 0.004, 0.06)
+    gap = np.zeros(int(0.25 * RATE) - len(beep))
+    return np.concatenate([beep, gap] * 3 + [fade(pad[start: int(2.45 * RATE)], 0.004, 0.04)])
 
 
 def fade(x, fin=0.004, fout=0.25):

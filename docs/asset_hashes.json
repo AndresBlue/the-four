@@ -2704,7 +2704,7 @@
     "sha256": "ddc60f7565090d9b64489b0f607c0f4a0b1dbe23d62e73b1d964cfd50a7e41e3"
   },
   "assets/audio/sfx/office/door_lock.wav": {
-    "bytes": 102356,
-    "sha256": "022a4d183751b19d30686b2d045fa1b3e69eae44ac6c1372e7a445cac8d533d2"
+    "bytes": 88244,
+    "sha256": "474ae3a4689f3635d8913cd889db628338cb640f804d233ed88f638a774e23c6"
   }
 }
