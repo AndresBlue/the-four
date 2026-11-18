@@ -1,4 +1,4 @@
-param([string]$GodotPath = $env:GODOT_PATH, [int]$Port = 24600, [int]$TimeoutSeconds = 420, [ValidateSet('coop','versus','late','observer','office_coop','lurker_coop','lurker_versus','lurker_match')][string]$Scenario = 'coop')
+param([string]$GodotPath = $env:GODOT_PATH, [int]$Port = 24600, [int]$TimeoutSeconds = 420, [ValidateSet('coop','versus','late','observer','office_coop','lurker_coop','lurker_versus','lurker_match','voice')][string]$Scenario = 'coop')
 # Online play test: starts a host and guests as separate headless Godot
 # processes on this machine and collects their checks (evidence/net_*.json).
 # coop: host and two guests; versus: host survivor and a guest as The Locust.
@@ -12,7 +12,7 @@ if (-not $GodotPath) {
 }
 New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
 $processes = @()
-$roles = if ($Scenario -eq 'versus') { @('vs_host', 'vs_hunter') } elseif ($Scenario -eq 'late') { @('late_host', 'late_guest') } elseif ($Scenario -eq 'observer') { @('watcher', 'watch_host', 'watch_guest') } elseif ($Scenario -eq 'office_coop') { @('office_host', 'office_alpha', 'office_bravo') } elseif ($Scenario -eq 'lurker_coop') { @('lk_host', 'lk_victim') } elseif ($Scenario -eq 'lurker_versus') { @('lv_host', 'lv_hunter', 'lv_victim') } elseif ($Scenario -eq 'lurker_match') { @('lm_host', 'lm_hunter', 'lm_bravo') } else { @('host', 'alpha', 'bravo') }
+$roles = if ($Scenario -eq 'voice') { @('voice_host', 'voice_alpha', 'voice_bravo', 'voice_hunter') } elseif ($Scenario -eq 'versus') { @('vs_host', 'vs_hunter') } elseif ($Scenario -eq 'late') { @('late_host', 'late_guest') } elseif ($Scenario -eq 'observer') { @('watcher', 'watch_host', 'watch_guest') } elseif ($Scenario -eq 'office_coop') { @('office_host', 'office_alpha', 'office_bravo') } elseif ($Scenario -eq 'lurker_coop') { @('lk_host', 'lk_victim') } elseif ($Scenario -eq 'lurker_versus') { @('lv_host', 'lv_hunter', 'lv_victim') } elseif ($Scenario -eq 'lurker_match') { @('lm_host', 'lm_hunter', 'lm_bravo') } else { @('host', 'alpha', 'bravo') }
 foreach ($role in $roles) {
     $json = Join-Path $projectPath "evidence/net_$role.json"
     if (Test-Path $json) { Remove-Item $json }

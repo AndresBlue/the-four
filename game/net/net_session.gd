@@ -23,6 +23,7 @@ signal closed(reason: String)
 signal joined
 const MATCH := preload("res://game/net/match_net.gd")
 const STEAM_LINK := preload("res://game/net/steam_link.gd")
+const VOICE := preload("res://game/net/voice_session.gd")
 ## The port a room opens on unless the host picks another.
 const PORT := 38430
 ## Up to five survivors, and in versus one more who plays The Locust (the
@@ -36,7 +37,7 @@ const MAX_SURVIVORS := 5
 const OBSERVERS := 2
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-22"
+const PROTOCOL := "the-four-net-23"
 const FLOORS := preload("res://game/floors/floor_index.gd")
 const RULES := preload("res://game/floors/match_rules.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
@@ -46,6 +47,8 @@ const MODE_NAMES := ["Coop. vs IA", "Versus"]
 const RANDOM := 0
 var level
 var match_net
+var voice
+var voice_round := 0
 ## Steam's side of things (lobbies, invites, its MultiplayerPeer).
 var steam
 var peer: MultiplayerPeer
@@ -82,6 +85,10 @@ func _init() -> void:
 	steam.name = "Steam"
 	steam.net = self
 	add_child(steam)
+	voice = VOICE.new()
+	voice.name = "Voice"
+	voice.net = self
+	add_child(voice)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -205,6 +212,7 @@ var pending_profile := {}
 func shutdown(reason: String) -> void:
 	var was_active := active()
 	if is_instance_valid(match_net): match_net.end()
+	if is_instance_valid(voice): voice.muted_seats.clear()
 	if peer != null:
 		peer.close()
 		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -422,8 +430,10 @@ func start_match(seed_value := -1) -> bool:
 		seed_value = int(saved.seed) if not saved.is_empty() else randi_range(0, 2147483647)
 		# Resumed, the floor is the one kept with the seed (match_net.saved_checkpoint()).
 		if not saved.is_empty(): floor_number = int(saved.get("floor", 1))
+	voice_round += 1
 	var config := {
 		"seed": seed_value,
+		"voice_round": voice_round,
 		"mode": options.mode,
 		"locust_seat": locust_seat,
 		"survivors": seats.filter(func(seat): return seat != locust_seat),

@@ -87,6 +87,7 @@ func is_survivor(seat: int) -> bool:
 	return in_match() and config.survivors.has(seat)
 
 func end() -> void:
+	net.voice.reset_round()
 	wardrobe_jobs.clear()
 	shriek_left = 0.0
 	shriek_seen.clear()

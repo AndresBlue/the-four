@@ -132,6 +132,15 @@ var column: VBoxContainer
 var side: VBoxContainer
 var hint: Label
 var subtitle: Label
+## The team's voice in play, drawn rather than written: a walkie-talkie for
+## each teammate heard over the radio, a head for one heard through the air,
+## a microphone while this player sends. Read ten times a second (poll_voice).
+var voice_marks: Control
+var voice_heard := {}
+var voice_sending := false
+var voice_poll := 0.0
+const VOICE_MARK := 28.0
+const OSD := preload("res://game/presentation/camcorder_osd.gd")
 var flash_label: Label
 ## The keypad overlay of the last door.
 var lock_panel: Control
@@ -258,6 +267,16 @@ func _ready() -> void:
 	hint = $HUD/InteractionHint
 	subtitle = $HUD/Subtitle
 	flash_label = $HUD/Flash
+	# Who is heard, one mark each, over the stamina meter's right end.
+	voice_marks = Control.new()
+	$HUD.add_child(voice_marks)
+	voice_marks.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	voice_marks.offset_left = -340
+	voice_marks.offset_right = -48
+	voice_marks.offset_top = -96 - VOICE_MARK
+	voice_marks.offset_bottom = -96
+	voice_marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	voice_marks.draw.connect(draw_voice)
 	# What is written over the snow. This interface is drawn under the tape's
 	# filter (it is part of the recording), and a picture that is all snow
 	# covers it: the words that say the signal is lost, and the marks of a
@@ -1780,7 +1799,7 @@ func show_settings(back: String) -> void:
 		check(controls, "Alternar correr (mando)", "pad_sprint_toggle")
 		check(controls, "Alternar agacharse (mando)", "pad_crouch_toggle")
 		check(controls, "Vibración del mando", "rumble")
-	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja", "lean_left": "Asomarse a la izquierda", "lean_right": "Asomarse a la derecha", "locust_trace": "The Locust: rastro a la tele"}
+	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja", "lean_left": "Asomarse a la izquierda", "lean_right": "Asomarse a la derecha", "team_voice": "Pulsar para hablar", "locust_trace": "The Locust: rastro a la tele"}
 	for id in titles:
 		var row := HBoxContainer.new()
 		controls.add_child(row)
@@ -1824,7 +1843,20 @@ func show_settings(back: String) -> void:
 	controls.add_child(reset)
 	var audio_page := page(tabs, "AUDIO")
 	for item in [["General", "master"], ["Ambiente", "ambience"], ["Música", "music"], ["Efectos", "effects"], ["Señales de peligro", "threat"]]: slider(audio_page, item[0], item[1], 0, 1, 0.05)
+	slider(audio_page, "Voces del equipo", "voice_volume", 0, 1, 0.05)
+	check(audio_page, "Micrófono del equipo", "voice_mic")
+	options(audio_page, "Activación del micrófono", "voice_automatic", ["Automático", "Pulsar para hablar"], [true, false])
+	# Pushing to talk there is no gate to set; with it set by itself, no slider.
+	var push: bool = not settings.values.voice_automatic
+	var auto_sensitivity := check(audio_page, "Sensibilidad automática", "voice_auto_sensitivity", push)
+	var sensitivity := slider(audio_page, "Sensibilidad del modo automático", "voice_sensitivity", 0, 1, 0.05, push or settings.values.voice_auto_sensitivity)
+	if is_instance_valid(net): mic_meter(audio_page, sensitivity, auto_sensitivity)
 	check(audio_page, "Subtítulos de sonidos", "subtitles")
+	if is_instance_valid(net) and net.match_net.is_survivor(net.local_seat):
+		for seat: int in net.match_net.config.survivors:
+			if seat == net.local_seat: continue
+			# Not a saved setting: it lasts as long as the room.
+			check_row(audio_page, "Silenciar a %s" % net.player_name(seat), net.voice.muted_seats.has(seat)).toggled.connect(func(value: bool): net.voice.mute(seat, value))
 	# What the credits' codes unlocked, only once one has been (CODES).
 	if unlocked("legacy"):
 		var extras := page(tabs, "EXTRAS")
@@ -2014,11 +2046,45 @@ func page(tabs: TabContainer, title_text: String) -> VBoxContainer:
 	scroll.add_child(content)
 	return content
 
+## Who is talking changes a few times a second at most: asked ten times a
+## second, and drawn again only when the answer changes.
+func poll_voice() -> void:
+	var live: bool = net != null and net.active()
+	var heard: Dictionary = net.voice.speakers().duplicate() if live else {}
+	var sending: bool = live and net.voice.transmitting()
+	if heard == voice_heard and sending == voice_sending: return
+	voice_heard = heard
+	voice_sending = sending
+	voice_marks.queue_redraw()
+
+## Right to left from the corner: this player's microphone, then the others by
+## seat. White with a black edge, like the camcorder's own marks.
+func draw_voice() -> void:
+	var icons: Array = [OSD.microphone_icon()] if voice_sending else []
+	var seats := voice_heard.keys()
+	seats.sort()
+	for seat in seats: icons.append(OSD.radio_icon() if voice_heard[seat] else OSD.voice_icon())
+	var at := voice_marks.size - Vector2(VOICE_MARK, VOICE_MARK)
+	for icon in icons:
+		OSD.draw_icon(voice_marks, icon, at, VOICE_MARK, Color(0, 0, 0, 0.85), 3.0)
+		OSD.draw_icon(voice_marks, icon, at, VOICE_MARK, Color(STYLE.INK, 0.95))
+		at.x -= VOICE_MARK + 10.0
+
 ## A row like the others: what it is on the left, and its box where every
 ## other row has its control -- not at the far end of the page, a screen's
 ## width from the words it belongs to, with the whole row a button that a
 ## stray click switched.
-func check(parent: Node, title_text: String, key: String) -> void:
+func check(parent: Node, title_text: String, key: String, disabled := false) -> CheckButton:
+	var control := check_row(parent, title_text, settings.values[key], disabled)
+	control.toggled.connect(func(value):
+		settings.set_value(key, value)
+		# The window size only applies outside fullscreen; refresh its state.
+		if key == "fullscreen": show_settings.call_deferred(return_action)
+	)
+	return control
+
+## check()'s row for a box that is not a saved setting (muting a teammate).
+func check_row(parent: Node, title_text: String, pressed: bool, disabled := false) -> CheckButton:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
 	label(row, title_text, 19).custom_minimum_size.x = 340
@@ -2028,14 +2094,56 @@ func check(parent: Node, title_text: String, key: String) -> void:
 	# it: a frame round it does.
 	for state in ["focus", "hover", "hover_pressed"]: control.add_theme_stylebox_override(state, STYLE.flat(Color(1, 1, 1, 0.06), STYLE.INK, 1, 4))
 	for state in ["normal", "pressed", "disabled"]: control.add_theme_stylebox_override(state, STYLE.flat(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 1, 4))
-	control.button_pressed = settings.values[key]
-	control.toggled.connect(func(value):
-		tick()
-		settings.set_value(key, value)
-		# The window size only applies outside fullscreen; refresh its state.
-		if key == "fullscreen": show_settings.call_deferred(return_action)
-	)
+	control.button_pressed = pressed
+	control.disabled = disabled
+	control.toggled.connect(func(_value): tick())
 	row.add_child(control)
+	return control
+
+## The microphone as it comes in, like a voice chat's input test: amber under
+## the gate, green over it, a mark at the gate. Listened to only while it is
+## on screen (voice_session.monitor). It also greys the rows that do nothing
+## with the choices as they stand, without redrawing the page and its tab.
+func mic_meter(parent: Node, sensitivity: HSlider, automatic: CheckButton) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	parent.add_child(row)
+	var indent := Control.new()
+	indent.custom_minimum_size.x = 340
+	row.add_child(indent)
+	var bar := Control.new()
+	bar.custom_minimum_size = Vector2(300, 8)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(bar)
+	# A lambda's captured locals do not keep what it writes: a dictionary does.
+	var state := {"shown": false}
+	var timer := Timer.new()
+	timer.wait_time = 0.05
+	timer.autostart = true
+	bar.add_child(timer)
+	timer.timeout.connect(func() -> void:
+		var shown := bar.is_visible_in_tree()
+		if shown != state.shown:
+			state.shown = shown
+			net.voice.monitor(shown)
+		var push: bool = not settings.values.voice_automatic
+		automatic.disabled = push
+		sensitivity.editable = not push and not settings.values.voice_auto_sensitivity
+		if shown: bar.queue_redraw()
+	)
+	bar.tree_exiting.connect(func() -> void: if state.shown: net.voice.monitor(false))
+	bar.draw.connect(func() -> void:
+		var level: float = clampf(net.voice.input_level(), 0.0, 1.0)
+		var gate: float = clampf(net.voice.gate_level(), 0.0, 1.0)
+		var full := bar.size
+		var green := Color(0.45, 0.82, 0.45)
+		bar.draw_rect(Rect2(Vector2.ZERO, Vector2(full.x * gate, full.y)), Color(STYLE.AMBER, 0.22))
+		bar.draw_rect(Rect2(Vector2(full.x * gate, 0.0), Vector2(full.x * (1.0 - gate), full.y)), Color(green, 0.22))
+		bar.draw_rect(Rect2(Vector2.ZERO, Vector2(full.x * minf(level, gate), full.y)), STYLE.AMBER)
+		if level > gate: bar.draw_rect(Rect2(Vector2(full.x * gate, 0.0), Vector2(full.x * (level - gate), full.y)), green)
+		bar.draw_rect(Rect2(Vector2(full.x * gate - 1.5, -4.0), Vector2(3.0, full.y + 8.0)), STYLE.INK)
+	)
 
 func options(parent: Node, title_text: String, key: String, labels: Array, values: Array, disabled := false) -> void:
 	var row := HBoxContainer.new()
@@ -2059,7 +2167,7 @@ func options(parent: Node, title_text: String, key: String, labels: Array, value
 ## refresh: the rest of the screen depends on this value (the scale names the
 ## quality of the reconstruction above it), so it is redrawn once the hand
 ## lets the slider go -- not on every step of the drag.
-func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float, disabled := false, refresh := false) -> void:
+func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float, disabled := false, refresh := false) -> HSlider:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	parent.add_child(row)
@@ -2078,6 +2186,7 @@ func slider(parent: Node, title_text: String, key: String, low: float, high: flo
 	number.add_theme_color_override("font_color", STYLE.SOFT)
 	control.value_changed.connect(func(value): settings.set_value(key, value); number.text = ("%d%%" % roundi(value * 100)) if percent else ("%.4f" % value))
 	if refresh: control.drag_ended.connect(func(changed): if changed: show_settings.call_deferred(return_action))
+	return control
 
 func show_characters(back := "multiplayer") -> void:
 	clear()
@@ -2255,6 +2364,10 @@ func lost_signal(seconds := 2.6) -> void:
 func _process(delta: float) -> void:
 	clock += delta
 	update_snatches(delta)
+	voice_poll -= delta
+	if voice_poll <= 0.0:
+		voice_poll = 0.1
+		poll_voice()
 	if is_instance_valid(pad_scroll) and pad_scroll.is_visible_in_tree():
 		var roll := Input.get_axis("look_up", "look_down")
 		if absf(roll) > 0.0: pad_scroll.scroll_vertical += int(roll * 900.0 * delta)

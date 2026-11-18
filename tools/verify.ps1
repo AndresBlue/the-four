@@ -42,12 +42,12 @@ function Godot-Arguments([string]$source, [string]$log, [bool]$fixed, [string[]]
     return ,$arguments
 }
 
-$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/hints_test','hotel/coffee_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test_generator','office/office_test_validator','office/office_test_physics','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','office/office_lies_test','office/lurker_capture_test','office/office_dark_test','office/jump_test','office/descend_test','office/lurker_tiles_test','office/lurker_forced_test','office/lurker_observer_test','office/lurker_bots_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test','office/office_audio_test','office/lurker_mood_audio_test','office/lurker_no_aura_test','office/lurker_player_test','office/lurker_stalk_test','office/lurker_drink_test','office/office_finishes_test','office/office_light_test','office/office_pieces_test','office/office_dressing_test','office/office_proportion_test','office/office_reception_test')
+$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/hints_test','hotel/coffee_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test_generator','office/office_test_validator','office/office_test_physics','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','office/office_lies_test','office/lurker_capture_test','office/office_dark_test','office/jump_test','office/descend_test','office/lurker_tiles_test','office/lurker_forced_test','office/lurker_observer_test','office/lurker_bots_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test','office/office_audio_test','office/lurker_mood_audio_test','office/lurker_no_aura_test','office/lurker_player_test','office/lurker_stalk_test','office/lurker_drink_test','office/office_finishes_test','office/office_light_test','office/office_pieces_test','office/office_dressing_test','office/office_proportion_test','office/office_reception_test','audio/voice_test')
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
     $log = Join-Path $evidence ('verify_' + $name + '.log')
     # Audio capture needs real time: those run last, on their own.
-    $audio = $name -in @('hotel_audio_test','spatial_audio_test','office_audio_test')
+    $audio = $name -in @('hotel_audio_test','spatial_audio_test','office_audio_test','voice_test')
     $user = @('--automation','--test-profile','--silent')
     if ($name -in @('hotel_test','intro_test')) { $user += '--no-enemy' }
     # Its own port: a game left open on this machine hosts on the default one,
@@ -116,8 +116,8 @@ foreach ($renderer in @('forward_plus','gl_compatibility')) {
 # Online play: real host and guest processes over 127.0.0.1 (tools/net_test.ps1,
 # which keeps its own time limit and kills what it started).
 $powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
-foreach ($scenario in @('coop', 'versus', 'late', 'observer', 'office_coop', 'lurker_coop', 'lurker_versus', 'lurker_match')) {
-    $port = @{ coop = 24600; versus = 24610; late = 24620; observer = 24630; office_coop = 24650; lurker_coop = 24660; lurker_versus = 24670; lurker_match = 24680 }[$scenario]
+foreach ($scenario in @('coop', 'versus', 'late', 'observer', 'office_coop', 'lurker_coop', 'lurker_versus', 'lurker_match', 'voice')) {
+    $port = @{ coop = 24600; versus = 24610; late = 24620; observer = 24630; office_coop = 24650; lurker_coop = 24660; lurker_versus = 24670; lurker_match = 24680; voice = 24700 }[$scenario]
     # lurker_match plays two whole floors: its own longer limit.
     $limit = if ($scenario -eq 'lurker_match') { 660 } else { 540 }
     $inner = if ($scenario -eq 'lurker_match') { 600 } else { 420 }

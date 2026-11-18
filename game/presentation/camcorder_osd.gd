@@ -69,6 +69,71 @@ var zoom := 0.0
 var zoom_alpha := 0.0
 var zoom_still := 9.0
 const ZOOM_HOLD := 1.6
+## The side of the runner's card over the stamina meter, in pixels.
+const RUN_CARD := 28.0
+
+## Line art in a unit square, drawn at `at` the size of `side`: the first entry
+## is the stroke (a share of the side), then polylines with round joints and
+## dots as Vector3 (x, y, radius). Drawn shapes, not a font's glyphs, so they
+## look the same with any fallback font. `grow` thickens everything by that
+## many pixels: drawn first in black, it is the edge of the same mark in white.
+static func draw_icon(item: CanvasItem, icon: Array, at: Vector2, side: float, color: Color, grow := 0.0) -> void:
+	var width: float = float(icon[0]) * side + grow
+	for shape in icon.slice(1):
+		if shape is Vector3:
+			item.draw_circle(at + Vector2(shape.x, shape.y) * side, shape.z * side + grow * 0.5, color)
+			continue
+		var points := PackedVector2Array()
+		for point: Vector2 in shape: points.append(at + point * side)
+		item.draw_polyline(points, color, width, true)
+		# draw_polyline has square ends and corners; a pen does not.
+		for point in points: item.draw_circle(point, width * 0.5, color)
+
+## Points along a circle in the unit square, from one angle to another
+## (radians, clockwise on screen).
+static func arc(centre: Vector2, radius: float, from: float, to: float, steps := 10) -> Array:
+	var points: Array = []
+	for k in steps + 1:
+		var angle := lerpf(from, to, float(k) / steps)
+		points.append(centre + Vector2(cos(angle), sin(angle)) * radius)
+	return points
+
+## A figure running to the right, mid stride: the stamina meter's mark.
+static func runner_icon() -> Array:
+	return [0.11, Vector3(0.64, 0.15, 0.1),
+		[Vector2(0.57, 0.31), Vector2(0.44, 0.58)],
+		[Vector2(0.56, 0.35), Vector2(0.71, 0.47), Vector2(0.85, 0.39)],
+		[Vector2(0.55, 0.35), Vector2(0.38, 0.39), Vector2(0.26, 0.52)],
+		[Vector2(0.44, 0.58), Vector2(0.64, 0.70), Vector2(0.61, 0.90), Vector2(0.71, 0.90)],
+		[Vector2(0.44, 0.58), Vector2(0.35, 0.76), Vector2(0.15, 0.80)]]
+
+## A walkie-talkie: a teammate heard over the radio.
+static func radio_icon() -> Array:
+	return [0.09,
+		[Vector2(0.31, 0.32), Vector2(0.69, 0.32), Vector2(0.69, 0.93), Vector2(0.31, 0.93), Vector2(0.31, 0.32)],
+		[Vector2(0.40, 0.32), Vector2(0.40, 0.07)],
+		[Vector2(0.42, 0.48), Vector2(0.58, 0.48)],
+		[Vector2(0.42, 0.60), Vector2(0.58, 0.60)],
+		Vector3(0.50, 0.78, 0.06)]
+
+## A head in profile with the sound leaving its mouth: a teammate heard
+## through the air, near enough.
+static func voice_icon() -> Array:
+	var head: Array = [Vector2(0.25, 0.93), Vector2(0.22, 0.68), Vector2(0.13, 0.52)]
+	head += arc(Vector2(0.34, 0.38), 0.22, PI, TAU - PI / 6.0)
+	head += [Vector2(0.56, 0.42), Vector2(0.62, 0.53), Vector2(0.56, 0.56), Vector2(0.57, 0.64), Vector2(0.52, 0.72), Vector2(0.44, 0.74), Vector2(0.44, 0.93)]
+	return [0.08, head,
+		arc(Vector2(0.62, 0.56), 0.14, -PI / 4.0, PI / 4.0, 6),
+		arc(Vector2(0.62, 0.56), 0.27, -PI / 4.0, PI / 4.0, 8)]
+
+## A hand microphone on its stand: the local player is sending.
+static func microphone_icon() -> Array:
+	var capsule: Array = arc(Vector2(0.5, 0.22), 0.13, PI, TAU, 8) + arc(Vector2(0.5, 0.46), 0.13, 0.0, PI, 8)
+	capsule.append(capsule[0])
+	return [0.09, capsule,
+		arc(Vector2(0.5, 0.48), 0.24, 0.0, PI, 10),
+		[Vector2(0.5, 0.72), Vector2(0.5, 0.88)],
+		[Vector2(0.34, 0.88), Vector2(0.66, 0.88)]]
 
 func _ready() -> void:
 	# Under the interface and under the tape: the OSD is burnt into the
@@ -249,6 +314,14 @@ func draw_overlay() -> void:
 			ink.a = stamina_alpha * (0.9 if i < lit and not flash else 0.18)
 			canvas.draw_rect(Rect2(rect.position + Vector2(2, 2), rect.size), Color(0, 0, 0, stamina_alpha * 0.6))
 			canvas.draw_rect(rect, ink)
+		if not hunter:
+			# What the meter is: a figure running, black on a white card, over
+			# its left end. The creature's meter has its waits stacked there.
+			var card := Rect2(Vector2(right - width, bottom - cell.y - 8.0 - RUN_CARD), Vector2(RUN_CARD, RUN_CARD))
+			canvas.draw_rect(Rect2(card.position + Vector2(2, 2), card.size), Color(0, 0, 0, stamina_alpha * 0.6))
+			canvas.draw_rect(card, Color(STYLE.INK, stamina_alpha * 0.9))
+			canvas.draw_rect(card, Color(0, 0, 0, stamina_alpha * 0.9), false, 2.0)
+			draw_icon(canvas, runner_icon(), card.position + Vector2(3, 3), RUN_CARD - 6.0, Color(0, 0, 0, stamina_alpha * 0.9))
 	if hunter:
 		# Its waits: a word and a bar that fills as it comes back.
 		var font := STYLE.font()

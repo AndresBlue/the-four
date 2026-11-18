@@ -26,6 +26,7 @@ config/icon="res://assets/images/the_four.png"
 [audio]
 
 general/3d_panning_strength=0.9
+driver/enable_input=true
 
 [display]
 

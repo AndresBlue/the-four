@@ -8,6 +8,7 @@ extends SceneTree
 ##  the floor together, a dropped player coming back mid-floor, and everyone
 ##  sent back to the menu when the host closes the room.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const VOICE := preload("res://game/net/voice_session.gd")
 var level
 var role := "host"
 var port := 24600
@@ -86,6 +87,8 @@ func run() -> void:
 		"lm_host": await match_host()
 		"lm_hunter": await match_hunter()
 		"lm_bravo": await match_bravo()
+		"voice_host": await voice_host()
+		"voice_alpha", "voice_bravo", "voice_hunter": await voice_guest()
 	var file := FileAccess.open("res://evidence/net_%s.json" % role, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"role": role, "passed": failed == 0 and not checks.is_empty(), "checks": checks}, "\t"))
 	file.close()
@@ -158,6 +161,163 @@ func seat_named(words: String) -> int:
 	for seat in level.net.players:
 		if level.net.players[seat].name == words: return seat
 	return 0
+
+func voice_frames(hz: float, gain := 0.26) -> PackedVector2Array:
+	var frames := PackedVector2Array()
+	for sample in VOICE.CODEC.SAMPLES:
+		var value := sin(TAU * hz * sample / VOICE.CODEC.RATE) * gain
+		frames.append(Vector2(value, value))
+	return frames
+
+func voice_tone(hz: float) -> PackedByteArray:
+	return VOICE.CODEC.encode(voice_frames(hz))
+
+func voice_components() -> void:
+	var nearby := VOICE.acoustic_route(1.5, -0.55, false, false)
+	var through_door := VOICE.acoustic_route(1.5, -0.55, false, true)
+	var far := VOICE.acoustic_route(15.0, 0.5, false, false)
+	check("Voz directa, pared amortiguada y radio separada por distancia o planta", nearby.x == 0.0 and nearby.y > 0.9 and through_door.y < 0.5 and through_door.w == 1.0 and far.x == 1.0 and VOICE.acoustic_route(6.0, 0.0, true, false).x == 1.0)
+	var bright := voice_tone(6200.0)
+	check("Una trama de voz son 163 bytes de ADPCM a 16 kHz", bright.size() == VOICE.CODEC.BYTES and VOICE.CODEC.BYTES == 163)
+	var stream := VOICE.PLAYBACK.new(level)
+	stream.direct = nearby.y
+	stream.pan = nearby.z
+	var direct: PackedVector2Array = stream.render(VOICE.CODEC.decode(bright), nearby)
+	stream.radio = 1.0
+	var radio: PackedVector2Array = stream.render(VOICE.CODEC.decode(bright), far)
+	var left := 0.0
+	var right := 0.0
+	var remote := 0.0
+	for i in range(30, VOICE.CODEC.SAMPLES):
+		left += absf(direct[i].x)
+		right += absf(direct[i].y)
+		remote += absf(radio[i].x)
+	check("El estéreo ubica la voz cercana y la radio recorta sus agudos", left > right * 1.8 and remote < left * 0.50)
+	check("La voz lejana se oye centrada", is_equal_approx(radio[90].x, radio[90].y))
+	stream.enqueue(2, bright, 10)
+	stream.enqueue(1, bright, 15)
+	stream.enqueue(2, bright, 19)
+	check("Las tramas desordenadas caben y los duplicados se descartan", stream.queue.size() == 2 and stream.queue.keys().min() == 1)
+	stream.dispose()
+	var detector := VOICE.DETECTION.new()
+	detector.configure(VOICE.CODEC.RATE)
+	var quiet := voice_frames(440.0, 0.001)
+	var loud := voice_frames(440.0)
+	var sensitivity := VOICE.DETECTION.threshold_db(float(level.settings.DEFAULTS.voice_sensitivity))
+	check("La activación automática viene seleccionada y el fondo queda local", level.settings.DEFAULTS.voice_automatic and detector.feed(quiet, sensitivity).is_empty())
+	var single_block := detector.feed(loud, sensitivity)
+	var opened := detector.feed(loud, sensitivity)
+	check("Confirma la voz en dos bloques y recupera el inicio con su audio previo", single_block.is_empty() and opened.size() == 3 and opened[0] == quiet and opened[1] == loud)
+	var held := 0
+	# Allow one block for the speech filter to settle after the loud samples.
+	for _block in VOICE.DETECTION.HOLD_BLOCKS + 2:
+		held += detector.feed(quiet, sensitivity).size()
+	check("Conserva pausas breves y deja de transmitir al quedar en silencio", held in [VOICE.DETECTION.HOLD_BLOCKS, VOICE.DETECTION.HOLD_BLOCKS + 1] and not detector.transmitting() and detector.feed(quiet, sensitivity).is_empty(), "%d bloques" % held)
+	detector.reset()
+	var soft := voice_frames(440.0, 0.012)
+	detector.feed(soft, VOICE.DETECTION.threshold_db(0.0))
+	var low_setting := detector.feed(soft, VOICE.DETECTION.threshold_db(0.0))
+	detector.reset()
+	detector.feed(soft, VOICE.DETECTION.threshold_db(1.0))
+	var high_setting := detector.feed(soft, VOICE.DETECTION.threshold_db(1.0))
+	check("Subir la sensibilidad permite detectar una voz más baja", low_setting.is_empty() and not high_setting.is_empty())
+
+func voice_for(seconds: float, test_host_gate := false) -> void:
+	var frames := voice_frames(440.0)
+	var net = level.net
+	net.voice.detector.configure(VOICE.CODEC.RATE)
+	var packet := VOICE.CODEC.encode(frames) if test_host_gate else PackedByteArray()
+	var until := Time.get_ticks_msec() + roundi(seconds * 1000.0)
+	while Time.get_ticks_msec() < until and net.active() and playing():
+		if test_host_gate:
+			net.voice.sequence += 1
+			net.voice.offer_voice.rpc_id(1, int(net.match_net.config.voice_round), net.voice.sequence, packet)
+		else:
+			net.voice.forward_input(frames)
+		await pause_for(0.02)
+
+func voice_in(seat: int) -> bool:
+	var streams: Dictionary = level.net.voice.streams
+	return streams.has(seat) and streams[seat].talking(Time.get_ticks_msec())
+
+func voice_host() -> void:
+	voice_components()
+	var net = level.net
+	check("Abre la sala de voz", net.host("Anfitrión", 0, port) == OK)
+	if not await wait_for(func(): return net.connected_seats().size() == 4, 30.0):
+		check("Se conectan los tres invitados", false)
+		return
+	var alpha := seat_named("Alpha")
+	var bravo := seat_named("Bravo")
+	var hunter := seat_named("Cazador")
+	net.set_option("mode", net.Mode.VERSUS)
+	net.set_option("locust", hunter)
+	check("El anfitrión inicia un Versus con tres supervivientes", net.start_match(81))
+	if not await wait_for(playing, 75.0):
+		check("El Versus empieza", false)
+		return
+	check("El anfitrión reproduce la voz de Alpha por ENet", await wait_for(func(): return voice_in(alpha), 10.0))
+	check("La voz recibida entra al mezclador", net.voice.streams.has(alpha) and net.voice.streams[alpha].output != null)
+	var heard: PackedFloat32Array = net.voice.streams[alpha].last_voice if net.voice.streams.has(alpha) else PackedFloat32Array()
+	var energy := 0.0
+	for sample in heard: energy += sample * sample
+	energy = sqrt(energy / maxf(heard.size(), 1.0))
+	check("Y llega con energía, no en silencio", energy > 0.1, "RMS %.3f" % energy)
+	var gate := VOICE.DETECTION.scale(VOICE.DETECTION.threshold_db(float(level.settings.values.voice_sensitivity)))
+	check("Los medidores leen el umbral elegido y un micrófono cerrado", is_equal_approx(net.voice.gate_level(), gate) and net.voice.input_level() == 0.0, "%.3f / %.3f, sensibilidad %s" % [net.voice.gate_level(), gate, level.settings.values.voice_sensitivity])
+	check("Cazador y observador fuera del canal de supervivientes", not net.voice.admitted(hunter) and not net.voice.admitted(0) and not voice_in(hunter))
+	var stamp: int = net.match_net.config.voice_round
+	check("Solo se aceptan tramas completas de la ronda actual", net.voice.round_accepts(stamp, 1, voice_tone(440.0)) and not net.voice.round_accepts(stamp + 1, 1, voice_tone(440.0)) and not net.voice.round_accepts(stamp, 1, PackedByteArray([128])))
+	await voice_for(2.1)
+	level.session.drop(alpha)
+	net.match_net.push_session()
+	await voice_for(2.1)
+	check("La voz de Alpha muerto se corta aunque siga enviando", playing() and not net.voice.admitted(alpha) and not net.voice.streams.has(alpha))
+	check("Bravo conserva su canal", net.voice.admitted(bravo))
+	net.return_to_lobby()
+	check("Volver a la sala limpia lo que queda en el mezclador", net.voice.streams.is_empty())
+	await pause_for(0.8)
+
+func voice_guest() -> void:
+	var names := {"voice_alpha": "Alpha", "voice_bravo": "Bravo", "voice_hunter": "Cazador"}
+	var net = level.net
+	check("El invitado se conecta", net.join("127.0.0.1", names[role], 1, port) == OK)
+	if not await wait_for(playing, 100.0):
+		check("El invitado entra en partida", false)
+		return
+	if role == "voice_hunter":
+		await voice_for(5.5, true)
+		check("El cazador queda fuera del canal aunque emita tramas", not net.voice.admitted(net.local_seat) and net.voice.streams.is_empty())
+		return
+	var alpha := seat_named("Alpha")
+	if role == "voice_alpha":
+		net.voice.detector.configure(VOICE.CODEC.RATE)
+		var silence := voice_frames(440.0, 0.001)
+		for _block in 10: net.voice.forward_input(silence)
+		check("El fondo en automático no envía paquetes de voz", net.voice.sequence == 0)
+		await voice_for(1.2)
+		check("Alpha recibe voz del anfitrión", await wait_for(func(): return voice_in(1), 5.0))
+		check("Alpha muere", await wait_for(func(): return level.session.participants.get(net.local_seat) == level.session.Life.DEAD, 8.0))
+		check("Muerto, Alpha sigue en el canal solo para escuchar", not net.voice.admitted(net.local_seat) and net.voice.listener(net.local_seat))
+		check("Alpha muerto sigue oyendo al anfitrión", await wait_for(func(): return voice_in(1), 3.0))
+		var before: int = net.voice.sequence
+		for _block in 6: net.voice.forward_input(voice_frames(440.0))
+		check("Alpha muerto no envía aunque hable", net.voice.sequence == before and not net.voice.transmitting())
+		# Forced past its own gate: the host turns these down (voice_host).
+		await voice_for(1.6, true)
+		await wait_for(func(): return not playing(), 7.0)
+		return
+	check("Bravo oye a otro invitado, retransmitido por el anfitrión", await wait_for(func(): return voice_in(alpha), 10.0))
+	net.voice.mute(alpha, true)
+	await pause_for(0.35)
+	check("El silencio individual vacía la cola y bloquea las tramas nuevas", not net.voice.streams.has(alpha))
+	net.voice.mute(alpha, false)
+	check("Bravo vuelve a oír a Alpha al quitar su silencio", await wait_for(func(): return voice_in(alpha), 5.0))
+	check("Bravo también recibe la voz del anfitrión", await wait_for(func(): return voice_in(1), 5.0))
+	check("La muerte se replica a Bravo", await wait_for(func(): return level.session.participants.get(alpha) == level.session.Life.DEAD, 6.0))
+	await pause_for(0.4)
+	check("Bravo conserva la voz del anfitrión mientras deja de oír a Alpha", not net.voice.streams.has(alpha) and voice_in(1))
+	await wait_for(func(): return not playing(), 7.0)
 
 ## The refuge of the stage in hand, which moves on with every stage closed.
 func refuge_point(offset: Vector3) -> Vector3:

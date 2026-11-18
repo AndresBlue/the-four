@@ -3,8 +3,8 @@ const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const SAVE_FILE := preload("res://game/services/save_file.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 1, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "startle_soft": false, "gore": true, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "floor2": "", "control_hints": true, "hint_games": 0, "hint_floor": 1, "codes": "", "legacy_locust": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
-const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q, "lean_left": KEY_1, "lean_right": KEY_3}
+const DEFAULTS := {"character": 1, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "startle_soft": false, "gore": true, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "voice_volume": 0.5, "voice_mic": true, "voice_automatic": true, "voice_sensitivity": 0.2, "voice_auto_sensitivity": false, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "floor2": "", "control_hints": true, "hint_games": 0, "hint_floor": 1, "codes": "", "legacy_locust": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
+const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q, "lean_left": KEY_1, "lean_right": KEY_3, "team_voice": KEY_V}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
 ## rebound: what is bound is what a button does. Named by where the button is
 ## (Godot's A is the bottom one on every pad: the cross on a PlayStation, B on
@@ -16,7 +16,7 @@ const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_
 ## a PlayStation the touchpad's click opens it too (PAD_SHEET_TOO). The
 ## shoulders are left for the menus, where they change tab. Still under review
 ## with the players (PLAN.md).
-const PAD_KEYS := {"interact": JOY_BUTTON_X, "crouch": JOY_BUTTON_B, "flashlight": JOY_BUTTON_Y, "jump": JOY_BUTTON_A, "sprint": JOY_BUTTON_LEFT_STICK, "sheet": JOY_BUTTON_BACK, "lean_left": JOY_BUTTON_DPAD_LEFT, "lean_right": JOY_BUTTON_DPAD_RIGHT}
+const PAD_KEYS := {"interact": JOY_BUTTON_X, "crouch": JOY_BUTTON_B, "flashlight": JOY_BUTTON_Y, "jump": JOY_BUTTON_A, "sprint": JOY_BUTTON_LEFT_STICK, "sheet": JOY_BUTTON_BACK, "lean_left": JOY_BUTTON_DPAD_LEFT, "lean_right": JOY_BUTTON_DPAD_RIGHT, "team_voice": JOY_BUTTON_RIGHT_STICK}
 const PAD_SHEET_TOO := JOY_BUTTON_TOUCHPAD
 ## Saved-settings revision of the pad layout: a file with an older one has its
 ## buttons put back to these once (the old layout had the bottom button acting
@@ -131,6 +131,9 @@ func load_settings() -> void:
 		var taken := {}
 		for action in PAD_KEYS:
 			var button: int = int(pads.get(action, PAD_KEYS[action])) if pads.get(action, PAD_KEYS[action]) is float or pads.get(action, PAD_KEYS[action]) is int else PAD_KEYS[action]
+			if not pads.has(action) and taken.has(button):
+				pad_bindings.erase(action)
+				continue
 			if button < 0 or button in PAD_RESERVED or taken.has(button):
 				pad_bindings = PAD_KEYS.duplicate()
 				break
@@ -457,7 +460,7 @@ func apply() -> void:
 	get_viewport().scaling_3d_mode = PRESETS.scaling_mode(values)
 	get_viewport().fsr_sharpness = lerpf(2.0, 0.0, values.sharpness)
 	# The player's own footsteps have their own drier bus, under the effects slider.
-	for pair in [["Master", "master"], ["Ambience", "ambience"], ["Music", "music"], ["Effects", "effects"], ["Threat", "threat"], ["Steps", "effects"]]:
+	for pair in [["Master", "master"], ["Ambience", "ambience"], ["Music", "music"], ["Effects", "effects"], ["Threat", "threat"], ["Steps", "effects"], ["Voices", "voice_volume"]]:
 		var index := AudioServer.get_bus_index(pair[0])
 		if index < 0:
 			AudioServer.add_bus()
