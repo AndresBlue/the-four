@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.13.0](#1130--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Las oficinas, dos veces y media más grandes, sin códigos de sala y con la ventanilla al fondo. |
 | [1.12.0](#1120--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | The Lurker deja dobles en las esquinas, bebe la luz en 3 × 3 y baja de planta a la vista. |
 | [1.11.0](#1110--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La cordura manda: no vuelve con la luz, solo con café, y a 0 mirarla no salva. |
 | [1.10.2](#1102--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La voz del equipo: de cerca en la sala, de lejos por walkie. |
@@ -83,6 +84,28 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.13.0 — 18 de noviembre de 2026
+
+*Las oficinas, dos veces y media más grandes, sin códigos de sala y con la ventanilla al fondo.*
+
+Commits `78bb8dcc`…`v1.13.0` (3). Fases 4 y 5 del gran cambio del piso 2. Versión del generador del piso 2: 4 (los pisos guardados con la 3 se rechazan).
+
+### Novedades
+
+- **Cada planta del piso 2, dos veces y media más grande** (con cinco supervivientes, tres): unas 300 salas y pasillos por planta.
+- **Caminos en ese:** con dos o más supervivientes, cada tramo entre dos cruces tiene tapiado uno de sus pasillos principales, alternando de lado, y la galería de servicio; para pasar de un cruce al siguiente hay que ir por el otro lado.
+- **Sin códigos de sala:** ni placas junto a las puertas ni «R-2» en las zonas; las zonas se rotulan por su nombre.
+- **La ventanilla de Personal, al fondo de la planta,** y de 16 a 28 estaciones del tubo.
+
+### Arreglos
+
+- Su guarida al empezar está siempre bajo un falso techo.
+- Cada hito de la planta 3 tiene su cartel de dirección aunque su camino se separe del otro.
+
+### Rendimiento
+
+- En el banco en Alto: el recorrido pasa de 8,85 a 10,70 ms y la llegada de 10,66 a 14,45 ms; la carga del piso, de 15 a 22,5 s.
 
 ## 1.12.0 — 18 de noviembre de 2026
 
