@@ -374,7 +374,7 @@ func apply(action: String, index: int, _seat: int, data: Dictionary, quiet: bool
 			if open and not motor_started:
 				motor_started = true
 				run_motor(quiet)
-			elif not open and not quiet: sound_at("door_thud.wav", at, -2.0)
+			elif not open and not quiet: sound_at("door_lock.wav", at, -10.0)
 		"lift":
 			freed = true
 			if not quiet:
@@ -389,7 +389,7 @@ func apply(action: String, index: int, _seat: int, data: Dictionary, quiet: bool
 ## host's settled state snaps a guest that runs behind.
 func run_motor(quiet: bool) -> void:
 	if motor_door == null: return
-	if not quiet: sound_at("heavy_door.wav", motor_door.doorway + Vector3(0, 1.5, 0), -2.0)
+	if not quiet: sound_at("heavy_door.wav", motor_door.doorway + Vector3(0, 1.5, 0), -8.0)
 	if is_instance_valid(motor_door.motion): motor_door.motion.kill()
 	motor_door.moving = true
 	motor_door.collision_layer = motor_door.GHOST

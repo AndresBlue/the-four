@@ -465,10 +465,10 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 | `chair_roll.wav` | `oga_nicolemariet_office_chair_roll.wav` | Nicole Marie T, [OpenGameArt](https://opengameart.org/content/office-chair-roll-sfx-sound-effect), en los créditos del juego (conviene confirmar la licencia en su propia página antes de publicar) | CC BY 4.0 |
 | `starter.wav` (sus primeros 3 s) | `pixabay_61228_faulty_fluorescent_starter_hum_everydaysounds.mp3` | EverydaySounds, Freesound (CC0), en Pixabay | Pixabay Content License |
 | `ladder.wav` | `pixabay_76052_ladder_aluminum_erik90.mp3` | erik90, Pixabay | Pixabay Content License |
-| `heavy_door.wav` (la puerta motorizada de la sala de maniobra: la grabación entera, más lenta hasta durar 4,5 s y más grave) | `bsb_2355_metal_barrier_opening_1.flac` | Joseph SARDIN, BigSoundBank | CC0 |
-| `door_thud.wav` (esa puerta sin corriente: su primer segundo, más lento y más grave) | `bsb_2358_metal_barrier_closure_1.flac` | Joseph SARDIN, BigSoundBank | CC0 |
+| `heavy_door.wav` (el motor de la puerta de la sala de maniobra: la marcha y la parada de la grabación, unidas para durar 4,5 s, sin cambiarle el tono) | `sef_hydraulic_lift.mp3` («Hydraulic Lift») | [Sound Effects Factory](https://soundeffectsfactory.com/sounds/sound_1758148757000_u6e3mgdhx), elegido por el autor | Free License de Sound Effects Factory |
+| `door_lock.wav` (esa puerta sin corriente: un zumbido corto de su cierre y el cerrojo que aguanta) | `sef_buzzing_electronics.mp3` («Buzzing Electronics») y `sef_locking_door_knob.mp3` («Locking Door Knob») | Sound Effects Factory | Free License de Sound Effects Factory |
 
-Las dos últimas se decodificaron el 18 de noviembre de 2026 con el decodificador de audio de Blender 5.2, porque en el equipo no había ffmpeg. Después se cortaron con las mismas funciones del guion, que las lista en `CLIPS`: con ffmpeg, el guion las rehace.
+La [Free License de Sound Effects Factory](https://soundeffectsfactory.com/license) permite el uso en proyectos comerciales, juegos incluidos, y editar los sonidos, sin atribución. No permite revender ni redistribuir los originales (se quedan en `source_assets/`, que no está en git) ni usarlos en «adult or explicit content» sin permiso, que aquí se lee como contenido sexual y no como terror. Las tres grabaciones se decodificaron el 18 de noviembre de 2026 con el decodificador de audio de Blender 5.2, porque en el equipo no había ffmpeg, y se cortaron con las funciones del guion (`door_motor()`, `door_lock()`): con ffmpeg, el guion las rehace. Sustituyen a las dos de BigSoundBank de la 1.15.0 (una barrera metálica), que al autor le sonaron ruidosas.
 
 ## Sonidos de The Lurker (piso 2)
 

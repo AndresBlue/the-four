@@ -2700,11 +2700,11 @@
     "sha256": "cd09827d6aa3a88df54f7760e1c9c5a88c58dce393f014170024c8598c556592"
   },
   "assets/audio/sfx/office/heavy_door.wav": {
-    "bytes": 396944,
-    "sha256": "612f244425c532f5f0748d41f5bf986daba815f8cd20094f9d85e8aa02c48ac2"
+    "bytes": 401354,
+    "sha256": "066a25b2234e8072b3c05930eaa9e68a2b9c6f8abccc5dd51a3b4b85135ba251"
   },
-  "assets/audio/sfx/office/door_thud.wav": {
-    "bytes": 117350,
-    "sha256": "d867f174e945266bd1290ce5c61c27d697ff7dc72b25c4209078875d6acaadf0"
+  "assets/audio/sfx/office/door_lock.wav": {
+    "bytes": 58256,
+    "sha256": "9f9a2fd9e477c23e239f45794e20fee5488cc67405614917d28bcc4ef66b4f3f"
   }
 }

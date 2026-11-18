@@ -281,7 +281,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 
 **La sala de maniobra del montacargas** (tipo nuevo, `office_palette.MANEUVER`): un cuarto técnico con una sola puerta, de acero y motorizada, a un pasillo.
 - **Dónde:** el generador la pone de vuelta hacia la llegada (`office_generator.pick_maneuver()`), en un sector que no es el de la llegada, el del cuadro ni el del montacargas, entre las celdas más alejadas a la vez del cuadro y del montacargas. Con dos supervivientes, el camino andable de la llegada al cuadro, a la sala y al montacargas suma de 480 a 600 m; el directo de la llegada al montacargas, unos 210.
-- **La puerta:** sobre su marco, por fuera, un piloto rojo sin corriente en su sector y verde con ella. Sin corriente, al intentarlo suena un golpe sordo y no se abre. Con corriente se abre sola, despacio (4,5 s), con el chirrido de un motor pesado. Una vez en marcha acaba abierta aunque el sector se caiga, y nadie la cierra después.
+- **La puerta:** sobre su marco, por fuera, un piloto rojo sin corriente en su sector y verde con ella. Sin corriente, al intentarlo suena bajito su cierre eléctrico (un zumbido corto y el cerrojo que aguanta) y no se abre. Con corriente se abre sola, despacio (4,5 s), con un motor hidráulico que arranca, empuja y para. Una vez en marcha acaba abierta aunque el sector se caiga, y nadie la cierra después.
 - **Dentro:** el armario del montacargas con su palanca roja. Bajarla (un segundo) **suelta el montacargas en el acto**; baja con la cuota dentro.
 - Es un hito con su cartel de peligro en la puerta, las rayas en el umbral y su fila en la señal de la llegada («SALA DE MANIOBRA»).
 

@@ -468,7 +468,7 @@ Hecha según 3.10, con un cambio sobre la propuesta: **los 250 m por tramo no ca
 - **Los sonidos:**
   - `heavy_door.wav` y `door_thud.wav`, de grabaciones CC0 de BigSoundBank que ya estaban descargadas;
   - se decodificaron con el decodificador de audio de Blender (no hay ffmpeg en el equipo) y se cortaron con las funciones de `prepare_office_sfx.py`, que las lista;
-  - sin oír todavía.
+  - el autor los oyó el 18 de noviembre y le sonaron horribles y ruidosos: sustituidos ese día por un motor hidráulico que eligió él (`sef_hydraulic_lift.mp3`, Sound Effects Factory) y un cierre eléctrico corto y bajo (`door_lock.wav`), los dos más bajos de volumen (`docs/ASSETS.md`).
 
 ## Estado de la fase 7 (18 de noviembre de 2026)
 

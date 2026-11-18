@@ -1,8 +1,9 @@
 """Working copies of the offices' recordings (spec_f1_systems 1.8), from the
 originals in source_assets/oficinas/ into assets/audio/sfx/office/. The
 originals are never touched. Every source is marked "ok" in its group's
-registro.json, CC0 (BigSoundBank), the Pixabay Content License or CC BY (the
-copier and the chair, credited in the game).
+registro.json, CC0 (BigSoundBank), the Pixabay Content License, CC BY (the
+copier and the chair, credited in the game) or Sound Effects Factory's free
+licence (the maneuver room's door).
 
   typing.wav       steady keys, a loop          bsb_2835_typewriter_2.wav
   typing_bell.wav  the request done             bsb_2844_typewriter_bell_1.wav
@@ -16,8 +17,9 @@ copier and the chair, credited in the game).
   hatch.wav        the hatch's latches          bsb_0773_metal_filing_cabinet.wav
   crawl_1..2.wav   a knee on sheet metal        the two Ev-Dawg heater vent hits (Pixabay)
   ladder.wav       a ladder climbed             pixabay_76052_ladder_aluminum_erik90.mp3
-  heavy_door.wav   the maneuver door's motor    bsb_2355_metal_barrier_opening_1.flac, slowed to 4.5 s
-  door_thud.wav    that door without power      bsb_2358_metal_barrier_closure_1.flac, its first second slowed to 0.75
+  heavy_door.wav   the maneuver door's motor    sef_hydraulic_lift.mp3: its run and its stop, 4.5 s
+  door_lock.wav    that door without power      sef_buzzing_electronics.mp3 and sef_locking_door_knob.mp3:
+                                                a short hum of its lock and its bolt holding
 
 And the lies The Lurker tells (spec_f3_integration 4.3):
 
@@ -53,31 +55,33 @@ OUT = ROOT / "assets/audio/sfx/office"
 RATE = 44100
 XFADE = 0.3
 ## (original, copy, peak, from (s; -1: its first sound), seconds kept (0: to
-## where it dies away), loop, slowed to this many seconds (0: as it is; the
-## pitch falls with it)).
+## where it dies away), loop).
 CLIPS = [
-    (OFFICE / "maquina_escribir/bsb_2835_typewriter_2.wav", "typing.wav", 0.6, 20.0, 6.0, True, 0.0),
-    (OFFICE / "maquina_escribir/bsb_2844_typewriter_bell_1.wav", "typing_bell.wav", 0.7, -1, 0.0, False, 0.0),
-    (OFFICE / "tubo_neumatico/bsb_0138_compressed_air.wav", "tube_hiss.wav", 0.5, 1.0, 3.0, True, 0.0),
-    (OFFICE / "tubo_neumatico/bsb_1922_industrial_bell_2.wav", "tube_bell.wav", 0.7, -1, 3.0, False, 0.0),
-    (BUILDING / "breaker_lever_clack/bsb_3061_industrial_switch_1.flac", "lever_1.wav", 0.8, -1, 1.0, False, 0.0),
-    (BUILDING / "breaker_lever_clack/bsb_3062_industrial_switch_2.flac", "lever_2.wav", 0.8, -1, 1.0, False, 0.0),
-    (BUILDING / "breaker_lever_clack/bsb_3063_industrial_switch_3.flac", "lever_3.wav", 0.8, -1, 1.0, False, 0.0),
-    (BUILDING / "breaker_lever_clack/bsb_1092_electric_circuit_breaker.flac", "breaker.wav", 0.8, -1, 2.0, False, 0.0),
-    (BUILDING / "mechanical_timer_ticking/bsb_0082_timer_2_kitchen.flac", "tick.wav", 0.5, 2.0, 4.0, True, 0.0),
-    (BUILDING / "freight_lift_motor/bsb_1712_elevator_6_floors.flac", "lift_motor.wav", 0.7, 3.0, 6.0, False, 0.0),
-    (BUILDING / "ventilation_fans_full/bsb_3598_ventilation_5.flac", "fans.wav", 0.6, 10.0, 8.0, True, 0.0),
-    (OFFICE / "taquillas_metalicas/bsb_0773_metal_filing_cabinet.wav", "hatch.wav", 0.8, -1, 2.0, False, 0.0),
-    (BUILDING / "crawl_sheet_metal/pixabay_83044_heater_vent_hit_lower_evdawg.mp3", "crawl_1.wav", 0.6, -1, 1.0, False, 0.0),
-    (BUILDING / "crawl_sheet_metal/pixabay_103305_heater_vent_hit_higher_evdawg.mp3", "crawl_2.wav", 0.6, -1, 1.0, False, 0.0),
-    (BUILDING / "metal_ladder_climb/pixabay_76052_ladder_aluminum_erik90.mp3", "ladder.wav", 0.7, -1, 4.0, False, 0.0),
-    (OFFICE / "telefono_antiguo/bsb_3532_socotel_discreet_rings.wav", "phone_ring.wav", 0.6, -1, 4.3, True, 0.0),
-    (OFFICE / "fotocopiadora/soundbible_2169_photocopy_machine.wav", "copier.wav", 0.6, 0.0, 4.0, False, 0.0),
-    (OFFICE / "silla_oficina_ruedas/oga_nicolemariet_office_chair_roll.wav", "chair_roll.wav", 0.6, -1, 0.0, False, 0.0),
-    (BUILDING / "fluorescent_starter_flicker/pixabay_61228_faulty_fluorescent_starter_hum_everydaysounds.mp3", "starter.wav", 0.6, 0.0, 3.0, False, 0.0),
-    (BUILDING / "freight_lift_scissor_gate/bsb_2355_metal_barrier_opening_1.flac", "heavy_door.wav", 0.8, -1, 0.0, False, 4.5),
-    (BUILDING / "freight_lift_scissor_gate/bsb_2358_metal_barrier_closure_1.flac", "door_thud.wav", 0.8, -1, 1.0, False, 1.33),
+    (OFFICE / "maquina_escribir/bsb_2835_typewriter_2.wav", "typing.wav", 0.6, 20.0, 6.0, True),
+    (OFFICE / "maquina_escribir/bsb_2844_typewriter_bell_1.wav", "typing_bell.wav", 0.7, -1, 0.0, False),
+    (OFFICE / "tubo_neumatico/bsb_0138_compressed_air.wav", "tube_hiss.wav", 0.5, 1.0, 3.0, True),
+    (OFFICE / "tubo_neumatico/bsb_1922_industrial_bell_2.wav", "tube_bell.wav", 0.7, -1, 3.0, False),
+    (BUILDING / "breaker_lever_clack/bsb_3061_industrial_switch_1.flac", "lever_1.wav", 0.8, -1, 1.0, False),
+    (BUILDING / "breaker_lever_clack/bsb_3062_industrial_switch_2.flac", "lever_2.wav", 0.8, -1, 1.0, False),
+    (BUILDING / "breaker_lever_clack/bsb_3063_industrial_switch_3.flac", "lever_3.wav", 0.8, -1, 1.0, False),
+    (BUILDING / "breaker_lever_clack/bsb_1092_electric_circuit_breaker.flac", "breaker.wav", 0.8, -1, 2.0, False),
+    (BUILDING / "mechanical_timer_ticking/bsb_0082_timer_2_kitchen.flac", "tick.wav", 0.5, 2.0, 4.0, True),
+    (BUILDING / "freight_lift_motor/bsb_1712_elevator_6_floors.flac", "lift_motor.wav", 0.7, 3.0, 6.0, False),
+    (BUILDING / "ventilation_fans_full/bsb_3598_ventilation_5.flac", "fans.wav", 0.6, 10.0, 8.0, True),
+    (OFFICE / "taquillas_metalicas/bsb_0773_metal_filing_cabinet.wav", "hatch.wav", 0.8, -1, 2.0, False),
+    (BUILDING / "crawl_sheet_metal/pixabay_83044_heater_vent_hit_lower_evdawg.mp3", "crawl_1.wav", 0.6, -1, 1.0, False),
+    (BUILDING / "crawl_sheet_metal/pixabay_103305_heater_vent_hit_higher_evdawg.mp3", "crawl_2.wav", 0.6, -1, 1.0, False),
+    (BUILDING / "metal_ladder_climb/pixabay_76052_ladder_aluminum_erik90.mp3", "ladder.wav", 0.7, -1, 4.0, False),
+    (OFFICE / "telefono_antiguo/bsb_3532_socotel_discreet_rings.wav", "phone_ring.wav", 0.6, -1, 4.3, True),
+    (OFFICE / "fotocopiadora/soundbible_2169_photocopy_machine.wav", "copier.wav", 0.6, 0.0, 4.0, False),
+    (OFFICE / "silla_oficina_ruedas/oga_nicolemariet_office_chair_roll.wav", "chair_roll.wav", 0.6, -1, 0.0, False),
+    (BUILDING / "fluorescent_starter_flicker/pixabay_61228_faulty_fluorescent_starter_hum_everydaysounds.mp3", "starter.wav", 0.6, 0.0, 3.0, False),
 ]
+## The maneuver room's door (Sound Effects Factory's free licence: use in games
+## and editing allowed, no attribution asked, the originals not passed on).
+DOOR_MOTOR = BUILDING / "maneuver_door_motor/sef_hydraulic_lift.mp3"
+DOOR_KNOB = BUILDING / "maneuver_door_lock/sef_locking_door_knob.mp3"
+DOOR_BUZZ = BUILDING / "maneuver_door_lock/sef_buzzing_electronics.mp3"
 
 
 def load(path):
@@ -101,10 +105,47 @@ def cut(x, start, keep):
     return x[first:end]
 
 
-def slowed(x, seconds):
-    """Played slower to last `seconds`, its pitch falling with it."""
-    n = int(seconds * RATE)
-    return np.interp(np.linspace(0, len(x) - 1, n), np.arange(len(x)), x)
+def door_motor(x):
+    """The hydraulic lift's run and its stop without the seconds between, for a
+    door that takes 4.5 s: its first 3.5 s crossfaded over a quarter of a
+    second into the stretch that ends on its clunk (6.3 to 7.6 s)."""
+    n = int(0.25 * RATE)
+    head = x[: int(3.5 * RATE)]
+    tail = x[int(6.3 * RATE): int(7.6 * RATE)]
+    t = np.linspace(0, 1, n)
+    return np.concatenate([head[:-n], head[-n:] * np.sqrt(1 - t) + tail[:n] * np.sqrt(t), tail[n:]])
+
+
+def lowpass(x, hz):
+    """What is under `hz`, rolled off gently above it."""
+    spec = np.fft.rfft(x)
+    spec *= 1.0 / (1.0 + (np.fft.rfftfreq(len(x), 1.0 / RATE) / hz) ** 4)
+    return np.fft.irfft(spec, len(x))
+
+
+def hum(buzz, seconds):
+    """A short hum of an electric lock: a steady stretch of the buzz, its
+    crackle taken off."""
+    x = lowpass(buzz[int(8.0 * RATE): int((8.0 + seconds) * RATE)], 1800.0)
+    return fade(x / (np.max(np.abs(x)) or 1.0), 0.008, 0.05)
+
+
+def bolt(knob):
+    """The knob's bolt alone: from its first sound, 0.45 s."""
+    x = cut(knob, -1, 0.45)
+    return fade(x / (np.max(np.abs(x)) or 1.0), 0.004, 0.12)
+
+
+def door_lock(buzz, knob, kind="hum_bolt"):
+    """The door without power, quiet: "hum_bolt", its lock humming a moment
+    and its bolt holding (the one the game plays); "bolt", the bolt alone;
+    "two_hums", two short hums."""
+    gap = np.zeros(int(0.05 * RATE))
+    if kind == "bolt":
+        return bolt(knob)
+    if kind == "two_hums":
+        return np.concatenate([hum(buzz, 0.09), np.zeros(int(0.07 * RATE)), hum(buzz, 0.09)])
+    return np.concatenate([hum(buzz, 0.16) * 0.6, gap, bolt(knob)])
 
 
 def fade(x, fin=0.004, fout=0.25):
@@ -140,11 +181,11 @@ def write(name, x, peak):
 
 
 def main():
-    for original, copy, peak, start, keep, looped, slow in CLIPS:
+    for original, copy, peak, start, keep, looped in CLIPS:
         x = cut(load(original), start, keep)
-        if slow > 0:
-            x = slowed(x, slow)
         write(copy, loop(x) if looped else fade(x), peak)
+    write("heavy_door.wav", fade(door_motor(load(DOOR_MOTOR))), 0.5)
+    write("door_lock.wav", door_lock(load(DOOR_BUZZ), load(DOOR_KNOB)), 0.4)
 
 
 if __name__ == "__main__":
