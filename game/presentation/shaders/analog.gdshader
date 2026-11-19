@@ -377,11 +377,17 @@ void fragment() {
 	if (frame > 0.0 && (at.x < 0.07 || at.x > 0.93)) {
 		float edge_row = floor(at.y * 240.0);
 		float flick = floor(t * 30.0);
-		float left = (0.005 + 0.004 * noise1(at.y * 7.0 + t * 1.9) + 0.0025 * noise1(at.y * 53.0 - t * 6.0) + 0.0012 * noise1(at.y * 150.0 + flick * 7.3)) / wide;
+		// The deck's own picture (the boot's, narrower than the screen) keeps the
+		// wide ragged black it was liked with; the camera's has less of it, and a
+		// shorter, lighter burn (the author, on both, 19 November 2026). Thinner
+		// than the straight cut of the narrow picture, the ragged edge showed as
+		// a second one inside it.
+		float deck = step(0.001, inset);
+		float left = mix(0.005 + 0.004 * noise1(at.y * 7.0 + t * 1.9) + 0.0025 * noise1(at.y * 53.0 - t * 6.0) + 0.0012 * noise1(at.y * 150.0 + flick * 7.3), 0.011 + 0.006 * noise1(at.y * 7.0 + t * 1.9) + 0.004 * noise1(at.y * 53.0 - t * 6.0) + 0.0016 * noise1(at.y * 150.0 + flick * 7.3), deck) / wide;
 		float right = 1.0 - (0.008 + 0.005 * noise1(at.y * 9.0 - t * 1.4 + 40.0) + 0.003 * noise1(at.y * 61.0 + t * 7.0) + 0.0014 * noise1(at.y * 130.0 - flick * 5.1)) / wide;
-		float burn = 1.0 - smoothstep(left, left + 0.007 / wide, at.x);
+		float burn = 1.0 - smoothstep(left, left + mix(0.007, 0.017, deck) / wide, at.x);
 		float scorch = 0.75 + 0.5 * line_noise(at.x * 300.0 * wide + flick, edge_row);
-		color = mix(color, color * vec3(0.5, 0.34, 0.6) * scorch, burn * 0.5 * frame);
+		color = mix(color, color * vec3(0.5, 0.34, 0.6) * scorch, burn * mix(0.5, 0.85, deck) * frame);
 		float glow = smoothstep(right - 0.009 / wide, right - 0.002 / wide, at.x);
 		color += (vec3(0.05, 0.055, 0.07) + color * 0.45) * glow * frame * (0.55 + 0.45 * noise1(at.y * 90.0 + flick * 3.1));
 		float open = smoothstep(left - 0.004 / wide, left + 0.004 / wide, at.x) * (1.0 - smoothstep(right - 0.003 / wide, right + 0.003 / wide, at.x));
