@@ -22,7 +22,7 @@ Los números son los de la propuesta que el autor fue aceptando.
 **A. Rebuscar**
 
 1. **Muebles registrables:** cajones, archivadores, ficheros y taquillas. Casi todos vacíos; algunos con un papel o un objeto. Mismo precio que en el hotel: un segundo de espaldas y ruido. Sin monedas (la máquina expendedora quedó fuera).
-2. **Objetos personales sin texto,** que solo se miran. Tienen que casar con una evacuación ordenada de hace años: lo que no se llevaron o lo que alguien dejó a propósito.
+2. **Objetos personales sin texto,** que solo se miran. Tienen que casar con cómo se fueron, hace años: deprisa, llevándose lo que pudieron. Queda lo que no les dio tiempo a coger.
 
 **B. Historia**
 
@@ -35,7 +35,7 @@ Los números son los de la propuesta que el autor fue aceptando.
 
 **C. Escenas**
 
-9. **Salas corrientes con una escena montada,** sorteada por partida, ocho o diez. Las que se propusieron antes de saber cómo se fue el personal (la despedida a medias, el almuerzo podrido) ya no valen: hay que proponerlas de nuevo sobre una evacuación ordenada de hace años.
+9. **Salas corrientes con una escena montada,** sorteada por partida, ocho o diez. Hay que proponerlas de nuevo sabiendo cómo se fue el personal (deprisa, hace años) y que el autor las apruebe.
 
 **D. Cosas que se usan**
 
@@ -54,15 +54,15 @@ Los números son los de la propuesta que el autor fue aceptando.
 Está en `docs/LORE.md` («Confirmado el 19 de noviembre de 2026»):
 
 - el personal de las oficinas sabía lo que había debajo;
-- se fueron con una evacuación ordenada, años antes de la cinta;
+- se fueron más o menos de golpe, años antes de la cinta: intentaron llevarse lo que pudieron y, por la velocidad, algunas cosas quedaron atrás (el autor eligió primero una evacuación ordenada y lo corrigió ese mismo día);
 - los relojes y lo que marca la fecha por sí solo siguen andando; los calendarios manuales se quedaron en el día en que se fueron;
 - los empleados tienen nombre propio;
 - el ente escribe en los terminales.
 
 ## Lo que esto cambia en lo ya hecho
 
-- **`game/world/office/office_clutter.gd` parte de «se fueron de golpe»:** sillas volcadas, un teléfono descolgado, papeles en montones. Eso contradice la evacuación ordenada. Hay que rehacer su premisa: cajas empacadas, archivadores vaciados, despachos recogidos, y el polvo de años. El autor no lo ha pedido con esas palabras: se le plantea antes de tocarlo.
-- **Los cuatro documentos de `docs/OFICINAS.md`, sección 10,** siguen valiendo (los escribe gente que sabía), pero sus fechas han de caer antes de la evacuación.
+- **`game/world/office/office_clutter.gd` ya parte de «se fueron de golpe»** (sillas volcadas, un teléfono descolgado, papeles en montones): casa con lo confirmado y no se rehace. Le falta lo otro que dijo el autor: que intentaron llevarse lo que pudieron (cajas a medio llenar, archivadores abiertos y medio vacíos), y los años que han pasado.
+- **Los cuatro documentos de `docs/OFICINAS.md`, sección 10,** siguen valiendo (los escribe gente que sabía), pero sus fechas han de caer antes de que se fueran.
 
 ## Lo que tiene que escribir o aprobar el autor
 
@@ -81,7 +81,7 @@ Lore: solo lo que él confirma.
 Cada tramo se puede jugar y juzgar solo.
 
 1. **Rebuscar y documentos (1 y 3).** Es lo que más cambia el vacío y reutiliza lo del hotel (`hotel_container.gd`, `hotel_document.gd`, `game/discovery/discovery_catalog.gd`). Pide los primeros textos al autor.
-2. **Escenas y premisa del abandono (9, 2 y `office_clutter.gd`).** Toca el generador: versión nueva.
+2. **Escenas y lo que dejaron atrás (9, 2 y lo que le falta a `office_clutter.gd`).** Toca el generador: versión nueva.
 3. **Terminales, corchos y pizarras (4 y 5).**
 4. **El rastro, los hilos de empleados y la caja fuerte (6, 7 y 8).**
 5. **Termo, plano de evacuación y pruebas para la cinta (10, 16 y 18).**

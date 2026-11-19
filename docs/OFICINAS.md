@@ -683,7 +683,7 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
   2. **Circular interna:** recuerda al personal mantener encendidas las luces y no quedarse solo en el archivo, «por la seguridad de todos». No dice de qué.
   3. **Libro del puesto de seguridad:** «Cámara 4, techo del archivo. Algo se mueve en la imagen. En la cinta no hay nada.»
   4. **Informe médico de un empleado:** dice ver una cara en el techo de su despacho y pide el traslado. Denegado.
-  - Escritos por gente que **sí sabía** lo que había debajo, al revés que los del hotel (confirmado por el autor el 19 de noviembre de 2026, con que el personal se fue en una evacuación ordenada años antes de la cinta: `LORE.md`).
+  - Escritos por gente que **sí sabía** lo que había debajo, al revés que los del hotel (confirmado por el autor el 19 de noviembre de 2026, con que el personal se fue más o menos de golpe años antes de la cinta: `LORE.md`).
 - **Los papeles del juego:**
   - el resguardo del tubo y **la ficha de personal**, con su foto (planta 1);
   - el mapa de la red de tubos;
