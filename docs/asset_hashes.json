@@ -2734,5 +2734,13 @@
   "assets/fonts/special_elite/SpecialElite-Regular.ttf": {
     "bytes": 166180,
     "sha256": "a776fcb4ceb8bdf03e2967688ebdad42680de5b91a7e62c17e718ae212d14bc4"
+  },
+  "assets/fonts/home_video/HomeVideo-Regular.ttf": {
+    "bytes": 138264,
+    "sha256": "5df883cc59c438d983461d65aae323d6ae61dbcb396ae884314b401672c30c1c"
+  },
+  "assets/fonts/home_video/License.txt": {
+    "bytes": 7169,
+    "sha256": "f4e7f373b9b996950337e8d41a4a2939c2d90b7725e9baf3d5084a22717ad328"
   }
 }

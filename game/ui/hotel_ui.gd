@@ -298,7 +298,7 @@ func _ready() -> void:
 	fit_marks()
 	get_tree().root.size_changed.connect(fit_marks)
 	signal_label = STYLE.text("", 30, STYLE.ALERT)
-	signal_label.offset_left = 48
+	signal_label.offset_left = STYLE.MARK_INSET
 	signal_label.offset_top = 34
 	signal_label.offset_right = 900
 	signal_label.offset_bottom = 74
@@ -306,21 +306,21 @@ func _ready() -> void:
 	# The tape rewinding (a stage given back): the camcorder's own marks are
 	# under the snow, so these stand in for them, in the same places and the
 	# same lettering (camcorder_osd.gd).
-	rewind_mark = STYLE.text("<< REW
-SP", 30)
+	rewind_mark = STYLE.mark("<< REW
+SP", true)
 	rewind_mark.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	rewind_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	rewind_mark.offset_left = -300
-	rewind_mark.offset_top = 32
-	rewind_mark.offset_right = -44
+	rewind_mark.offset_left = -300 - STYLE.MARK_INSET
+	rewind_mark.offset_top = 40
+	rewind_mark.offset_right = -STYLE.MARK_INSET
 	rewind_mark.visible = false
 	above.add_child(rewind_mark)
-	rewind_clock = STYLE.text("", 30)
+	rewind_clock = STYLE.mark("")
 	rewind_clock.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	rewind_clock.offset_left = 48
-	rewind_clock.offset_top = -118
-	rewind_clock.offset_right = 520
-	rewind_clock.offset_bottom = -52
+	rewind_clock.offset_left = STYLE.MARK_INSET
+	rewind_clock.offset_top = -164
+	rewind_clock.offset_right = STYLE.MARK_INSET + 620
+	rewind_clock.offset_bottom = -58
 	rewind_clock.visible = false
 	above.add_child(rewind_clock)
 	progress = $HUD/ExitProgress
@@ -2453,9 +2453,16 @@ func _input(event: InputEvent) -> void:
 		rebind_action = ""
 	else: rebind_button.text = "TECLA RESERVADA O EN USO"
 
-## Boot sequence: VCR blue screen with PLAY, then a long stretch of tape static
-## into the menu. Nothing skips it (the author, 16 November 2026): keys and
-## clicks are swallowed while it plays.
+## Boot sequence: the headphones notice on black, then a tape put in a deck.
+## The deck's blue with PLAY in its corner, in 4:3 between black bars (the
+## author's references 01 and 02, evidence/referencias/vhs); the snow of the
+## blank tape before the recording; and the picture found, cut into slanted
+## bands that square up (09 and 10) and open out to the whole screen: the
+## menu. The tape's look is the camera's own filter over this screen. Nothing
+## skips it (the author, 16 November 2026): keys and clicks are swallowed
+## while it plays.
+const TAPE := preload("res://game/presentation/shaders/analog.gdshader")
+
 func play_intro() -> void:
 	if is_instance_valid(intro): finish_intro()
 	intro = Control.new()
@@ -2473,16 +2480,16 @@ func play_intro() -> void:
 	blue.set_anchors_preset(Control.PRESET_FULL_RECT)
 	blue.modulate.a = 0.0
 	intro.add_child(blue)
-	var channel := STYLE.text("VIDEO 1", 34)
-	channel.position = Vector2(56, 40)
-	blue.add_child(channel)
-	var play := STYLE.text("▶ PLAY", 44)
-	play.set_anchors_preset(Control.PRESET_CENTER)
-	play.offset_left = -120
-	play.offset_right = 120
-	play.offset_top = -30
-	play.offset_bottom = 30
-	play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# A 4:3 picture leaves this share of the screen's width black at each side.
+	var window := get_viewport().get_visible_rect().size
+	var inset := maxf(0.0, (1.0 - (4.0 / 3.0) * window.y / window.x) * 0.5)
+	# The filter draws the whole screen into that picture, narrowed, so PLAY
+	# is written wider by as much; where the references have it, in their
+	# pale blue, and with no shadow.
+	var play := STYLE.text("PLAY", 50, Color(0.84, 0.86, 1.0))
+	play.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
+	play.position = Vector2(window.x * 0.128, window.y * 0.118 - 5.0)
+	play.scale.x = 1.0 / (1.0 - 2.0 * inset)
 	blue.add_child(play)
 	# Before the tape starts, on the black it opens with: put your headphones
 	# on. The floor is played by ear -- the distances, which way the creature
@@ -2511,19 +2518,33 @@ func play_intro() -> void:
 	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
 	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	intro.add_child(cover)
-	var static_layer := ColorRect.new()
-	static_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	static_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var material := ShaderMaterial.new()
-	material.shader = NOISE
-	static_layer.material = material
-	intro.add_child(static_layer)
+	# The tape over all of it but the notice. It follows the player's own
+	# sliders, and reduced effects leave it a clean picture in its 4:3.
+	var deck := ColorRect.new()
+	deck.name = "Deck"
+	deck.set_anchors_preset(Control.PRESET_FULL_RECT)
+	deck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	deck.visible = false
+	var reduced: bool = settings != null and settings.values.reduced
+	var worn: float = 0.0 if reduced else float(settings.values.vhs) if settings != null else 0.3
+	var lines: float = 0.0 if reduced else float(settings.values.scanlines) if settings != null else 0.1
+	var look := ShaderMaterial.new()
+	look.shader = TAPE
+	for key in ["grain", "chromatic", "vignette"]: look.set_shader_parameter(key, 0.0)
+	look.set_shader_parameter("vhs", worn)
+	look.set_shader_parameter("scanlines", lines)
+	look.set_shader_parameter("inset", inset)
+	deck.material = look
+	intro.add_child(deck)
 	var hiss := AudioStreamPlayer.new()
 	hiss.bus = "Effects"
 	hiss.stream = load("res://assets/audio/intro/tv_static.wav")
 	hiss.volume_db = -60.0
 	intro.add_child(hiss)
-	var amount := func(value: float) -> void: material.set_shader_parameter("amount", value)
+	var set_look := func(value: float, key: String) -> void: look.set_shader_parameter(key, value)
+	# The picture going is not an effect, and is milder with them reduced (as
+	# presentation_rig has it); the bands of the entry are one, and are left out.
+	var snow := 0.75 if reduced else 1.0
 	intro_tween = create_tween()
 	# The notice comes up out of the black, is held long enough to read, and
 	# goes before anything else happens.
@@ -2531,20 +2552,26 @@ func play_intro() -> void:
 	intro_tween.tween_property(cover, "modulate:a", 0.0, 0.45)
 	intro_tween.tween_interval(1.6)
 	intro_tween.tween_property(cover, "modulate:a", 1.0, 0.45)
-	intro_tween.tween_callback(func(): notice.hide(); cover.hide())
+	intro_tween.tween_callback(func(): notice.hide(); cover.hide(); deck.show())
 	intro_tween.tween_interval(0.3)
 	intro_tween.tween_callback(func(): if sounds_enabled: confirm_player.play())
 	intro_tween.tween_property(blue, "modulate:a", 1.0, 0.05)
 	intro_tween.tween_interval(1.8)
-	# The picture breaks up slowly into static, holds, and clears into the menu.
+	# The tape starts, and there is nothing on it yet: its snow, cut in hard.
 	intro_tween.tween_callback(func(): if sounds_enabled: hiss.play())
-	intro_tween.parallel().tween_property(hiss, "volume_db", -16.0, 0.9)
-	intro_tween.parallel().tween_method(amount, 0.0, 0.65, 0.9)
-	intro_tween.tween_method(amount, 0.65, 1.0, 0.5)
+	intro_tween.parallel().tween_property(hiss, "volume_db", -16.0, 0.2)
+	intro_tween.parallel().tween_method(set_look.bind("signal_loss"), 0.0, snow, 0.2)
+	intro_tween.tween_interval(0.7)
+	# Then the recording, which is the menu under all this: found, squared up,
+	# and opened out to the screen as the tape's wear leaves it.
 	intro_tween.tween_callback(func(): blue.hide(); black.hide())
-	intro_tween.tween_interval(0.5)
-	intro_tween.tween_method(amount, 1.0, 0.0, 1.6).set_trans(Tween.TRANS_SINE)
-	intro_tween.parallel().tween_property(hiss, "volume_db", -60.0, 1.6)
+	if not reduced: intro_tween.tween_callback(set_look.bind(1.0, "entry"))
+	intro_tween.tween_method(set_look.bind("signal_loss"), snow, 0.0, 0.3)
+	intro_tween.tween_method(set_look.bind("entry"), 0.0 if reduced else 1.0, 0.0, 1.1)
+	intro_tween.parallel().tween_property(hiss, "volume_db", -60.0, 1.1)
+	intro_tween.tween_method(set_look.bind("inset"), inset, 0.0, 0.45).set_trans(Tween.TRANS_SINE)
+	intro_tween.parallel().tween_method(set_look.bind("vhs"), worn, 0.0, 0.45)
+	intro_tween.parallel().tween_method(set_look.bind("scanlines"), lines, 0.0, 0.45)
 	intro_tween.tween_callback(finish_intro)
 
 func finish_intro() -> void:
@@ -2552,5 +2579,4 @@ func finish_intro() -> void:
 	if is_instance_valid(intro):
 		intro.queue_free()
 		intro = null
-		transition(0.6)
 		focus_first()

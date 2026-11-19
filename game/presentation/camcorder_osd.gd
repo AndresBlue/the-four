@@ -145,12 +145,12 @@ func _ready() -> void:
 	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.draw.connect(draw_overlay)
 	add_child(canvas)
-	rec = STYLE.text("REC\nSP", 30)
+	rec = STYLE.mark("REC\nSP", true)
 	rec.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	rec.offset_left = -300
-	rec.offset_top = 32
-	rec.offset_right = -44
+	rec.offset_left = -300 - STYLE.MARK_INSET
+	rec.offset_top = 40
+	rec.offset_right = -STYLE.MARK_INSET
 	add_child(rec)
 	# Drawn shape rather than a glyph, so it works with any fallback font.
 	dot = Panel.new()
@@ -159,18 +159,19 @@ func _ready() -> void:
 	round_style.set_corner_radius_all(9)
 	dot.add_theme_stylebox_override("panel", round_style)
 	dot.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	dot.offset_left = -138
-	dot.offset_top = 44
-	dot.offset_right = -120
-	dot.offset_bottom = 62
+	# Before the R of REC: three letters of the mark's size, narrowed as it is.
+	dot.offset_right = -STYLE.MARK_INSET - 3.0 * 0.6 * STYLE.MARK_SIZE * STYLE.MARK_NARROW - 12.0
+	dot.offset_left = dot.offset_right - 18.0
+	dot.offset_top = 55
+	dot.offset_bottom = 73
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dot)
-	clock = STYLE.text("", 30)
+	clock = STYLE.mark("")
 	clock.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	clock.offset_left = 48
-	clock.offset_top = -118
-	clock.offset_right = 520
-	clock.offset_bottom = -52
+	clock.offset_left = STYLE.MARK_INSET
+	clock.offset_top = -164
+	clock.offset_right = STYLE.MARK_INSET + 620
+	clock.offset_bottom = -58
 	add_child(clock)
 	focus_label = STYLE.text("", 20)
 	focus_label.set_anchors_preset(Control.PRESET_CENTER)
@@ -301,7 +302,7 @@ func draw_overlay() -> void:
 			var marker := Vector2(start + track * clampf(zoom, 0.0, 1.0), middle) + shift
 			canvas.draw_rect(Rect2(marker - Vector2(6, 7), Vector2(12, 14)), color)
 	if stamina_alpha > 0.01:
-		var right := size.x - 48.0
+		var right := size.x - STYLE.MARK_INSET
 		var bottom := size.y - 60.0
 		var cell := Vector2(14, 22)
 		var gap := 5.0
@@ -325,7 +326,7 @@ func draw_overlay() -> void:
 	if hunter:
 		# Its waits: a word and a bar that fills as it comes back.
 		var font := STYLE.font()
-		var right := size.x - 48.0
+		var right := size.x - STYLE.MARK_INSET
 		var row := size.y - 60.0 - 22.0 - 22.0
 		for title in waits:
 			var left: float = waits[title]

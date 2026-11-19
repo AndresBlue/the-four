@@ -1,7 +1,13 @@
 extends RefCounted
 ## Shared camcorder on-screen-display look: one monospace font, white ink with
 ## hard shadows, flat controls. Used by the in-world overlay, HUD and menus.
-const FONT_PATH := "res://assets/fonts/vcr_osd_mono.ttf"
+## Home Video (GGBotNet, CC0): the five by seven dots of a deck's own lettering.
+const FONT_PATH := "res://assets/fonts/home_video/HomeVideo-Regular.ttf"
+## What the camcorder itself writes on the tape (REC, the clock): how far in
+## from the picture's sides, clear of the tape's ragged edges (analog.gdshader).
+const MARK_INSET := 76.0
+const MARK_SIZE := 54
+const MARK_NARROW := 0.7
 const INK := Color(0.94, 0.94, 0.9)
 const SOFT := Color(0.94, 0.94, 0.9, 0.62)
 const FAINT := Color(0.94, 0.94, 0.9, 0.22)
@@ -11,7 +17,8 @@ const SHADE := Color(0.0, 0.0, 0.0, 0.85)
 ## SOFT laid over black, but opaque: for marks drawn in overlapping pieces,
 ## where a translucent ink piles up where they meet.
 const MUTED := Color(0.58, 0.58, 0.56)
-const VCR_BLUE := Color(0.09, 0.16, 0.62)
+## Deeper than it shows: the tape lifts its blacks (the reference is 01).
+const VCR_BLUE := Color(0.02, 0.07, 0.6)
 static var cached_font: Font
 static var cached_theme: Theme
 
@@ -224,6 +231,18 @@ static func text(words: String, size := 20, color := INK) -> Label:
 	result.add_theme_constant_override("shadow_offset_x", 2)
 	result.add_theme_constant_override("shadow_offset_y", 2)
 	result.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return result
+
+## The camcorder's own lettering (the author's reference 14, "AM 11:59 / JUN.
+## 15 1986"): the same dots, but tall, narrow and heavy, as its character
+## generator wrote them. Narrowed towards its left end, or its right one.
+static func mark(words: String, from_right := false) -> Label:
+	var result := text(words, MARK_SIZE)
+	result.add_theme_constant_override("outline_size", 2)
+	result.add_theme_color_override("font_outline_color", INK)
+	result.add_theme_constant_override("line_spacing", 4)
+	result.scale.x = MARK_NARROW
+	if from_right: result.resized.connect(func() -> void: result.pivot_offset.x = result.size.x)
 	return result
 
 ## Short synthetic camcorder beeps for menu feedback.

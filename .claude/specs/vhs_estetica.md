@@ -1,6 +1,17 @@
 # La estética VHS de la cámara y del PLAY inicial
 
-Encargo del autor, 19 de noviembre de 2026. **Nada de esto está hecho.** Sus catorce referencias están en `evidence/referencias/vhs/` (fotogramas de vídeos de la época, solo para mirar: no entran en el juego ni en git).
+Encargo del autor, 19 de noviembre de 2026. **Construido ese mismo día (apartado «Estado»); el autor no lo ha visto moverse.** Sus catorce referencias están en `evidence/referencias/vhs/` (fotogramas de vídeos de la época, solo para mirar: no entran en el juego ni en git).
+
+## Estado (19 de noviembre de 2026)
+
+Los siete puntos están en el juego. Cómo funciona cada uno está en `docs/DEVELOPMENT.md` («Iluminación y posprocesado» y «HUD, menús y ajustes»).
+
+- **Decidido por el autor:** 4:3 solo en el PLAY inicial; el juego y los menús siguen a 16:9 con franjas estrechas.
+- **Tipografía:** Home Video (GGBotNet, CC0), en `assets/fonts/home_video/`, para toda la interfaz, el PLAY y el texto de cámara (este, estrechado y engrosado). Por qué esa y no otra, en `docs/ASSETS.md`.
+- **Capturas junto a las referencias:** `evidence/vhs/comparacion_1` a `6` (se rehacen con `tools/capture/boot_capture.gd` y `tools/capture/tape_capture.gd`).
+- **Elegido por quien lo construyó, sin que el autor lo haya decidido:** el fotograma de color sale de media cada 26 s con el deslizador por defecto y más a menudo con la cordura baja (porque esta ya sube el desgaste de la cinta); la entrada del vídeo dura 1,1 s y sale cada vez que la cámara empieza a filmar; el texto de cámara mide 54 px sobre 720 (las referencias lo llevan algo mayor).
+- **Lo que no se parece todavía:** la referencia 13 (el fallo de color con ráfagas blancas en la mitad inferior) no tiene equivalente propio: el fotograma de color solo hace bandas, a veces desde media altura. El grano fino del sensor (`lens.gdshader`, deslizador «Grano») no se tocó: lo rehecho en bloques es el ruido de la cinta (la nieve, la banda de tracking y la estática de los menús).
+- **Sin hacer:** verlo en movimiento con el autor, el piso 2 con este filtro (solo se capturó el hotel) y una versión con su apartado en `docs/CHANGELOG.md`.
 
 ## Lo que pidió, con sus palabras
 

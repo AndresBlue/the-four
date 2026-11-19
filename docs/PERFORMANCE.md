@@ -681,3 +681,26 @@ Con el piso cargado en Forward+ Ultra, una prueba dirigida puso a The Lurker den
 Un barrido sin ventana comparó 13.429 consultas en las 3.274 salas utilizables de siete mapas completos, incluido el de respaldo. Cubrió las tres plantas, tamaños de uno a cinco jugadores, ductos abiertos y cerrados y tubos neumáticos. El barrido encontró otro pico reproducible de unos 100 ms en la semilla 11 para cinco jugadores. La búsqueda guardaba distancias en 32 bits y comparaba con los costes de 64 bits de la cola. Si al guardar una distancia se redondeaba hacia arriba, otro camino del mismo coste podía encolar el nodo de nuevo. La búsqueda ahora usa 64 bits en ambas partes. La prueba de conductos comprueba que se enumeren las salidas una sola vez por consulta y que dos caminos del mismo coste no expandan el destino dos veces.
 
 Al repetir el barrido con ambas correcciones, coincidieron la audibilidad, la salida y el eco. Las diferencias de distancia, ganancia y filtro quedaron por debajo de 0,001 m, 0,001 dB y 0,02 Hz respectivamente. Las consultas de ductos dieron 2,8 ms de mediana, 6,0 ms en p99 y 10,3 ms de máximo. El recorrido completo de las tres plantas también se verificó en las semillas 7 y 33.
+
+## 15. El marco de la cinta (19 de noviembre de 2026)
+
+El filtro de la cinta (`analog.gdshader`) ganó ese día las franjas laterales, la banda inferior, el ruido en bloques, el fotograma de color y la entrada del vídeo ([DEVELOPMENT.md](DEVELOPMENT.md), «Iluminación y posprocesado»). Nada de eso añade lecturas de la imagen: son cuentas por píxel, y las de los bordes y la nieve solo se hacen donde se ven (un 14 % del ancho, la banda de tracking, las últimas líneas).
+
+Medido antes y después con `./tools/benchmarks/run_bench.ps1 -Label vhs_antes -Extra '--qualities=1,2,4'` y `-Label vhs_despues`, en Forward+, semilla 81, 1080p, RTX 4060 Ti. GPU en ms (media):
+
+| Preset | Vista | Antes | Después |
+|---|---|---|---|
+| Muy bajo (`lite`) | caminando | 0,56 | 0,58 |
+| Muy bajo (`lite`) | sala 52 | 0,63 | 0,65 |
+| Muy bajo (`lite`) | sala 2 | 0,49 | 0,51 |
+| Muy bajo (`lite`) | sala 25 | 0,49 | 0,50 |
+| Medio | caminando | 4,84 | 4,89 |
+| Medio | sala 52 | 4,42 | 4,44 |
+| Medio | sala 2 | 4,17 | 4,19 |
+| Medio | sala 25 | 4,44 | 4,44 |
+| Alto | caminando | 9,26 | 9,15 |
+| Alto | sala 52 | 8,99 | 8,91 |
+| Alto | sala 2 | 8,48 | 8,42 |
+| Alto | sala 25 | 8,22 | 8,24 |
+
+En Muy bajo, donde el filtro pesa más sobre el total, son unas 0,02 ms; en Medio y Alto la diferencia queda dentro del ruido entre medidas (±0,1 a 0,2 ms). La vista de llegada subió 0,35 ms en Medio y 0,40 en Alto, pero en Medio dibujó casi el doble de sombras que en la medida de antes (1343 llamadas frente a 767), así que no se le puede cargar al filtro. Sin medir: Compatibilidad (solo se comprobó que compila y se ve igual) y un equipo con gráfica integrada.

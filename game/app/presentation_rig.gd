@@ -381,7 +381,19 @@ var lost_signal := 0.0
 
 var static_level := 0.0
 
+## The deck finding the picture each time the camera's comes up, from a menu,
+## a load or the end of a floor (analog.gdshader, entry): 1 as it starts, held
+## after ENTRY_SECONDS. Not with reduced effects, and not for her thermal view.
+const ENTRY_SECONDS := 1.1
+var entry := 0.0
+var filmed := false
+
 func update_screen_cues(delta: float) -> void:
+	var filming: bool = level.session.state in [level.session.State.PLAYING, level.session.State.CUTSCENE]
+	if filming and not filmed and not level.settings.values.reduced and not lurker_seat(): entry = 1.0
+	filmed = filming or level.session.state == level.session.State.PAUSED
+	entry = maxf(0.0, entry - delta / ENTRY_SECONDS)
+	level.post_material.set_shader_parameter("entry", entry)
 	var wanted_enclosure: float = (1.0 - level.player.peek * 0.8) if level.player.hidden and level.session.state == level.session.State.PLAYING else 0.0
 	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
 	lost_signal = maxf(0.0, lost_signal - delta)

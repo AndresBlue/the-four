@@ -50,18 +50,18 @@ uniform int chroma_taps : hint_range(2, 7) = 7;
 // more -- the luma as it comes, the chroma from either side of it. A full
 // screen of reads is what an integrated GPU has least of.
 uniform bool lite = false;
-
-float hash(vec2 p) {
-	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-	p3 += dot(p3, p3.yzx + 33.33);
-	return fract((p3.x + p3.y) * p3.z);
-}
-
-float noise1(float x) {
-	float i = floor(x);
-	float f = fract(x);
-	return mix(hash(vec2(i, 1.7)), hash(vec2(i + 1.0, 1.7)), f * f * (3.0 - 2.0 * f));
-}
+// The picture's place on the screen: all of it (0), or a narrower one in its
+// middle with black either side of it and the whole screen drawn into it.
+// The boot plays in 4:3 (hotel_ui.play_intro): 0.125 of a 16:9 screen a side.
+uniform float inset : hint_range(0.0, 0.45) = 0.0;
+// The deck finding the picture as a tape starts (the author's references 09
+// and 10): 1 is the first field, cut into slanted bands; 0 is the picture held.
+uniform float entry : hint_range(0.0, 1.0) = 0.0;
+// One field whose colour comes off the tape wrong (references 11 and 13).
+// The tape does it by itself once in a long while; 1 here makes it do it now.
+uniform float chroma_slip : hint_range(0.0, 1.0) = 0.0;
+// hash, noise1 and tape_snow: the dashes of a tape with nothing on it.
+#include "res://game/presentation/shaders/tape_snow.gdshaderinc"
 
 vec3 rgb_to_yiq(vec3 c) {
 	return vec3(dot(c, vec3(0.299, 0.587, 0.114)), dot(c, vec3(0.596, -0.274, -0.322)), dot(c, vec3(0.211, -0.523, 0.312)));
@@ -88,9 +88,14 @@ vec3 graded(vec3 color) {
 }
 
 void fragment() {
-	vec2 uv = SCREEN_UV;
+	// Where this pixel is in the picture, which is where the screen is read.
+	float wide = 1.0 - 2.0 * inset;
+	vec2 at = vec2((SCREEN_UV.x - inset) / wide, SCREEN_UV.y);
+	vec2 uv = at;
 	vec2 px = SCREEN_PIXEL_SIZE;
 	float t = TIME;
+	// How much of a tape's frame there is: all of it from a little wear up.
+	float frame = clamp(vhs * 5.0, 0.0, 1.0);
 	vec2 centred = uv - 0.5;
 	uv = 0.5 + centred * (1.0 - enclosure * 0.12 * (1.0 - dot(centred, centred) * 2.0));
 	// Tape transport: slow line wobble, a drifting tracking band and the
@@ -100,9 +105,33 @@ void fragment() {
 	float band_pos = fract(t * 0.043);
 	float band = smoothstep(0.06, 0.0, abs(uv.y - band_pos)) * (0.6 + 0.4 * noise1(t * 4.0));
 	float jitter = (hash(vec2(line, floor(t * 30.0))) - 0.5) * 0.004 * band;
-	float head = smoothstep(0.035, 0.0, 1.0 - uv.y);
-	float tear = head * (0.012 + (hash(vec2(floor(t * 24.0), line)) - 0.5) * 0.01);
-	uv.x += (wobble + jitter) * vhs + tear * vhs;
+	uv.x += (wobble + jitter) * vhs;
+	// Where the picture has nothing to show: past the end of a line.
+	float blank = 0.0;
+	if (entry > 0.0) {
+		// It comes cut into bands down the screen, each pulled sideways by more
+		// the further down it and wrapped round, so the black between one
+		// line's end and the next one's start runs across it as a slanted bar.
+		// Fewer bands and less pull as the hold takes: each time one goes, the
+		// picture jumps.
+		float bands = floor(1.0 + entry * 5.9);
+		float within = fract(at.y * bands + hash(vec2(bands, 3.0)));
+		float wrapped = fract(uv.x + within * entry * (0.6 + entry * 0.9) + entry * hash(vec2(bands, 5.0)));
+		blank = smoothstep(0.09, 0.06, wrapped) * smoothstep(0.0, 0.12, entry);
+		uv.x = wrapped;
+	}
+	// Where the heads switch, under the last lines of the picture (references
+	// 04 and 12): a strip a few lines tall that the deck draws out of step
+	// with the rest, pulled along by more the lower the line, with the black
+	// of the line's start showing at its end. It is always there, and it
+	// starts a line higher or lower from one frame to the next.
+	float switch_from = 1.0 - (0.013 + 0.004 * hash(vec2(floor(t * 30.0), 21.0))) * frame;
+	float head = step(switch_from, at.y);
+	if (head > 0.0) {
+		float deep = (at.y - switch_from) / max(1.0 - switch_from, 0.0001);
+		uv.x -= 0.03 + deep * 0.08 + (hash(vec2(line, floor(t * 30.0))) - 0.5) * 0.025;
+		blank = max(blank, step(uv.x, 0.0));
+	}
 	// The camcorder struck, or coming apart.
 	float damage = max(tape_hit, tape_fray);
 	float struck_band = 0.0;
@@ -124,7 +153,7 @@ void fragment() {
 	}
 	// Luma: slightly soft with edge ringing; chroma: much lower horizontal
 	// resolution and a small delay, like composite video on tape.
-	float soft = 1.0 + vhs * 2.5;
+	float soft = 1.0 + vhs * 2.5 + entry * 9.0;
 	vec3 center = tap(uv);
 	float luma;
 	vec2 chroma = vec2(0.0);
@@ -152,7 +181,10 @@ void fragment() {
 		chroma /= float(chroma_taps);
 	}
 	chroma *= 1.0 - vhs * 0.25;
-	vec3 color = yiq_to_rgb(vec3(luma, chroma));
+	// The colour locks after the picture does, and the gain is still up.
+	chroma *= 1.0 - smoothstep(0.0, 0.45, entry);
+	luma = mix(luma, smoothstep(0.02, 0.55, luma), smoothstep(0.0, 0.45, entry));
+	vec3 color = yiq_to_rgb(vec3(luma, chroma)) * (1.0 - blank);
 	if (lens_blood > 0.0) {
 		float lens_wide = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
 		float lens_film = blood_on_lens(SCREEN_UV * vec2(lens_wide, 1.0), lens_wide);
@@ -161,7 +193,7 @@ void fragment() {
 		if (lens_film > 0.0) color = through_lens_blood(color, lens_film, (tap(SCREEN_UV + vec2(0.12, 0.09)) + tap(SCREEN_UV + vec2(-0.12, 0.09)) + tap(SCREEN_UV + vec2(0.12, -0.09)) + tap(SCREEN_UV + vec2(-0.12, -0.09))) * 0.25);
 	}
 	// Lens colour fringing, stronger towards the corners.
-	vec2 from_center = SCREEN_UV - 0.5;
+	vec2 from_center = at - 0.5;
 	vec2 fringe = from_center * dot(from_center, from_center) * chromatic * 0.045 + vec2(chromatic * px.x * 2.0, 0.0);
 	if (chromatic > 0.0) {
 		color.r = mix(color.r, tap(uv + fringe).r, clamp(chromatic * 3.0, 0.0, 1.0));
@@ -169,8 +201,27 @@ void fragment() {
 	}
 	color = graded(color);
 	// Tracking band noise, dropouts and interference.
-	float snow = hash(vec2(uv.x * 900.0 + t * 60.0, line));
-	color += (snow - 0.5) * band * 0.25 * vhs;
+	vec3 snow = vec3(0.0);
+	if (band * vhs > 0.001 || head > 0.0 || damage > 0.0 || entry > 0.0) snow = tape_snow(at, floor(t * 60.0));
+	color += (snow - 0.3) * band * 0.5 * vhs;
+	if (entry > 0.0) {
+		// A bar of it where one band of the entry ends and the next begins.
+		float bands = floor(1.0 + entry * 5.9);
+		float within = fract(at.y * bands + hash(vec2(bands, 3.0)));
+		color = mix(color, snow, smoothstep(0.12, 0.0, within) * smoothstep(0.0, 0.3, entry) * 0.8);
+	}
+	// One field in a great many, the colour of the picture comes off the tape
+	// wrong: bands of it down the screen, or from some height down, over a
+	// luma that is still right. Worn tape does it more.
+	float tick = floor(t * 30.0);
+	float worn = clamp(vhs / 0.3, 0.0, 3.0);
+	float slip = max(chroma_slip, step(1.0 - 0.0013 * worn * worn, hash(vec2(tick, 71.0))));
+	if (slip > 0.0) {
+		float from = step(0.5, hash(vec2(tick, 5.0))) * hash(vec2(tick, 9.0)) * 0.6;
+		float turn = (at.y * (16.0 + 16.0 * hash(vec2(tick, 13.0))) + noise1(at.y * 11.0 + tick) * 1.4 + hash(vec2(floor(at.y * 240.0), tick)) * 0.06) * 6.28318;
+		vec3 here = rgb_to_yiq(color);
+		color = mix(color, yiq_to_rgb(vec3(here.x, here.yz * 0.5 + vec2(cos(turn), sin(turn)) * (0.03 + here.x * 0.13))), slip * step(from, at.y));
+	}
 	// Oxide dropouts: for a moment the head reads no signal and the line
 	// flashes white, brightest where it starts, with a ragged tail; one field
 	// line tall (240 a frame), sometimes two, lasting one frame. Worn tape
@@ -196,11 +247,11 @@ void fragment() {
 			color = mix(color, vec3(0.92, 0.92, 0.9), strength * clamp(0.5 + vhs, 0.0, 0.9));
 		}
 	}
-	color = mix(color, vec3(snow * 0.8), head * vhs * 0.55);
+	color = mix(color, snow, head * vhs * 0.5 * (1.0 - blank));
 	if (damage > 0.0) {
 		// The band is noise, not picture; and the colour, the first thing a
 		// tape loses, goes with a blow and comes and goes with a failing one.
-		color = mix(color, vec3(snow * 0.9), struck_band * 0.8);
+		color = mix(color, snow, struck_band * 0.8);
 		float grey = dot(color, vec3(0.299, 0.587, 0.114));
 		float drained = max(clamp(tape_hit * 1.6, 0.0, 1.0), tape_fray * step(0.4, hash(vec2(floor(t * 9.0), 4.0))));
 		color = mix(color, vec3(grey), drained);
@@ -233,11 +284,9 @@ void fragment() {
 		vec3 torn = tap(vec2(fract(rolled.x), uv.y));
 		color = mix(color, torn, loss * 0.85);
 		color = mix(color, vec3(dot(color, vec3(0.333))), loss * 0.85);
-		// Tuner snow: fat dots on a 260 x 240 grid, restruck every field, with
-		// the odd bright horizontal streak across a whole line.
-		float snow = hash(floor(rolled * vec2(260.0, 240.0)) + field * 7.0);
-		float streak = hash(vec2(row, field * 3.0));
-		vec3 dead = vec3(snow * 0.85 + step(0.93, streak) * 0.45);
+		// A blank tape's snow (tape_snow): fat dashes along the lines, struck
+		// again every field, with the odd bright line torn across.
+		vec3 dead = tape_snow(rolled, field);
 		// Rolling hum bar and the alternating field of interlaced lines.
 		float bar = smoothstep(0.0, 0.12, abs(fract(rolled.y - t * 0.11) - 0.5) - 0.28);
 		dead *= 0.82 + 0.18 * bar;
@@ -282,5 +331,25 @@ void fragment() {
 		written += g * grain * (0.08 + (1.0 - clamp(dot(written, vec3(0.333)) * 1.6, 0.0, 1.0)) * 0.14) * body.a;
 		color = color * (1.0 - body.a) + written * lit;
 	}
+	// The edges of a tape's picture (references 01 and 04): black down both
+	// sides, and the line between the black and the picture neither sharp nor
+	// still -- it swells, creeps and shivers line by line. Inside the left one
+	// the colour is burnt, dark and off its hue; inside the right one there is
+	// a thin glow. As wide on the screen whatever the picture's own width.
+	if (frame > 0.0 && (at.x < 0.07 || at.x > 0.93)) {
+		float edge_row = floor(at.y * 240.0);
+		float flick = floor(t * 30.0);
+		float left = (0.011 + 0.006 * noise1(at.y * 7.0 + t * 1.9) + 0.004 * noise1(at.y * 53.0 - t * 6.0) + 0.0012 * hash(vec2(edge_row, flick))) / wide;
+		float right = 1.0 - (0.008 + 0.005 * noise1(at.y * 9.0 - t * 1.4 + 40.0) + 0.003 * noise1(at.y * 61.0 + t * 7.0) + 0.001 * hash(vec2(edge_row, flick + 9.0))) / wide;
+		float burn = 1.0 - smoothstep(left, left + 0.017 / wide, at.x);
+		float scorch = 0.75 + 0.5 * hash(vec2(floor(at.x * 420.0 * wide), edge_row + flick * 3.0));
+		color = mix(color, color * vec3(0.5, 0.34, 0.6) * scorch, burn * 0.85 * frame);
+		float glow = smoothstep(right - 0.009 / wide, right - 0.002 / wide, at.x);
+		color += (vec3(0.05, 0.055, 0.07) + color * 0.45) * glow * frame * (0.55 + 0.45 * hash(vec2(edge_row, flick + 3.0)));
+		float open = smoothstep(left - 0.004 / wide, left + 0.004 / wide, at.x) * (1.0 - smoothstep(right - 0.003 / wide, right + 0.003 / wide, at.x));
+		color *= mix(1.0, open, frame);
+	}
+	// Beside the picture, where it is narrower than the screen: nothing.
+	color *= step(0.0, at.x) * step(at.x, 1.0);
 	COLOR = vec4(max(color, vec3(0.0)), 1.0);
 }
