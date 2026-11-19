@@ -704,3 +704,20 @@ Medido antes y después con `./tools/benchmarks/run_bench.ps1 -Label vhs_antes -
 | Alto | sala 25 | 8,22 | 8,24 |
 
 En Muy bajo, donde el filtro pesa más sobre el total, son unas 0,02 ms; en Medio y Alto la diferencia queda dentro del ruido entre medidas (±0,1 a 0,2 ms). La vista de llegada subió 0,35 ms en Medio y 0,40 en Alto, pero en Medio dibujó casi el doble de sombras que en la medida de antes (1343 llamadas frente a 767), así que no se le puede cargar al filtro. Sin medir: Compatibilidad (solo se comprobó que compila y se ve igual) y un equipo con gráfica integrada.
+
+### La segunda y la tercera vuelta (misma noche)
+
+Después el filtro cambió otra vez (ruido sin bordes duros, grano de cinta sobre toda la imagen, cinco lecturas de luma en vez de tres, entrada a tirones; [DEVELOPMENT.md](DEVELOPMENT.md)). Esa noche la máquina medía peor que por la tarde con cualquier código (el p99 de GPU se dobló en todos los presets), así que la comparación válida es la hecha en las mismas condiciones, una medida tras otra: el commit anterior (`9c623f3e`, la primera versión del marco) contra el árbol nuevo, con `-Extra '--qualities=1,4'`. GPU en ms (media):
+
+| Preset | Vista | `9c623f3e`, esa noche | Árbol nuevo, esa noche |
+|---|---|---|---|
+| Muy bajo (`lite`) | caminando | 0,69 | 0,69 a 0,75 |
+| Muy bajo (`lite`) | sala 52 | 0,89 | 0,79 a 0,82 |
+| Muy bajo (`lite`) | sala 2 | 0,69 | 0,67 a 0,75 |
+| Muy bajo (`lite`) | sala 25 | 0,60 | 0,62 a 0,74 |
+| Medio | caminando | 5,43 | 5,29 a 5,37 |
+| Medio | sala 52 | 4,91 | 5,07 a 5,34 |
+| Medio | sala 2 | 5,14 | 4,75 a 4,77 |
+| Medio | sala 25 | 4,95 | 5,19 a 5,20 |
+
+Dentro del ruido de esa noche no se distingue una versión de la otra. Con el grano de cinta apagado a mano el banco dio lo mismo (Medio caminando 5,33; Muy bajo 0,66). Queda por repetir con la máquina en reposo, para tener cifras comparables con la tabla de arriba, y en un equipo con gráfica integrada, que es donde las cuentas por píxel del grano podrían notarse.

@@ -60,7 +60,7 @@ uniform float entry : hint_range(0.0, 1.0) = 0.0;
 // One field whose colour comes off the tape wrong (references 11 and 13).
 // The tape does it by itself once in a long while; 1 here makes it do it now.
 uniform float chroma_slip : hint_range(0.0, 1.0) = 0.0;
-// hash, noise1 and tape_snow: the dashes of a tape with nothing on it.
+// hash, noise1, line_noise and tape_snow: the snow of a tape with nothing on it.
 #include "res://game/presentation/shaders/tape_snow.gdshaderinc"
 
 vec3 rgb_to_yiq(vec3 c) {
@@ -104,21 +104,38 @@ void fragment() {
 	float wobble = (noise1(uv.y * 38.0 + t * 1.3) - 0.5) * 0.0022 + sin(uv.y * 190.0 + t * 3.0) * 0.00035;
 	float band_pos = fract(t * 0.043);
 	float band = smoothstep(0.06, 0.0, abs(uv.y - band_pos)) * (0.6 + 0.4 * noise1(t * 4.0));
-	float jitter = (hash(vec2(line, floor(t * 30.0))) - 0.5) * 0.004 * band;
+	float field_line = floor(at.y * 240.0);
+	float jitter = (hash(vec2(field_line, floor(t * 30.0))) - 0.5) * 0.006 * band;
 	uv.x += (wobble + jitter) * vhs;
 	// Where the picture has nothing to show: past the end of a line.
 	float blank = 0.0;
+	// A bar of noise across the picture: where one head hands over to the other.
+	float bar = 0.0;
 	if (entry > 0.0) {
-		// It comes cut into bands down the screen, each pulled sideways by more
-		// the further down it and wrapped round, so the black between one
-		// line's end and the next one's start runs across it as a slanted bar.
-		// Fewer bands and less pull as the hold takes: each time one goes, the
-		// picture jumps.
-		float bands = floor(1.0 + entry * 5.9);
-		float within = fract(at.y * bands + hash(vec2(bands, 3.0)));
-		float wrapped = fract(uv.x + within * entry * (0.6 + entry * 0.9) + entry * hash(vec2(bands, 5.0)));
-		blank = smoothstep(0.09, 0.06, wrapped) * smoothstep(0.0, 0.12, entry);
+		// The drum is not yet in step with the tape. The bars where the heads
+		// switch stand close together at first and end far apart, the last of
+		// them under the picture, where it stays (the strip below). It gets
+		// there in jerks, a dozen or so a second, each landing the bars
+		// somewhere else: quick and rough (the author, on a first version
+		// that glided: too slow, too fluid).
+		float jerk = floor(t * 14.0);
+		float rough = clamp(entry * (1.0 + (hash(vec2(jerk, 41.0)) - 0.5) * 0.5), 0.0, 1.0);
+		float done = 1.0 - rough;
+		float apart = 0.2 + 1.1 * done * done;
+		float lowest = 0.2 + 0.8 * done * (2.0 - done) + (hash(vec2(jerk, 43.0)) - 0.5) * 0.7 * entry;
+		float within = fract((at.y - lowest) / apart);
+		bar = smoothstep(0.035, 0.0, min(within, 1.0 - within) * apart) * smoothstep(0.0, 0.2, entry);
+		// Each stretch between two bars is pulled sideways, by more the lower
+		// in it, and round the end of the line, so the black between lines
+		// crosses it as a slanted bar; the top of the picture flags over until
+		// the tension settles, and every line is a little out of its place.
+		float pull = within * rough * (0.25 + 1.15 * rough) + exp(-at.y * 11.0) * 0.09 * entry * (0.75 + 0.25 * sin(t * 31.0)) + (hash(vec2(field_line, jerk)) - 0.5) * 0.03 * entry;
+		float wrapped = fract(uv.x + pull);
+		blank = smoothstep(0.075, 0.045, wrapped) * smoothstep(0.02, 0.2, entry);
 		uv.x = wrapped;
+		// And the whole of it bounces before the vertical hold has it.
+		uv.y += 0.05 * entry * entry * sin(entry * 19.0);
+		blank = max(blank, max(step(uv.y, 0.0), step(1.0, uv.y)));
 	}
 	// Where the heads switch, under the last lines of the picture (references
 	// 04 and 12): a strip a few lines tall that the deck draws out of step
@@ -129,7 +146,7 @@ void fragment() {
 	float head = step(switch_from, at.y);
 	if (head > 0.0) {
 		float deep = (at.y - switch_from) / max(1.0 - switch_from, 0.0001);
-		uv.x -= 0.03 + deep * 0.08 + (hash(vec2(line, floor(t * 30.0))) - 0.5) * 0.025;
+		uv.x -= 0.03 + deep * 0.08 + (hash(vec2(field_line, floor(t * 30.0))) - 0.5) * 0.025;
 		blank = max(blank, step(uv.x, 0.0));
 	}
 	// The camcorder struck, or coming apart.
@@ -153,23 +170,29 @@ void fragment() {
 	}
 	// Luma: slightly soft with edge ringing; chroma: much lower horizontal
 	// resolution and a small delay, like composite video on tape.
-	float soft = 1.0 + vhs * 2.5 + entry * 9.0;
+	// A tape's softness is a share of its picture's width, whatever the screen:
+	// counted in pixels, a bigger screen showed a sharper tape. `unit` is one
+	// pixel of the 1280 the interface is laid out on.
+	float unit = 1.0 / 1280.0;
+	float soft = 1.6 + vhs * 5.0 + entry * 4.0;
 	vec3 center = tap(uv);
 	float luma;
 	vec2 chroma = vec2(0.0);
-	float chroma_width = px.x * (1.5 + vhs * 9.0);
-	float chroma_delay = px.x * vhs * 3.0;
+	float chroma_width = unit * (1.5 + vhs * 9.0);
+	float chroma_delay = unit * vhs * 3.0;
 	if (lite) {
 		vec3 here = rgb_to_yiq(center);
 		luma = here.x;
 		chroma = here.yz * 0.5 + (rgb_to_yiq(tap(uv + vec2(chroma_delay - chroma_width * 2.0, 0.0))).yz + rgb_to_yiq(tap(uv + vec2(chroma_delay + chroma_width * 2.0, 0.0))).yz) * 0.25;
 	} else {
-		vec3 blur_l = tap(uv - vec2(px.x * soft, 0.0));
-		vec3 blur_r = tap(uv + vec2(px.x * soft, 0.0));
-		luma = rgb_to_yiq(center * 0.5 + (blur_l + blur_r) * 0.25).x;
+		// Five reads across it: with three this far apart an edge came out
+		// twice over instead of soft.
+		vec3 near = tap(uv - vec2(unit * soft * 0.5, 0.0)) + tap(uv + vec2(unit * soft * 0.5, 0.0));
+		vec3 far = tap(uv - vec2(unit * soft, 0.0)) + tap(uv + vec2(unit * soft, 0.0));
+		luma = rgb_to_yiq(center * 0.3 + near * 0.22 + far * 0.13).x;
 		// Terms whose slider is at 0 read nothing (the result would be the same).
 		if (vhs > 0.0) {
-			float far_luma = rgb_to_yiq(tap(uv - vec2(px.x * soft * 3.0, 0.0)) * 0.5 + tap(uv + vec2(px.x * soft * 3.0, 0.0)) * 0.5).x;
+			float far_luma = rgb_to_yiq(tap(uv - vec2(unit * soft * 3.0, 0.0)) * 0.5 + tap(uv + vec2(unit * soft * 3.0, 0.0)) * 0.5).x;
 			luma += (luma - far_luma) * 0.35 * vhs;
 		}
 		// Taps spread evenly from -3 to +3 chroma widths, however many there are.
@@ -181,9 +204,12 @@ void fragment() {
 		chroma /= float(chroma_taps);
 	}
 	chroma *= 1.0 - vhs * 0.25;
-	// The colour locks after the picture does, and the gain is still up.
-	chroma *= 1.0 - smoothstep(0.0, 0.45, entry);
-	luma = mix(luma, smoothstep(0.02, 0.55, luma), smoothstep(0.0, 0.45, entry));
+	// The colour locks after the picture does, and the picture comes up a
+	// touch dim. Its contrast is left as it is: pushed up, as the references
+	// have it, the bright bands crossing the whole screen came to three
+	// flashes a second (film_check.py).
+	chroma *= 1.0 - smoothstep(0.25, 0.4, entry);
+	luma *= 1.0 - 0.1 * smoothstep(0.0, 0.5, entry);
 	vec3 color = yiq_to_rgb(vec3(luma, chroma)) * (1.0 - blank);
 	if (lens_blood > 0.0) {
 		float lens_wide = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
@@ -200,22 +226,33 @@ void fragment() {
 		color.b = mix(color.b, tap(uv - fringe).b, clamp(chromatic * 3.0, 0.0, 1.0));
 	}
 	color = graded(color);
+	// The tape's own noise, over all of the picture. A fine hiss in the luma,
+	// streaked along the lines and never the same on the next one, and more
+	// of it in the dark; and blotches of colour that run along a line, as the
+	// low band the colour is recorded on has them. Neither has an edge.
+	if (vhs > 0.0) {
+		float hiss_field = floor(t * 60.0);
+		float hiss_row = floor(at.y * 480.0);
+		float dim = 1.0 - clamp(dot(color, vec3(0.333)) * 1.4, 0.0, 1.0);
+		color += (line_noise(at.x * 420.0 + hash(vec2(hiss_row, hiss_field)) * 37.0, hiss_row + hiss_field * 3.0) - 0.5) * vhs * (0.05 + 0.12 * dim);
+		if (!lite) {
+			float blotch_row = floor(at.y * 240.0);
+			vec2 blotch = vec2(line_noise(at.x * 28.0 + hash(vec2(blotch_row, hiss_field + 5.0)) * 19.0, blotch_row + hiss_field * 5.0), line_noise(at.x * 28.0 + hash(vec2(blotch_row, hiss_field + 9.0)) * 23.0, blotch_row * 3.0 + hiss_field * 7.0)) - 0.5;
+			color += yiq_to_rgb(vec3(0.0, blotch * vhs * (0.03 + 0.09 * dim)));
+		}
+	}
 	// Tracking band noise, dropouts and interference.
 	vec3 snow = vec3(0.0);
-	if (band * vhs > 0.001 || head > 0.0 || damage > 0.0 || entry > 0.0) snow = tape_snow(at, floor(t * 60.0));
-	color += (snow - 0.3) * band * 0.5 * vhs;
-	if (entry > 0.0) {
-		// A bar of it where one band of the entry ends and the next begins.
-		float bands = floor(1.0 + entry * 5.9);
-		float within = fract(at.y * bands + hash(vec2(bands, 3.0)));
-		color = mix(color, snow, smoothstep(0.12, 0.0, within) * smoothstep(0.0, 0.3, entry) * 0.8);
-	}
+	if (band * vhs > 0.001 || head > 0.0 || damage > 0.0 || bar > 0.0) snow = tape_snow(at, floor(t * 60.0), !lite);
+	color += (snow - 0.22) * band * 0.85 * vhs;
+	color = mix(color, snow, bar * 0.85);
 	// One field in a great many, the colour of the picture comes off the tape
 	// wrong: bands of it down the screen, or from some height down, over a
 	// luma that is still right. Worn tape does it more.
 	float tick = floor(t * 30.0);
 	float worn = clamp(vhs / 0.3, 0.0, 3.0);
 	float slip = max(chroma_slip, step(1.0 - 0.0013 * worn * worn, hash(vec2(tick, 71.0))));
+	slip = max(slip, 0.8 * smoothstep(0.42, 0.34, entry) * smoothstep(0.2, 0.28, entry));
 	if (slip > 0.0) {
 		float from = step(0.5, hash(vec2(tick, 5.0))) * hash(vec2(tick, 9.0)) * 0.6;
 		float turn = (at.y * (16.0 + 16.0 * hash(vec2(tick, 13.0))) + noise1(at.y * 11.0 + tick) * 1.4 + hash(vec2(floor(at.y * 240.0), tick)) * 0.06) * 6.28318;
@@ -239,8 +276,9 @@ void fragment() {
 		float span = 0.02 + 0.13 * hash(vec2(row, dropout_frame + 7.0));
 		float along = (uv.x - start) / span;
 		float inside = step(0.0, along) * step(along, 1.0);
-		float ragged = 0.55 + 0.45 * hash(vec2(floor(uv.x / px.x / 3.0), dropout_frame));
-		float strength = inside * (1.0 - along * 0.75) * ragged;
+		// Bright as fast as the luma can rise, and dying away along the line.
+		float ragged = 0.6 + 0.4 * noise1(uv.x * 140.0 + dropout_frame);
+		float strength = inside * smoothstep(0.0, 0.05, along) * smoothstep(1.0, 0.8, along) * exp(-along * 2.2) * ragged;
 		if (hash(vec2(row, dropout_frame + 11.0)) < 0.33) {
 			color = mix(color, tap(uv - vec2(0.0, 1.0 / 240.0)), inside);
 		} else {
@@ -286,7 +324,7 @@ void fragment() {
 		color = mix(color, vec3(dot(color, vec3(0.333))), loss * 0.85);
 		// A blank tape's snow (tape_snow): fat dashes along the lines, struck
 		// again every field, with the odd bright line torn across.
-		vec3 dead = tape_snow(rolled, field);
+		vec3 dead = tape_snow(rolled, field, !lite);
 		// Rolling hum bar and the alternating field of interlaced lines.
 		float bar = smoothstep(0.0, 0.12, abs(fract(rolled.y - t * 0.11) - 0.5) - 0.28);
 		dead *= 0.82 + 0.18 * bar;
@@ -316,14 +354,14 @@ void fragment() {
 		if (lite) {
 			run = rgb_to_yiq(here.rgb).yz * 0.5 + (rgb_to_yiq(mark_tap(uv + vec2(chroma_delay - chroma_width * 2.0, 0.0)).rgb).yz + rgb_to_yiq(mark_tap(uv + vec2(chroma_delay + chroma_width * 2.0, 0.0)).rgb).yz) * 0.25;
 		} else {
-			body = here * 0.5 + (mark_tap(uv - vec2(px.x * soft, 0.0)) + mark_tap(uv + vec2(px.x * soft, 0.0))) * 0.25;
+			body = here * 0.5 + (mark_tap(uv - vec2(unit * soft, 0.0)) + mark_tap(uv + vec2(unit * soft, 0.0))) * 0.25;
 			run = vec2(0.0);
 			float apart = 6.0 / float(max(chroma_taps - 1, 1));
 			for (int i = 0; i < chroma_taps; i++) run += rgb_to_yiq(mark_tap(uv + vec2((-3.0 + float(i) * apart) * chroma_width + chroma_delay, 0.0)).rgb).yz;
 			run /= float(chroma_taps);
 		}
 		float written_luma = rgb_to_yiq(body.rgb).x;
-		if (vhs > 0.0 && !lite) written_luma += (written_luma - rgb_to_yiq((mark_tap(uv - vec2(px.x * soft * 3.0, 0.0)).rgb + mark_tap(uv + vec2(px.x * soft * 3.0, 0.0)).rgb) * 0.5).x) * 0.35 * vhs;
+		if (vhs > 0.0 && !lite) written_luma += (written_luma - rgb_to_yiq((mark_tap(uv - vec2(unit * soft * 3.0, 0.0)).rgb + mark_tap(uv + vec2(unit * soft * 3.0, 0.0)).rgb) * 0.5).x) * 0.35 * vhs;
 		vec3 written = yiq_to_rgb(vec3(written_luma, run * (1.0 - vhs * 0.25)));
 		// Graded as if on black, less what the grade makes of black itself
 		// where nothing is written: the snow beside a word keeps its own.
@@ -339,13 +377,13 @@ void fragment() {
 	if (frame > 0.0 && (at.x < 0.07 || at.x > 0.93)) {
 		float edge_row = floor(at.y * 240.0);
 		float flick = floor(t * 30.0);
-		float left = (0.011 + 0.006 * noise1(at.y * 7.0 + t * 1.9) + 0.004 * noise1(at.y * 53.0 - t * 6.0) + 0.0012 * hash(vec2(edge_row, flick))) / wide;
-		float right = 1.0 - (0.008 + 0.005 * noise1(at.y * 9.0 - t * 1.4 + 40.0) + 0.003 * noise1(at.y * 61.0 + t * 7.0) + 0.001 * hash(vec2(edge_row, flick + 9.0))) / wide;
-		float burn = 1.0 - smoothstep(left, left + 0.017 / wide, at.x);
-		float scorch = 0.75 + 0.5 * hash(vec2(floor(at.x * 420.0 * wide), edge_row + flick * 3.0));
-		color = mix(color, color * vec3(0.5, 0.34, 0.6) * scorch, burn * 0.85 * frame);
+		float left = (0.005 + 0.004 * noise1(at.y * 7.0 + t * 1.9) + 0.0025 * noise1(at.y * 53.0 - t * 6.0) + 0.0012 * noise1(at.y * 150.0 + flick * 7.3)) / wide;
+		float right = 1.0 - (0.008 + 0.005 * noise1(at.y * 9.0 - t * 1.4 + 40.0) + 0.003 * noise1(at.y * 61.0 + t * 7.0) + 0.0014 * noise1(at.y * 130.0 - flick * 5.1)) / wide;
+		float burn = 1.0 - smoothstep(left, left + 0.007 / wide, at.x);
+		float scorch = 0.75 + 0.5 * line_noise(at.x * 300.0 * wide + flick, edge_row);
+		color = mix(color, color * vec3(0.5, 0.34, 0.6) * scorch, burn * 0.5 * frame);
 		float glow = smoothstep(right - 0.009 / wide, right - 0.002 / wide, at.x);
-		color += (vec3(0.05, 0.055, 0.07) + color * 0.45) * glow * frame * (0.55 + 0.45 * hash(vec2(edge_row, flick + 3.0)));
+		color += (vec3(0.05, 0.055, 0.07) + color * 0.45) * glow * frame * (0.55 + 0.45 * noise1(at.y * 90.0 + flick * 3.1));
 		float open = smoothstep(left - 0.004 / wide, left + 0.004 / wide, at.x) * (1.0 - smoothstep(right - 0.003 / wide, right + 0.003 / wide, at.x));
 		color *= mix(1.0, open, frame);
 	}

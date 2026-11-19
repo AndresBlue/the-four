@@ -1,13 +1,16 @@
 extends RefCounted
 ## Shared camcorder on-screen-display look: one monospace font, white ink with
 ## hard shadows, flat controls. Used by the in-world overlay, HUD and menus.
-## Home Video (GGBotNet, CC0): the five by seven dots of a deck's own lettering.
-const FONT_PATH := "res://assets/fonts/home_video/HomeVideo-Regular.ttf"
+## Home Video (GGBotNet, CC0): the five by seven dots of a deck's own lettering,
+## made narrower by NARROW (tools/dev/condense_font.py): as it came, the
+## author found the menus' lettering wide.
+const FONT_PATH := "res://assets/fonts/home_video/HomeVideo-Narrow.ttf"
+const NARROW := 0.85
 ## What the camcorder itself writes on the tape (REC, the clock): how far in
 ## from the picture's sides, clear of the tape's ragged edges (analog.gdshader).
 const MARK_INSET := 76.0
 const MARK_SIZE := 54
-const MARK_NARROW := 0.7
+const MARK_NARROW := 0.7 / NARROW
 const INK := Color(0.94, 0.94, 0.9)
 const SOFT := Color(0.94, 0.94, 0.9, 0.62)
 const FAINT := Color(0.94, 0.94, 0.9, 0.22)

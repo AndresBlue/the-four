@@ -31,11 +31,6 @@ func run() -> void:
 	await level.start_floor(floor_seed)
 	level.locust.set_physics_process(false)
 	level.locust.position = Vector3(0, -50, 0)
-	# The picture as it is found: the rig started it as the floor began.
-	for step in [0.9, 0.6, 0.35, 0.12]:
-		level.rig.entry = step
-		await shot("entry_%02d" % int(step * 100.0))
-	level.rig.entry = 0.0
 	# The floor's first view, and the benchmark's lit room (hotel_benchmark.gd).
 	await shot("llegada", 60)
 	var room: Dictionary = level.manifest.rooms[lit_room]
@@ -45,11 +40,13 @@ func run() -> void:
 	level.hotel.update_visibility(level.player.position, true)
 	await shot("still", 60)
 	await shot("still_b", 7)
-	for step in [0.9, 0.6, 0.35, 0.12]:
+	# The picture as it is found, eight moments of it.
+	for step in [0.96, 0.82, 0.68, 0.54, 0.4, 0.3, 0.16, 0.05]:
 		level.rig.entry = step
-		await shot("room_entry_%02d" % int(step * 100.0))
+		await shot("entry_%02d" % int(step * 100.0))
 	level.rig.entry = 0.0
-	await shot("settled", 30)
+	# The tracking band is somewhere else every few seconds.
+	for i in 3: await shot("band_%d" % i, 200)
 	# One field of colour gone wrong, three times over: each is different.
 	level.post_material.set_shader_parameter("chroma_slip", 1.0)
 	for i in 3: await shot("slip_%d" % i, 3)

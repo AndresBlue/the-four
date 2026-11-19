@@ -128,6 +128,10 @@ var overlay: Control
 ## Above the tape (the analog filter is layer 5): see _ready.
 const OUTSIDE_LAYER := 6
 var outside: CanvasLayer
+## The softness over the menus: none with reduced effects, with the slider at
+## nothing, or while the boot plays its own tape.
+const SOFT := preload("res://game/ui/shaders/tape_soft.gdshader")
+var soft: ColorRect
 var column: VBoxContainer
 var side: VBoxContainer
 var hint: Label
@@ -338,6 +342,20 @@ SP", true)
 	add_child(outside)
 	remove_child(overlay)
 	outside.add_child(overlay)
+	# Outside the tape, but read off the same set: the menus get the softness
+	# of an old recording (tape_soft.gdshader), by the player's VHS slider.
+	var soft_layer := CanvasLayer.new()
+	soft_layer.name = "Soft"
+	soft_layer.layer = OUTSIDE_LAYER + 1
+	soft_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(soft_layer)
+	soft = ColorRect.new()
+	soft.set_anchors_preset(Control.PRESET_FULL_RECT)
+	soft.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	soft.material = ShaderMaterial.new()
+	(soft.material as ShaderMaterial).shader = SOFT
+	soft.visible = false
+	soft_layer.add_child(soft)
 	build_frame()
 	skip_label = STYLE.text("", 17)
 	skip_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -2384,6 +2402,9 @@ func _process(delta: float) -> void:
 		var roll := Input.get_axis("look_up", "look_down")
 		if absf(roll) > 0.0: pad_scroll.scroll_vertical += int(roll * 900.0 * delta)
 	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
+	var worn: float = 0.0 if settings == null or settings.values.reduced else float(settings.values.vhs)
+	soft.visible = overlay.visible and worn > 0.0 and not is_instance_valid(intro)
+	if soft.visible: (soft.material as ShaderMaterial).set_shader_parameter("amount", worn)
 	(noise.material as ShaderMaterial).set_shader_parameter("amount", noise_amount if overlay.visible else 0.0)
 	osd_left.modulate.a = 1.0 if screen != "failed" or fposmod(clock, 1.0) < 0.6 else 0.25
 	if is_instance_valid(loading_label):
@@ -2455,10 +2476,11 @@ func _input(event: InputEvent) -> void:
 
 ## Boot sequence: the headphones notice on black, then a tape put in a deck.
 ## The deck's blue with PLAY in its corner, in 4:3 between black bars (the
-## author's references 01 and 02, evidence/referencias/vhs); the snow of the
-## blank tape before the recording; and the picture found, cut into slanted
-## bands that square up (09 and 10) and open out to the whole screen: the
-## menu. The tape's look is the camera's own filter over this screen. Nothing
+## author's references 01 and 02, evidence/referencias/vhs); then, over the
+## whole screen, the snow of the blank tape before the recording and the
+## picture found, cut into slanted bands that square up (09 and 10): the
+## menu. Only the deck's own blue is 4:3; nothing of the recording is drawn
+## narrowed (the author, 19 November 2026). The tape's look is the camera's own filter over this screen. Nothing
 ## skips it (the author, 16 November 2026): keys and clicks are swallowed
 ## while it plays.
 const TAPE := preload("res://game/presentation/shaders/analog.gdshader")
@@ -2484,12 +2506,13 @@ func play_intro() -> void:
 	var window := get_viewport().get_visible_rect().size
 	var inset := maxf(0.0, (1.0 - (4.0 / 3.0) * window.y / window.x) * 0.5)
 	# The filter draws the whole screen into that picture, narrowed, so PLAY
-	# is written wider by as much; where the references have it, in their
+	# is written wider by as much (and by what the interface's font was made
+	# narrower, which a deck's letters are not); where the references have it, in their
 	# pale blue, and with no shadow.
 	var play := STYLE.text("PLAY", 50, Color(0.84, 0.86, 1.0))
 	play.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
 	play.position = Vector2(window.x * 0.128, window.y * 0.118 - 5.0)
-	play.scale.x = 1.0 / (1.0 - 2.0 * inset)
+	play.scale.x = 1.0 / (STYLE.NARROW * (1.0 - 2.0 * inset))
 	blue.add_child(play)
 	# Before the tape starts, on the black it opens with: put your headphones
 	# on. The floor is played by ear -- the distances, which way the creature
@@ -2557,20 +2580,23 @@ func play_intro() -> void:
 	intro_tween.tween_callback(func(): if sounds_enabled: confirm_player.play())
 	intro_tween.tween_property(blue, "modulate:a", 1.0, 0.05)
 	intro_tween.tween_interval(1.8)
-	# The tape starts, and there is nothing on it yet: its snow, cut in hard.
-	intro_tween.tween_callback(func(): if sounds_enabled: hiss.play())
-	intro_tween.parallel().tween_property(hiss, "volume_db", -16.0, 0.2)
-	intro_tween.parallel().tween_method(set_look.bind("signal_loss"), 0.0, snow, 0.2)
-	intro_tween.tween_interval(0.7)
-	# Then the recording, which is the menu under all this: found, squared up,
-	# and opened out to the screen as the tape's wear leaves it.
-	intro_tween.tween_callback(func(): blue.hide(); black.hide())
+	# The tape starts, and there is nothing on it yet: its snow, cut in hard
+	# and over the whole screen.
+	intro_tween.tween_callback(func() -> void:
+		if sounds_enabled: hiss.play()
+		blue.hide()
+		black.hide()
+		look.set_shader_parameter("inset", 0.0)
+		look.set_shader_parameter("signal_loss", snow))
+	intro_tween.tween_property(hiss, "volume_db", -16.0, 0.15)
+	intro_tween.tween_interval(0.75)
+	# Then the recording, which is the menu under all this: found and squared
+	# up, quick and rough, and the tape's wear leaving it.
 	if not reduced: intro_tween.tween_callback(set_look.bind(1.0, "entry"))
-	intro_tween.tween_method(set_look.bind("signal_loss"), snow, 0.0, 0.3)
-	intro_tween.tween_method(set_look.bind("entry"), 0.0 if reduced else 1.0, 0.0, 1.1)
-	intro_tween.parallel().tween_property(hiss, "volume_db", -60.0, 1.1)
-	intro_tween.tween_method(set_look.bind("inset"), inset, 0.0, 0.45).set_trans(Tween.TRANS_SINE)
-	intro_tween.parallel().tween_method(set_look.bind("vhs"), worn, 0.0, 0.45)
+	intro_tween.tween_method(set_look.bind("signal_loss"), snow, 0.0, 0.2)
+	intro_tween.tween_method(set_look.bind("entry"), 0.0 if reduced else 1.0, 0.0, 0.55)
+	intro_tween.parallel().tween_property(hiss, "volume_db", -60.0, 0.55)
+	intro_tween.tween_method(set_look.bind("vhs"), worn, 0.0, 0.45)
 	intro_tween.parallel().tween_method(set_look.bind("scanlines"), lines, 0.0, 0.45)
 	intro_tween.tween_callback(finish_intro)
 

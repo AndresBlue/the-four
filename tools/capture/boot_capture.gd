@@ -46,8 +46,7 @@ func run() -> void:
 	for step in [[0.92, "a"], [0.74, "b"], [0.56, "c"], [0.38, "d"], [0.2, "e"], [0.07, "f"]]:
 		while term("entry") > step[0]: await process_frame
 		await shot("4_entry_" + step[1])
-	while is_instance_valid(level.ui.intro) and term("inset") > 0.06: await process_frame
-	await shot("5_opening")
+	await shot("5_settled")
 	while is_instance_valid(level.ui.intro): await process_frame
 	await wait(0.4)
 	await shot("6_menu")
