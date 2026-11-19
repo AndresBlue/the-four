@@ -118,7 +118,7 @@ func place() -> void:
 	if rise >= 0.25:
 		var conduit_size := Vector3(POWER_LOOK.BOARD.x, snappedf(rise, 0.01), POWER_LOOK.CONDUITS_DEPTH)
 		equipment(POWER_LOOK.board_conduits(level.hotel, conduit_size), wall_xform(conduit_size, origin, origin.y + POWER_LOOK.BOARD.y, yaw))
-	supply_box(m, origin, yaw)
+	var boxed := supply_box(m, origin, yaw)
 	for i in zones.size():
 		var pivot := origin + basis * lever_at(i)
 		var stand := origin + out * 0.8 + basis * Vector3(lever_at(i).x, 0, 0)
@@ -153,10 +153,15 @@ func place() -> void:
 		pilots.append(pilot)
 		switch_until.append(0.0)
 	place_maneuver(m)
-	# The legend, pinned beside the board.
-	var memo_at := origin + basis * Vector3(BOARD.x / 2 + 0.4, 1.5, 0.11)
-	pin_memo(memo_at, yaw)
-	add_usable(Transform3D(basis, memo_at), "read", Vector3.INF, NAN)
+	# The legend, pinned to a cork board on the board's wall, on the nearest
+	# stretch with room for it; with none, taped low on the board's own door.
+	var taken: Array = [[-POWER_LOOK.BOARD.x * 0.5, POWER_LOOK.BOARD.x * 0.5]]
+	if boxed: taken.append([-POWER_LOOK.BOARD.x * 0.5 - POWER_LOOK.SUPPLY_GAP - POWER_LOOK.SUPPLY.x, -POWER_LOOK.BOARD.x * 0.5 - POWER_LOOK.SUPPLY_GAP])
+	var memo_at := memo_place(m.rooms[int(m.power.room)], m.power.board, taken, 1.5)
+	var corked := memo_at != Vector3.INF
+	if not corked: memo_at = origin + basis * Vector3(POWER_LOOK.BOARD.x * 0.5 - 0.22, 0.5, POWER_LOOK.BOARD.z)
+	pin_memo(memo_at, yaw, corked)
+	add_usable(Transform3D(basis, memo_at + basis.z * 0.06), "read", Vector3.INF, NAN)
 	refresh_power(true)
 	show_handles()
 
@@ -240,8 +245,8 @@ func lever_at(i: int) -> Vector3:
 
 ## The main supply box with its three meters (spec_rediseno 6.13), left of the
 ## board when the wall has room for it there: clear of the wall's end, of its
-## doorways and of its wardrobes; none otherwise.
-func supply_box(m: Dictionary, origin: Vector3, yaw: float) -> void:
+## doorways and of its wardrobes; none otherwise. Whether it was put.
+func supply_box(m: Dictionary, origin: Vector3, yaw: float) -> bool:
 	var board: Dictionary = m.power.board
 	var room: Dictionary = m.rooms[int(m.power.room)]
 	var wall := String(board.wall)
@@ -250,14 +255,15 @@ func supply_box(m: Dictionary, origin: Vector3, yaw: float) -> void:
 	var x := -POWER_LOOK.BOARD.x * 0.5 - POWER_LOOK.SUPPLY_GAP - POWER_LOOK.SUPPLY.x * 0.5
 	var along := float(board.along) + way * x
 	var half := POWER_LOOK.SUPPLY.x * 0.5
-	if absf(along) + half > LAYOUT.wall_length(room, wall) * 0.5 - 0.15: return
+	if absf(along) + half > LAYOUT.wall_length(room, wall) * 0.5 - 0.15: return false
 	for h in room.get("hides", []):
 		var hw := LAYOUT.hide_wall(h)
-		if String(hw.wall) == wall and absf(float(hw.along) - along) < half + 0.9: return
+		if String(hw.wall) == wall and absf(float(hw.along) - along) < half + 0.9: return false
 	for door in FLOOR.doorways(room):
-		if String(door.wall) == wall and absf(float(door.along) - along) < half + 0.75: return
+		if String(door.wall) == wall and absf(float(door.along) - along) < half + 0.75: return false
 	var box := equipment(POWER_LOOK.main_supply_box(level.hotel, POWER_LOOK.SUPPLY), wall_xform(POWER_LOOK.SUPPLY, origin + Basis(Vector3.UP, yaw) * Vector3(x, 0, 0), origin.y + POWER_LOOK.SUPPLY_Y, yaw))
 	plate_text("ALIMENTACIÓN\nPRINCIPAL", plate_spot(box), yaw, 22)
+	return true
 
 func add_usable(xform: Transform3D, action: String, stand: Vector3, body_yaw: float, box := Vector3.ZERO):
 	var usable := USABLE.new()

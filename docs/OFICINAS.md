@@ -691,6 +691,8 @@ El diseño entero y su estado, fase por fase: `.claude/specs/lurker_versus.md`.
   - las instrucciones de la climatización en el puesto de seguridad (planta 3).
 
   Todos diegéticos: se leen en el mundo, nada en pantalla.
+
+  La leyenda del cuadro y las instrucciones del puesto son memorandos en **la hoja de las oficinas** (`assets/hoja-oficina.png`, del autor, 19 de noviembre de 2026): al leerlos se ven en ella, escritos a máquina (`game/ui/office_memo.gd`), y la hoja está clavada con una chincheta en un corcho con marco, en el tramo libre más cercano de la misma pared: lejos del final del muro, de sus puertas y taquillas y de lo que ya cuelga (`objective.memo_place()`, `pin_memo()`). Si esa pared no tiene sitio, la del cuadro va pegada con cinta, abajo, en el propio armario.
 - **Alguien estuvo antes** (confirmado por el autor: en todos los pisos hay restos de personas):
   - en la planta 3, sus notas: quien intentó salir por el aire y lo apuntó;
   - en el ducto, sus restos;

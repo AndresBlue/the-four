@@ -6,7 +6,10 @@ extends RefCounted
 ## locked.
 ## Those that are the hotel's own paperwork carry `form`: what is typed in the
 ## fields of its form around the body (game/ui/hotel_form.gd), which is how
-## they are read and how they look lying on a table. The rest carry `paper`,
+## they are read and how they look lying on a table. The offices' will carry
+## `memo`, what is typed on their sheet (game/ui/office_memo.gd): read on it
+## already, with none written and no picture of it lying on a table yet. The
+## rest carry `paper`,
 ## the ruled paper they are typed on (game/ui/ruled_paper.gd): a letter
 ## folded in four, a page of a notebook.
 const TOTAL := 36

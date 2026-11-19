@@ -3,8 +3,9 @@ extends SceneTree
 ## memorandum below on the author's sheet, at the sheet's own size. With a
 ## window:
 ##   godot --path . --script res://tools/capture/memo_capture.gd --log-file <log> -- --automation --test-profile --silent
-## Writes evidence/planta/papeles/<name>.png. The words are the proposal of
-## .claude/specs/piso2_documentos.md: not the game's until the author says.
+## Writes evidence/planta/papeles/<name>.png: two of the proposal's (.claude/
+## specs/piso2_documentos.md: not the game's until the author says), and the
+## floor's own memorandums as the game shows them (juego_*.png).
 const MEMO := preload("res://game/ui/office_memo.gd")
 const OUT := "res://evidence/planta/papeles"
 const SHEETS := {
@@ -34,4 +35,47 @@ func run() -> void:
 		view.get_texture().get_image().save_png(OUT + "/" + String(title) + ".png")
 		print("MEMO_SHOT " + String(title))
 		view.queue_free()
+	await in_the_game()
 	quit(0)
+
+## The floor's own memorandums as the game shows them: the board's legend
+## held up, the one pinned beside the board, and the security post's.
+func in_the_game() -> void:
+	var level = load("res://game/app/hotel.tscn").instantiate()
+	root.add_child(level)
+	level.ui.finish_intro()
+	level.settings.values = level.settings.DEFAULTS.duplicate()
+	level.settings.set_designed(2)
+	level.creature_scene = "none"
+	await level.start_floor(7, false, [1], "apacible", 2)
+	level.apply_settings()
+	await level.bounce_ready()
+	DisplayServer.window_set_size(Vector2i(1280, 720))
+	for i in 30: await process_frame
+	level.player.set_physics_process(false)
+	level.player.torch.visible = true
+	# Pinned to its wall, from 0.6 m in front of it.
+	for sheet in get_nodes_in_group("office_memos"):
+		# From a metre off, a little to one side: the board and what is beside it.
+		var planta: int = level.FLOOR.planta_of(sheet.global_position.y)
+		var from: Vector3 = sheet.global_position + sheet.global_basis.z * 1.1 + sheet.global_basis.x * 0.25
+		level.hotel.start_bounce(planta)
+		level.player.global_position = from - Vector3(0, level.player.camera.position.y, 0)
+		level.player.rotation.y = atan2(sheet.global_basis.z.x, sheet.global_basis.z.z)
+		level.player.camera.rotation.x = 0.0
+		level.hotel.update_visibility(level.player.global_position, true)
+		await level.bounce_ready()
+		await picture("juego_hoja_en_la_pared_%d" % (planta + 1), 1.5)
+	for part: Array in [[&"power", "juego_cuadro"], [&"air", "juego_vigilancia"]]:
+		level.interaction.read_paper(level.objective(part[0]).paper_of(0))
+		await picture(String(part[1]), 1.5)
+		level.interaction.close_document()
+
+func picture(title: String, settle: float) -> void:
+	var started := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started < int(settle * 1000.0): await process_frame
+	await RenderingServer.frame_post_draw
+	var image := root.get_texture().get_image()
+	image.convert(Image.FORMAT_RGB8)
+	image.save_png(OUT + "/" + title + ".png")
+	print("MEMO_SHOT " + title)

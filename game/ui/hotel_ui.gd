@@ -1359,6 +1359,7 @@ const PAPER_INK := Color(0.12, 0.11, 0.1)
 const HINT_VIEW := preload("res://game/ui/hint_view.gd")
 const FORM := preload("res://game/ui/hotel_form.gd")
 const RULED := preload("res://game/ui/ruled_paper.gd")
+const MEMO := preload("res://game/ui/office_memo.gd")
 const CREATURES := {"locust": "THE LOCUST", "sunman": "SUNMAN", "boiled": "THE BOILED ONE", "guilt": "GUILT"}
 
 func show_dossier(number: int, item: Dictionary) -> void:
@@ -1505,6 +1506,14 @@ func show_document(item: Dictionary) -> void:
 		var paper := FORM.new()
 		paper.setup(form)
 		hold_paper(paper, FORM.CARD, [String(item.title).to_upper(), String(item.header)])
+		return
+	# The offices' own paperwork, on their sheet (office_memo.gd).
+	if item.has("memo"):
+		var memo: Dictionary = (item.memo as Dictionary).duplicate()
+		memo["lines"] = Array(String(item.body).split("\n"))
+		var sheet := MEMO.new()
+		sheet.setup(memo)
+		hold_paper(sheet, MEMO.CARD, [String(item.title).to_upper(), String(item.header)])
 		return
 	if item.has("paper"):
 		var ruled := RULED.new()

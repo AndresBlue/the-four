@@ -6,7 +6,8 @@ extends Control
 ## page is (its picture taken on the floor itself: code_lock.develop_photos()),
 ## a carbon copy with the circle pressed into it, which lets the light through,
 ## a torn corner of an evacuation plan with the rooms' numbers on it, the "do
-## not disturb" card off a door, front and back, or somebody else's sheet,
+## not disturb" card off a door, front and back, a memorandum of the offices
+## on their own sheet (office_memo.gd), or somebody else's sheet,
 ## folded in four, with the plan and four circles on it (the author's
 ## pictures and word, 22 October 2026). Drawn, not laid out, at its own size
 ## (`card`); whoever shows it scales it.
@@ -14,6 +15,7 @@ const STYLE := preload("res://game/ui/osd_style.gd")
 const HAND := preload("res://game/ui/handwork.gd")
 const FORM := preload("res://game/ui/hotel_form.gd")
 const RULED_PAPER := preload("res://game/ui/ruled_paper.gd")
+const MEMO := preload("res://game/ui/office_memo.gd")
 ## The other sheet's paper: a sheet folded in four, opened out.
 const MAP_PAPER := preload("res://assets/papel-mapa.png")
 ## Where on it the plan is drawn, clear of its worn edges.
@@ -30,7 +32,7 @@ const CARBON := Color(0.11, 0.11, 0.19, 0.62)
 const OTHER := Color(0.29, 0.1, 0.33)
 const PLAN_INK := Color(0.32, 0.17, 0.09)
 ## The size of each paper, before what it carries makes it longer.
-const SIZES := {"red": Vector2(960, 680), "memo": Vector2(520, 720), "resguardo": Vector2(300, 620), "ficha": Vector2(720, 450), "polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
+const SIZES := {"red": Vector2(960, 680), "resguardo": Vector2(300, 620), "ficha": Vector2(720, 450), "polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
 ## The card's printed front and its back (tools/textures/bake_do_not_disturb.py),
 ## and the Polaroid's picture square in its frame.
 const CARD_FACE := preload("res://assets/textures/no-molestar.png")
@@ -53,6 +55,15 @@ func setup(data: Dictionary, plan_walls: Array) -> void:
 		sheet.setup(hint.get("form", {}))
 		add_child(sheet)
 		card = FORM.CARD
+		custom_minimum_size = card
+		size = card
+		return
+	# A memorandum of the offices, on their own sheet.
+	if String(hint.get("kind", "")) == "memo":
+		var memo := MEMO.new()
+		memo.setup(hint.get("form", {}))
+		add_child(memo)
+		card = MEMO.CARD
 		custom_minimum_size = card
 		size = card
 		return
@@ -85,7 +96,6 @@ func _draw() -> void:
 		"hoja": other_sheet()
 		"resguardo": receipt()
 		"ficha": office_card()
-		"memo": office_memo()
 		"red": tube_map()
 
 # --- The papers ---------------------------------------------------------------------------
@@ -225,26 +235,6 @@ func tube_map() -> void:
 		draw_circle(at, 13.0, Color(0.9, 0.9, 0.86))
 		draw_arc(at, 13.0, 0.0, TAU, 24, tube_ink, 2.0, true)
 		centred(at + Vector2(0, 5), str(int(station[1])), 13, PRINT)
-
-## A memo of La Oficina: water-green paper, two filing holes, the ruled
-## heading and its lines typed under it.
-func office_memo() -> void:
-	var form: Dictionary = hint.get("form", {})
-	var face := Rect2(Vector2.ZERO, card)
-	paper(face, Color8(214, 232, 220), 3301)
-	for k in 2: draw_circle(Vector2(26, card.y * (k + 1) / 3.0), 9.0, Color(0, 0, 0, 0.55))
-	words(Vector2(60, 64), "LA OFICINA", 20, PRINT)
-	words(Vector2(60, 100), "MEMORÁNDUM INTERNO", 16, PRINT)
-	var y := 150.0
-	for field in [["DE", "MANTENIMIENTO"], ["PARA", "TODO EL PERSONAL"], ["ASUNTO", String(form.get("subject", ""))]]:
-		words(Vector2(60, y), String(field[0]), 12, Color(PRINT, 0.7))
-		words(Vector2(150, y), String(field[1]), 15, Color(0.1, 0.1, 0.12))
-		draw_line(Vector2(146, y + 8), Vector2(card.x - 40, y + 8), Color(PRINT, 0.35), 1.0)
-		y += 36.0
-	y += 24.0
-	for line in wrapped(form.get("lines", []), 15, card.x - 110):
-		words(Vector2(60, y), String(line), 15, Color(0.1, 0.1, 0.12))
-		y += 30.0
 
 ## The card of La Oficina (planta 1): beige, punched along the top, the
 ## photo box, the typed fields and the red PROVISIONAL band.

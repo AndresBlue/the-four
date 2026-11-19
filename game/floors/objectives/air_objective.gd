@@ -173,7 +173,10 @@ func place() -> void:
 			y += piece
 	# The instructions, pinned on the post's wall beside the console.
 	var desk: Dictionary = m.air.security.desk
-	var memo_at := spot_point(desk) + Basis(Vector3.UP, float(desk.yaw)) * Vector3(0.8, 1.45, 0.01)
+	# On a cork board beside the console; with no room there, over the desk's end.
+	var memo_turn := Basis(Vector3.UP, float(desk.yaw))
+	var memo_at := memo_place(m.rooms[int(m.air.security.room)], desk, [[-0.95, 0.95]], 1.45)
+	if memo_at == Vector3.INF: memo_at = spot_point(desk) + memo_turn * Vector3(0.8, 1.6, 0.0)
 	pin_memo(memo_at, float(desk.yaw))
 	var reading := USABLE.new()
 	reading.name = "AirUsable_memo"
@@ -181,7 +184,7 @@ func place() -> void:
 	reading.handler = self
 	reading.index = usables.size()
 	reading.action = "read"
-	reading.transform = Transform3D(Basis(Vector3.UP, float(desk.yaw)), memo_at)
+	reading.transform = Transform3D(memo_turn, memo_at + memo_turn.z * 0.06)
 	level.hotel.add_child(reading)
 	usables.append(reading)
 	# The post's door: shut and locked until a card goes through its reader.
@@ -478,7 +481,7 @@ func apply(action: String, index: int, seat: int, _data: Dictionary, quiet: bool
 
 ## The post's instructions.
 func paper_of(_index: int) -> Dictionary:
-	return memo(MEMO_ID, "VIGILANCIA", ["CIERRES ELÉCTRICOS: SALAS TÉCNICAS Y DE ARCHIVO.", "BATERÍA DE EMERGENCIA: %d LUCES A LA VEZ, %d SEGUNDOS CADA UNA." % [LIGHTS_MOST, int(DECOY_TIME)]])
+	return memo(MEMO_ID, "VIGILANCIA", ["CIERRES ELÉCTRICOS: SALAS TÉCNICAS Y DE ARCHIVO.", "", "BATERÍA DE EMERGENCIA: %d LUCES A LA VEZ, %d SEGUNDOS CADA UNA." % [LIGHTS_MOST, int(DECOY_TIME)]], "Seguridad", "Puesto de vigilancia")
 
 ## The local player sat at the console: held, crouched at the desk, and the
 ## cameras on its screen.

@@ -14,6 +14,7 @@ static func samples(builder: Node3D) -> Array:
 		["clock_square", clock_square(builder, Vector3(0.3, 0.3, 0.06))],
 		["directory_board", directory_board(builder, Vector3(0.9, 0.7, 0.05))],
 		["notice_board", notice_board(builder, Vector3(1.2, 0.9, 0.03))],
+		["cork_board", cork_board(builder, Vector3(0.3, 0.38, 0.03))],
 		["key_cabinet", key_cabinet(builder, Vector3(0.5, 0.6, 0.08))],
 		["mirror", mirror(builder, Vector3(0.6, 0.8, 0.03))],
 		["coat_hook_rail", coat_hook_rail(builder, Vector3(1.2, 0.12, 0.09))],
@@ -98,6 +99,18 @@ static func make_directory_board(builder: Node3D, size: Vector3) -> ArrayMesh:
 		KIT.block(p, "paper", Vector3(-w * 0.5 + fw + 0.03 + ln * 0.5, y, -d * 0.5 + 0.026), Vector3(ln, 0.012, 0.002))
 		KIT.block(p, "paper", Vector3(w * 0.5 - fw - 0.05, y, -d * 0.5 + 0.026), Vector3(0.04, 0.012, 0.002))
 	return KIT.finish(builder, p, "directory_board", size, {"wall": true, "mount": 1.1, "solid": false})
+
+## A small cork board in an oak frame with nothing on it yet: what one of the
+## offices' memorandums is pinned to (objective.pin_memo()).
+static func cork_board(builder: Node3D, size: Vector3) -> ArrayMesh:
+	return KIT.cached(builder, KIT.key_of("cork_board", size), func() -> ArrayMesh: return make_cork_board(builder, size))
+
+static func make_cork_board(builder: Node3D, size: Vector3) -> ArrayMesh:
+	var p := KIT.begin()
+	var fw := 0.025
+	frame(p, "oak_door", size.x, size.y, size.z, fw)
+	KIT.block(p, "cork", Vector3(0.0, size.y * 0.5, -size.z * 0.5 + 0.008), Vector3(size.x - 2.0 * fw, size.y - 2.0 * fw, 0.016))
+	return KIT.finish(builder, p, "cork_board", size, {"wall": true, "mount": 1.0, "solid": false})
 
 ## What goes on a notice board (make_notice_board()): sheet sizes (A4 twice,
 ## A5, A4 across, an index card, a memo slip, a calendar), papers and pins.
