@@ -4,21 +4,32 @@
 
 Medida y tono, los de los papeles del hotel (`game/discovery/discovery_catalog.gd`): unos 350 caracteres, dos o tres párrafos cortos, y casi siempre una pista que es verdad en el juego. Ninguno lleva «·» ni raya larga.
 
+## El papel
+
+El autor dibujó la hoja de las oficinas el 19 de noviembre de 2026 (`assets/hoja-oficina.png`), a partir de un memorándum de empresa de 1982: membrete THE FOUR, Oficinas Corporativas, Sede Central, Santiago, Chile, y las líneas Fecha, Para, De, Asunto y Cc.
+
+- **`game/ui/office_memo.gd`** la rellena a máquina como `hotel_form.gd` rellena el formulario del hotel: `date`, `to`, `from`, `subject` (en mayúsculas), `cc`, el cuerpo en `lines`, una respuesta a pluma en `note` y un sello en `stamp`. `tools/capture/memo_capture.gd` saca dos de muestra a `evidence/planta/papeles/`.
+- **Todavía no se lee en el juego:** falta engancharla al Archivo y a la lectura en el mundo, y que los memorandos que el piso ya tiene (la leyenda del cuadro, las instrucciones del puesto) pasen a esta hoja.
+- **Van en la hoja** el 1, el 2, el 4, el 6 y el 7. El 3 es una página de un libro de novedades, el 5 una nota a mano y el 8 una carta.
+- **Como la sede está en Santiago,** los textos van en un castellano que no suene de España: «Mantención», «marcar tarde».
+- **La letra a pluma** es la de `handwork.write_line()`, que inclina la tipografía de reserva: no parece letra de mano. Pide una tipografía manuscrita con licencia que deje vender el juego, o trazos del autor.
+
 ## Lo que afirman más allá del lore confirmado
 
 Para que el autor diga sí o no antes de nada:
 
-1. **Antes de que el personal se fuera ya pasaban cosas en las oficinas** (ruidos en los ductos, luces que bajan, una cara en el techo). Lo dan por hecho todos menos el 5. `docs/LORE.md` dice que las bestias abrieron la brecha después de que el personal se fuera.
+1. **Antes de que el personal se fuera ya pasaban cosas en las oficinas** (ruidos en los ductos, luces que bajan, una cara en el techo). **Confirmado por el autor el 19 de noviembre de 2026:** «sí, ya se notaba antes de que se fueran».
 2. **Nombres:** Tomás Requena (mantenimiento), Germán Ortuño (vigilante del puesto), Inés Barral (auxiliar de Registro), Nuria Valdés (Personal) y Aurelio Campos (médico de empresa).
-3. **Lo que escribe el ente** en el 6: BUENOS DÍAS, y los nombres de quienes ficharon tarde.
+3. **Lo que escribe el ente** en el 6: BUENOS DÍAS, y los nombres de quienes marcaron tarde.
 4. **El 5 deja caer** que Inés quizá no llegó a irse.
+5. **El año de las fechas.** Un memorándum lleva fecha y el año de las oficinas no está decidido: las muestras llevan «19__».
 
 ## Los ocho
 
 ### 1. Parte de mantenimiento
 
 - **Papel:** hoja de avería, con una respuesta a mano al pie. Planta 2.
-- **Quién, a quién:** Tomás Requena, de mantenimiento, a Servicios Generales.
+- **Quién, a quién:** Tomás Requena, de Mantención, a Servicios Generales.
 - **Qué pasó antes:** lleva un mes oyendo los ductos y ya ha parado la máquina para descartarla.
 - **Deja entrever:** que alguien de arriba quiere las rejillas abiertas.
 - **Pista:** ella oye por las rejillas.
@@ -101,7 +112,7 @@ Para que el autor diga sí o no antes de nada:
 
 > Esta mañana todos los terminales de la planta tenían lo mismo en pantalla y nadie había entrado todavía: BUENOS DÍAS.
 >
-> A media tarde ponían los nombres de los que habíamos fichado tarde. El mío el primero.
+> A media tarde ponían los nombres de los que habíamos marcado tarde. El mío el primero.
 >
 > Proceso de Datos dice que no hay nadie conectado. Pido que se apaguen por la noche.
 >
