@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.17.2](#1172--19-de-noviembre-de-2026)  | 19 de noviembre de 2026  | El plano de las cámaras de seguridad, rehecho: una pantalla propia con un botón sobre cada cámara. |
 | [1.17.1](#1171--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La pantalla de las cámaras de seguridad, rehecha; la puerta de la sala de maniobra sube al muro y su sala es un vano entero. |
 | [1.17.0](#1170--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La planta 3 se juega desde las cámaras de seguridad: ocho salas con cierre eléctrico, luces que son señuelos y un operador camuflado. |
 | [1.16.0](#1160--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Veinte documentos nuevos en el hotel, veinticuatro en total, y salen seis por partida. |
@@ -89,6 +90,22 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.17.2 — 19 de noviembre de 2026
+
+*El plano de las cámaras de seguridad, rehecho: una pantalla propia con un botón sobre cada cámara.*
+
+Commits `cc85b1d9`…`v1.17.2`. Al autor no le gustó la planta dibujada sobre la imagen atenuada: quiso algo como el plano de un juego de vigilancia.
+
+### Cambios
+
+- **El plano (Tab) es una pantalla propia, en azul:** los pasillos claros, las salas en bloques oscuros con su nombre donde cabe, ámbar las que tienen luz y el puesto en blanco con «TÚ».
+- **Un botón «CAM nn» sobre cada sala con cámara,** con el piloto de su cierre y lo que le queda de luz. Un clic lleva a esa cámara y cierra el plano. Un clic en cualquier sala sigue encendiendo o apagando su luz.
+- Con el plano abierto, arriba salen el nombre de la planta y cuántos cierres hay abiertos, y a la derecha quedan solo CERRAR PLANO y LEVANTARSE.
+
+### Sin comprobar al cerrar la versión
+
+- El plano jugado a mano: se miró en capturas fijas. `verify.ps1` entero no se repitió; pasan `office_walk_test` y `palette_scan_test`.
 
 ## 1.17.1 — 18 de noviembre de 2026
 
