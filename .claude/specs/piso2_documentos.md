@@ -12,7 +12,7 @@ El autor dibujó la hoja de las oficinas el 19 de noviembre de 2026 (`assets/hoj
 - **Todavía no se lee en el juego:** falta engancharla al Archivo y a la lectura en el mundo, y que los memorandos que el piso ya tiene (la leyenda del cuadro, las instrucciones del puesto) pasen a esta hoja.
 - **Van en la hoja** el 1, el 2, el 4, el 6 y el 7. El 3 es una página de un libro de novedades, el 5 una nota a mano y el 8 una carta.
 - **Como la sede está en Santiago,** los textos van en un castellano que no suene de España: «Mantención», «marcar tarde».
-- **La letra a pluma** es la de `handwork.write_line()`, que inclina la tipografía de reserva: no parece letra de mano. Pide una tipografía manuscrita con licencia que deje vender el juego, o trazos del autor.
+- **Las tintas** (el autor, 19 de noviembre: lo escrito a máquina «no parece tinta real, sino algo digital encima»): las tres pasan por `paper_ink.gdshader`, que oscurece el papel en vez de taparlo, con grano, tramos secos y bordes comidos. La máquina y el timbre usan Special Elite, de tipo gastado; el lápiz pasta azul, Reenie Beanie, palabra a palabra y un poco torcida; el timbre deja zonas sin entintar. Las dos tipografías están en `assets/fonts/` con su licencia (`docs/ASSETS.md`).
 
 ## Lo que afirman más allá del lore confirmado
 

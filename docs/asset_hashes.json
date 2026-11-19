@@ -2714,5 +2714,25 @@
   "assets/audio/sfx/office/cam_switch.wav": {
     "bytes": 17684,
     "sha256": "71ca75f415a5d24450cc9ec72d16fc21dcb6061c112f39702db45d7baf6a4e5c"
+  },
+  "assets/hoja-oficina.png": {
+    "bytes": 2428368,
+    "sha256": "2d2aae6722495c32b778b6275d19ee05194e499f9ed0c88867fc86d7117aa5c9"
+  },
+  "assets/fonts/reenie_beanie/OFL.txt": {
+    "bytes": 4452,
+    "sha256": "fbb941b371c6348ee2572ce8c78fb66128a61885f960dec1906c4e44ca4b4d3c"
+  },
+  "assets/fonts/reenie_beanie/ReenieBeanie.ttf": {
+    "bytes": 147036,
+    "sha256": "0ea608aa325bf9e11c9590cc0b63dcf7cd215e270784f1ebbe6fad4927b31ff8"
+  },
+  "assets/fonts/special_elite/LICENSE.txt": {
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "assets/fonts/special_elite/SpecialElite-Regular.ttf": {
+    "bytes": 166180,
+    "sha256": "a776fcb4ceb8bdf03e2967688ebdad42680de5b91a7e62c17e718ae212d14bc4"
   }
 }
