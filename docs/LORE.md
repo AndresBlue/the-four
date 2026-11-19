@@ -60,6 +60,26 @@ El piso de **las oficinas secretas** tiene su criatura, una nueva que ocupa el s
 
 **En todos los pisos hay restos de personas.** También en las oficinas queda rastro de alguien que estuvo antes, como la hoja del hotel. Quiénes eran, y qué les pasó, no está decidido.
 
+## Confirmado el 19 de noviembre de 2026
+
+### El personal de las oficinas sabía
+
+Quienes trabajaban en las oficinas secretas **sabían lo que había debajo**, al revés que la gente del hotel.
+
+### Una evacuación ordenada, años antes
+
+El personal de las oficinas se fue con **una evacuación ordenada**: hubo orden y hubo tiempo. Cajas empacadas, archivos retirados, despachos recogidos. Lo que queda es **lo que no se llevaron o lo que alguien dejó a propósito**.
+
+Fue **años antes** de la noche de la cinta. Los **calendarios manuales** se quedaron en el día en que se fueron; **los relojes y lo que marca la fecha por sí solo siguen andando**.
+
+### Empleados con nombre
+
+Los empleados de las oficinas tienen **nombre propio**.
+
+### El ente escribe en los terminales
+
+En las oficinas, al ente se le nota en **los terminales**: escribe en ellos.
+
 ## Lo que el juego ya tiene y casa con esto
 
 No son decisiones nuevas: son cosas que ya están hechas y que esta historia explica.
@@ -74,7 +94,9 @@ No son decisiones nuevas: son cosas que ya están hechas y que esta historia exp
 
 - Qué criaturas llevan los pisos 3 y 4.
 - Qué son «los cuatro» del título: los pisos, las bestias contenidas, o las dos cosas.
-- Cómo se llama el ente, si tiene nombre, y cómo se le nota en cada piso.
+- Cómo se llama el ente, si tiene nombre, y cómo se le nota en cada piso (en el 2, escribe en los terminales: qué escribe y a quién no está decidido).
+- Qué día marcan los calendarios parados de las oficinas, y cuántos años antes de la cinta fue la evacuación.
+- Los nombres de los empleados de las oficinas.
 - Del archivero: quién le encomendó la tarea, si sabe para quién trabaja ahora, cómo es que puede trabajar «hasta el fin de los tiempos», qué hace con sus manos en cada piso, y si se le llega a ver.
 - Quién es quien juega y por qué baja.
 - En qué año pasa cada cosa (la cámara fecha en 1990 y el tráiler en 1993).

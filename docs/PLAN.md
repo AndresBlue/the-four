@@ -830,6 +830,8 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
 | 3 | Radiation Lab | Sin asignar | Sin empezar |
 | 4 | The Containment | Sin asignar | Sin empezar |
 
+**Historia y cosas que tocar en el piso 2 (19 de noviembre de 2026).** El autor lo siente vacío fuera de las salas de interés. Lo que entra, lo que queda fuera y el orden de construcción están decididos con él en `.claude/specs/piso2_contenido.md`; sin construir. Esperan sus textos (documentos, nombres, lo que escribe el ente) y sus escenas.
+
 - `four-7ly.1` **Decidir qué criatura lleva cada piso** (la del 2, The Lurker, se
   decidió el 21 de octubre de 2026; faltan las de los pisos 3 y 4) y lo demás que
   LORE.md deja abierto: quién juega, cómo se nota el ente que dirige a la
