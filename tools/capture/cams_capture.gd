@@ -116,6 +116,8 @@ func run() -> void:
 	await shot("58_plano", 1.5)
 	for room_id in air.lights: point_at("room:%d" % int(room_id))
 	await shot("59_plano_sobre_una_sala", 1.0)
+	point_at("cam:%d" % other)
+	await shot("60_plano_sobre_una_camara", 1.0)
 	var file := FileAccess.open(OUT + "/sesion.txt", FileAccess.WRITE)
 	file.store_string("\n".join(lines) + "\n")
 	quit(0)
