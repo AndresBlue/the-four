@@ -472,6 +472,8 @@ Sus claves están en `game/floors/difficulty.gd` (`CREATURE_PROFILES`), encima d
 | Espera entre dos bebidas (`drink_every`) | Nunca bebe | 60 s | 45 s | 35 s |
 | Primera etapa a oscuras (`office_geometry.darken_first_stage`) | Todo con luz | Las salas oscuras del manifiesto | Todas las que pueden estarlo, menos un 10 % | Todas las que pueden estarlo |
 
+Una linterna que ella apagó vuelve entera a su dueño al empezar el piso siguiente (`hotel_player.reset_survival()`, desde el 19 de noviembre de 2026): la criatura del piso anterior ya no está para devolverla, y sin eso quedaba a oscuras en la pantalla de su dueño, encendida para los demás, hasta que otra criatura la apagaba y la devolvía (`tests/hotel/floor_end_sound_test.gd`).
+
 El tope al acercarse queda siempre por debajo de la carrera de un superviviente (6 m/s) menos medio metro. Las demás claves (el director, los ascensores, los reintentos de etapa y el oído) son las compartidas con el hotel, las de The Locust.
 
 En Apacible, más asomos y menos capturas: miedo sin castigo.

@@ -837,6 +837,10 @@ func reset_survival() -> void:
 	reading = false
 	crouched = false
 	stamina = 100
+	# The torch is its owner's again: a creature that had put it out when its
+	# floor ended (lurker.gd, dead_torches) is not there to give it back, and
+	# it stayed dark on this screen, lit for everybody else, floor after floor.
+	torch_dim = 1.0
 	recovery_delay = 0
 	exhausted = false
 	step_phase = 0

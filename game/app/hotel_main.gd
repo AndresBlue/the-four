@@ -1184,6 +1184,7 @@ func on_state() -> void:
 	# over a stage change or the end of the floor, it came back as a player
 	# frozen with a cursor and no menu, or under the next floor's loading screen.
 	if not playing: online_menu = false
+	if session.state in [session.State.FAILED, session.State.WON]: rig.fade_snow()
 	if session.state in [session.State.MENU, session.State.FAILED, session.State.WON]:
 		world_audio.reset()
 		if is_instance_valid(scream_sound): scream_sound.stop()
@@ -1468,7 +1469,9 @@ func clear_screen_cues() -> void:
 	lost_signal = 0.0
 	static_level = 0.0
 	enclosure = 0.0
-	if is_instance_valid(static_sound) and static_sound.playing: static_sound.stop()
+	# The snow on the sound goes with the picture's, unless the floor has just
+	# ended: then it is left its few seconds and its fade (rig.fade_snow).
+	if not session.state in [session.State.WON, session.State.FAILED]: rig.silence_snow()
 	if is_instance_valid(camcorder): camcorder.signal_lost = false
 	if post_material != null:
 		post_material.set_shader_parameter("signal_loss", 0.0)

@@ -384,7 +384,7 @@ var static_level := 0.0
 ## The deck finding the picture each time the camera's comes up, from a menu,
 ## a load or the end of a floor (analog.gdshader, entry): 1 as it starts, held
 ## after ENTRY_SECONDS. Not with reduced effects, and not for her thermal view.
-const ENTRY_SECONDS := 1.1
+const ENTRY_SECONDS := 0.55
 var entry := 0.0
 var filmed := false
 
@@ -401,7 +401,9 @@ func update_screen_cues(delta: float) -> void:
 	# The victim's own picture goes when its tape does (death_tape.gd).
 	var dying: bool = mine and level.tape.lost(float(level.execution.time))
 	var riding_now: float = level.lifts.ride_static()
-	update_ride_hiss(riding_now)
+	# Only while there is a floor going: once it is over the hiss is left to
+	# fade (fade_snow), and in the menu there is no lift.
+	if not level.session.state in [level.session.State.MENU, level.session.State.LOADING, level.session.State.WON, level.session.State.FAILED]: update_ride_hiss(riding_now)
 	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else riding_now
 	# A recording that is interrupted does not fade: it is cut. The tape of
 	# whoever dies goes to snow in one frame; anything else comes in hard and
@@ -425,6 +427,34 @@ func update_screen_cues(delta: float) -> void:
 		var frayed: float = clampf(1.0 - level.player.sanity / level.sanity.SANITY_UNEASY + level.sanity.glitch, 0.0, 1.0) if level.session.state in [level.session.State.PLAYING, level.session.State.PAUSED, level.session.State.FAILED] else 0.0
 		level.post_material.set_shader_parameter("vhs", level.settings.values.vhs * (1.0 + frayed * 1.6))
 		level.post_material.set_shader_parameter("chromatic", level.settings.values.chromatic * frayed * 0.7)
+
+## The floor is over, won or lost: what snow there is on the sound (the dead
+## channel, the lift's hiss, the hiss of a camcorder lying on the floor) is
+## heard OVER_HOLD seconds more and fades in OVER_FADE. It used to go on
+## through the report and the menu after it, until the next floor began (the
+## author, 19 November 2026). A tween of its own, so that it does not hang on
+## the floor still being there to be updated.
+const OVER_HOLD := 3.0
+const OVER_FADE := 2.5
+var fading: Tween
+
+func snow_players() -> Array:
+	return [level.static_sound, level.ride_hiss, level.tape.hiss if is_instance_valid(level.tape) else null].filter(func(one): return is_instance_valid(one))
+
+func fade_snow() -> void:
+	if is_instance_valid(fading): fading.kill()
+	fading = level.create_tween().set_parallel(true)
+	fading.tween_interval(OVER_HOLD + OVER_FADE)
+	for one: AudioStreamPlayer in snow_players():
+		if one.playing: fading.tween_property(one, "volume_db", -60.0, OVER_FADE).set_delay(OVER_HOLD)
+	fading.chain().tween_callback(silence_snow)
+
+## Off at once, and each back at the level it is next played from.
+func silence_snow() -> void:
+	if is_instance_valid(fading): fading.kill()
+	fading = null
+	for one: AudioStreamPlayer in snow_players(): one.stop()
+	if is_instance_valid(level.static_sound): level.static_sound.volume_db = -2.0
 
 ## A lift ride has no sound of its own yet (the recording is still to come):
 ## until then its snow is heard softly, following the picture -- full as the
