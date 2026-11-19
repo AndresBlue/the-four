@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.17.1](#1171--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La pantalla de las cámaras de seguridad, rehecha; la puerta de la sala de maniobra sube al muro y su sala es un vano entero. |
 | [1.17.0](#1170--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La planta 3 se juega desde las cámaras de seguridad: ocho salas con cierre eléctrico, luces que son señuelos y un operador camuflado. |
 | [1.16.0](#1160--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | Veinte documentos nuevos en el hotel, veinticuatro en total, y salen seis por partida. |
 | [1.15.0](#1150--18-de-noviembre-de-2026)  | 18 de noviembre de 2026  | La planta 2 se cruza tres veces: tres sectores en el cuadro, una puerta motorizada y la palanca del montacargas en su sala. |
@@ -88,6 +89,38 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 
 
+
+## 1.17.1 — 18 de noviembre de 2026
+
+*La pantalla de las cámaras de seguridad, rehecha; la puerta de la sala de maniobra sube al muro y su sala es un vano entero.*
+
+Commits `3e2fc290`…`v1.17.1`. Retoques a las fases 6 y 7 del gran cambio del piso 2, a petición del autor. Versión del generador del piso 2: 7 (los pisos guardados con la 6 se rechazan).
+
+### Novedades
+
+- **La pantalla de las cámaras, rehecha:** la cámara que se mira ocupa toda la pantalla, con curva de tubo, líneas y un instante de estática al cambiar de cámara. El nombre de la sala se escribe letra a letra, con el estado de su cierre debajo.
+- **Visión nocturna a oscuras:** sin luz, la cámara ve con su propia lámpara unos 4 m, en verde, con grano y poca definición. Con la luz encendida se ve en su color.
+- **Cada acción es un botón con su tecla:** ENCENDER LUZ (F), ABRIR CIERRE (Espacio), PLANO (Tab) y LEVANTARSE (E), arriba a la derecha; las cámaras en una tira abajo a la izquierda (1 a 8, A y D), con el piloto de su cierre y lo que le queda de luz; las cuatro luces de la batería agotándose, abajo a la derecha.
+- **El plano en Tab,** sobre la imagen atenuada: los pasillos como calles, las ocho salas numeradas, un clic en cualquier sala enciende su luz y su nombre sale bajo el puntero.
+- **Dos sonidos de la consola:** una tecla y el cambio de cámara.
+
+### Cambios
+
+- **La puerta de la sala de maniobra sube** al muro sobre su hueco, en 7,2 s, en lugar de girar: una plancha de acero con barras, remaches y una banda roja.
+- **La sala de maniobra es grande:** un vano entero donde queda alguno y 4,4 m de alto, con dos o tres máquinas contra las paredes.
+- **Los sonidos de esa puerta:** un motor hidráulico que eligió el autor, entero, y sin corriente cuatro pitidos de teclado, uno cada 0,18 s.
+- El juego no enseña a abrir ni ofrece cerrar una puerta que ninguna mano mueve.
+
+### Herramientas y documentación
+
+- `tools/capture/maneuver_capture.gd` fotografía también la sala entera y la puerta desde dentro; `tools/capture/cams_capture.gd`, la estática, el plano y un botón bajo el puntero.
+- `coffee_test` monta el piso 2 con la semilla 33: el edificio nuevo de la 7 deja dos depósitos llenos para las cafeteras de la planta 2.
+
+### Sin comprobar al cerrar la versión
+
+- La pantalla de las cámaras jugada a mano: se miró en capturas fijas, así que las animaciones, el giro de la cámara y los dos sonidos no se han visto ni oído en movimiento. Tampoco el mando ni una partida en red.
+- La sala de maniobra se lee todavía como un almacén casi vacío.
+- `verify.ps1` entero dio 76 de 77 sobre la pantalla nueva; la prueba que falló (`palette_scan_test`) se arregló y se repitió sola con `office_walk_test`.
 
 ## 1.17.0 — 18 de noviembre de 2026
 
