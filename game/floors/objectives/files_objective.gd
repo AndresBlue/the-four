@@ -362,7 +362,7 @@ func word_of(usable, seat: int) -> String:
 	# A card on the floor is picked up on whichever planta it fell: asked only
 	# on the first, as the rest is, it had no word on the other two and lay
 	# there for good.
-	if String(usable.action) == "pick": return "COGER" if alive(seat) else ""
+	if String(usable.action) == "pick": return "RECOGER" if alive(seat) else ""
 	if not alive(seat) or level.session.stage != 1: return ""
 	match String(usable.action):
 		"type": return "ESCRIBIR" if not requests.has(seat) else ""

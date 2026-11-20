@@ -252,9 +252,9 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 4. **Pasarla por el lector** del montacargas.
    - Con las fichas de la cuota, se abre la puerta de la etapa.
    - La ficha queda en TUS NOTAS, con su foto, y **vuelve a servir abajo** (en Dirección).
-5. **Quien cae suelta la ficha** donde estaba (`files_objective.on_death()`): queda en el suelo, pálida, y cualquier vivo la recoge a un paso de ella, mirándola (corchetes, «COGER», un segundo sostenido), en la planta que sea. Quien la recoge la lleva y le sirve: en la planta 1 para la cuota, en la 3 para abrir la seguridad.
+5. **Quien cae suelta la ficha** donde estaba (`files_objective.on_death()`): queda en el suelo, pálida, y cualquier vivo la recoge a un paso de ella, mirándola (corchetes, «RECOGER», un segundo sostenido), en la planta que sea. Quien la recoge la lleva y le sirve: en la planta 1 para la cuota, en la 3 para abrir la seguridad.
    - **Cuando todos vuelven a estar en pie** (una etapa devuelta, o la etapa siguiente), cada ficha que seguía en el suelo vuelve a la mano de quien la soltó (`on_return()`, en `revival.apply_revival()`). Sin eso el piso se quedaba sin salida: con la etapa 3 devuelta, la puerta de la seguridad se cierra otra vez y las fichas de quienes cayeron dentro quedaban detrás de ella; y una ficha caída en una planta ya no se podía ir a buscar desde la de abajo (la partida del autor del 19 de noviembre de 2026).
-   - Hasta ese día, además, la ficha del suelo solo tenía su palabra en la planta 1: en las otras dos no se podía coger.
+   - Hasta ese día, además, la ficha del suelo solo tenía su palabra en la planta 1: en las otras dos no se podía recoger.
 
 **Por qué funciona con ella:**
 - Cada uno va a una estación distinta, **así que el grupo se separa**, y ella va a por quien se queda solo.

@@ -93,7 +93,7 @@ func walk(seed_asked: int) -> void:
 	await frames(3)
 	level.objectives_on_death(player.slot, player.global_position)
 	check("%s: quien cae dentro de la seguridad suelta su ficha dentro" % tag, not files.has_card(player.slot) and files.pickups.has(player.slot))
-	check("%s: en el nivel 3 también se puede coger del suelo" % tag, files.word_of(files.pickups[player.slot], player.slot) == "COGER")
+	check("%s: en el nivel 3 también se puede recoger del suelo" % tag, files.word_of(files.pickups[player.slot], player.slot) == "RECOGER")
 	level.apply_revival({player.slot: level.revival_point()}, true)
 	for i in 900:
 		if level.rewind.is_empty(): break
@@ -232,7 +232,7 @@ func the_card(tag: String) -> void:
 	# Fallen with it in hand, it lies there; picked up, it is in hand again.
 	level.objectives_on_death(player.slot, player.global_position)
 	check("%s: quien cae suelta su ficha donde estaba" % tag, int(files.requests[player.slot].state) == files.Card.DROPPED and files.pickups.has(player.slot))
-	check("%s: en el suelo, COGER" % tag, files.word_of(files.pickups[player.slot], player.slot) == "COGER")
+	check("%s: en el suelo, RECOGER" % tag, files.word_of(files.pickups[player.slot], player.slot) == "RECOGER")
 	level.match_net.use_office(&"files", "pick", player.slot)
 	check("%s: y se recoge" % tag, files.has_card(player.slot) and not files.pickups.has(player.slot))
 	level.interaction.close_document()
