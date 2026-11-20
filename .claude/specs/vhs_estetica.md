@@ -31,6 +31,15 @@ Los siete puntos están en el juego. Cómo funciona cada uno está en `docs/DEVE
   - **Cómo se comparó.** A 1440 líneas, que es la pantalla del autor y la escala de las referencias: `tape_capture.gd --tall --snow` y `boot_capture.gd --tall`. A 720 la nieve sale más blanda (un píxel del vídeo es uno y medio de la pantalla) y la comparación engaña. La hoja, `evidence/vhs/comparacion_ruido.png`. Las dos películas (`tape_movie.gd`, arranque y entrada) quedan en dos destellos por segundo como mucho (`film_check.py`).
   - **Lo que queda distinto.** Lo que nombró el lector en la última ronda: el fotograma sin bits del juego es más de cuadros lisos y el de la referencia 07 más de rayas arrastradas con su borde claro y oscuro; el tono del juego es algo más claro y duro; y en los nítidos las referencias tienen alguna forma en diagonal más. Junto a las rayas de color del pie las referencias tienen además recuadros blancos pequeños. No se ha medido el coste de la nieve (una lectura de textura y unas cuentas para la línea brillante y el color).
 
+## Después: todas las nieves con el mismo sistema (20 de noviembre de 2026)
+
+El autor dio la nieve de la cinta por cerrada («quedé contento con el resultado actual») y pidió que todas las estáticas del juego la usen, «la del opening, teles ingame, etc.», y que el Locust de la escena inicial «siempre esté en escena dentro de la tele, y que se revele por la estática, sin movimiento lateral». Hecho:
+
+- `tape_snow.gdshaderinc` lo usan ya también la tele de la escena inicial y las del hotel (`game/intro/tv_screen.gdshader`), la estática entre cámaras de la consola del piso 2 (`cctv_feed.gdshader`) y la de los avisos que se borran (`signal_wash.gdshader`). Las demás (la señal perdida, el tracking, los menús, la cinta de la muerte, el montacargas) ya pasaban por `analog.gdshader` o `tape_noise.gdshader`.
+- En la tele, la imagen entra a trozos por la nieve, los más oscuros primero, de 18,2 a 23 s (`intro_sequence.update_screen()`).
+- The Locust está quieto en el centro del encuadre desde el principio (`tv_broadcast.pose()`): ya no entra por la derecha ni inclina el cuerpo de lado; solo se abalanza hacia el objetivo y golpea.
+- Capturas: `evidence/nieve_intro_*.png` (con `tools/capture/intro_capture.gd -- --moments=... --prefix=...`) y `evidence/vhs/tele_hotel_*.png`. Pasan `intro_test`, `stages_test`, `scene_contract_test` y `check_shaders` en los dos renderizadores; `verify.ps1` entero no se corrió.
+
 ## Lo que pidió, con sus palabras
 
 «Ahora quiero trabajar un poco en la estética VHS. Quiero representar algo similar a esto. [...] Intenta imitar todo, investiga por esa tipografía y ponla en el juego para la UI. [...] Intenta replicar esa estética en general para todo el tema de la cámara y el PLAY inicial.»

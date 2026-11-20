@@ -1,9 +1,11 @@
 extends SubViewport
 ## What the television shows in the opening scene: a dim papered corner and
 ## The Locust itself (the game's own model with its reference look), rendered
-## to a texture for the screen. It leans in from the edge of the picture,
-## stares, lunges at the lens and beats on the glass with its bladed arm; each
-## blow ends exactly at the point of the tube where the cracks will start.
+## to a texture for the screen. It stands in the picture from the start, still,
+## and is shown by the snow giving way over it (tv_screen.gdshader; the
+## author, 20 November 2026: never in from a side); it stares, lunges at the
+## lens and beats on the glass with its bladed arm; each blow ends exactly at
+## the point of the tube where the cracks will start.
 ## Bones are posed directly here; the gameplay IK is not used.
 const LOOK := preload("res://game/enemies/locust/locust_look.gd")
 const POSER := preload("res://game/enemies/locust/locust_poser.gd")
@@ -93,15 +95,14 @@ func pose(delta: float) -> void:
 	clock += delta
 	if poser == null: return
 	poser.reset()
-	# Leans in from beyond the right edge, then steps at the lens.
-	var lean := 1.0 - peek
-	locust.position = Vector3(lerpf(0.95, 0.06, peek), 0.0, lerpf(0.0, 0.42, lunge))
+	# In its place from the start: nothing moves it sideways; it only steps
+	# at the lens.
+	locust.position = Vector3(0.06, 0.0, lerpf(0.0, 0.42, lunge))
 	# Arms hang instead of the T-pose.
 	poser.aim("L_UpperArm", "L_Forearm", Vector3(0.25, -1.0, 0.15))
 	poser.aim("R_UpperArm", "R_Forearm", Vector3(-0.25, -1.0, 0.15))
-	# The upper body tilts sideways into the picture, head cocked the other way.
-	poser.turn("Spine2", Vector3(0, 0, 1), lean * 0.38)
-	poser.turn("Neck1", Vector3(0, 0, 1), -lean * 0.3 + sin(clock * 1.7) * 0.03)
+	# Upright, the head cocked and breathing a little.
+	poser.turn("Neck1", Vector3(0, 0, 1), sin(clock * 1.7) * 0.03)
 	var jerk := twitch * (rng.randf() - 0.5) * 0.25
 	poser.turn("Head1", Vector3(0, 0, 1), -0.32 + jerk)
 	poser.turn("Head1", Vector3(1, 0, 0), 0.12 + lunge * 0.1)

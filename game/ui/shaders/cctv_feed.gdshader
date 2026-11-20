@@ -8,11 +8,7 @@ uniform float burst : hint_range(0.0, 1.0) = 0.0;
 uniform float flash : hint_range(0.0, 1.0) = 0.0;
 uniform float dim : hint_range(0.0, 1.0) = 0.0;
 
-float hash(vec2 p) {
-	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-	p3 += dot(p3, p3.yzx + 33.33);
-	return fract((p3.x + p3.y) * p3.z);
-}
+#include "res://game/presentation/shaders/tape_snow.gdshaderinc"
 
 void fragment() {
 	vec2 c = UV - 0.5;
@@ -37,8 +33,8 @@ void fragment() {
 	col *= 1.0 - 0.12 * step(0.5, fract(FRAGCOORD.y / 3.0));
 	col *= 1.0 - dot(c, c) * 0.7;
 	col += flash * 0.8 * inside;
-	float snow = hash(floor(FRAGCOORD.xy / 2.0) + frame * 17.0);
-	col = mix(col, vec3(snow) * 0.7, clamp(burst * 1.4, 0.0, 1.0) * 0.9);
+	// Between two cameras, the tape's own snow (tape_snow.gdshaderinc).
+	col = mix(col, tape_snow(UV, floor(TIME * 60.0), true), clamp(burst * 1.4, 0.0, 1.0) * 0.9);
 	col *= 1.0 - dim * 0.78;
 	COLOR = vec4(col, 1.0);
 }

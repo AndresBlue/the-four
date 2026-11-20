@@ -5,7 +5,11 @@ render_mode unshaded, cull_back;
 // aperture grille, a rolling hum bar, sync tears, brightness flicker, blow
 // flashes and glass cracks with refraction and glints.
 // Driven by intro_sequence.gd; the hotel's sets (hotel_television.gd) show
-// its dead channel, and are switched on with it (`open`).
+// its dead channel, and are switched on with it (`open`). Their snow is the
+// tape's own (tape_snow.gdshaderinc), as every static of the game is (the
+// author, 20 November 2026), and the picture comes through it: where the
+// snow is darkest first, so what is on the channel is there all along and
+// the snow gives way over it (`image_amount`).
 
 // Part of the mesh UVs covered by the visible tube face (min, size).
 uniform vec4 screen_rect = vec4(0.0128, 0.1364, 0.9745, 0.7213);
@@ -31,11 +35,7 @@ uniform float open : hint_range(0.0, 1.0) = 1.0;
 // A cold cast over everything, the dead channel of a hotel set.
 uniform float tint_blue : hint_range(0.0, 1.0) = 0.0;
 
-float hash(vec2 p) {
-	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-	p3 += dot(p3, p3.yzx + 33.33);
-	return fract((p3.x + p3.y) * p3.z);
-}
+#include "res://game/presentation/shaders/tape_snow.gdshaderinc"
 
 float crack_at(vec2 uv) {
 	vec4 c = texture(cracks, uv);
@@ -64,13 +64,16 @@ void fragment() {
 		texture(image, uv + vec2(0.0015, 0.0)).r,
 		texture(image, uv).g,
 		texture(image, uv - vec2(0.0015, 0.0)).b);
-	// Tuner snow in fat interlaced dots with horizontal streaks.
-	float snow = hash(floor(uv * vec2(260.0, 240.0)) + field * 7.0);
-	float streak = hash(vec2(line, field * 3.0));
-	vec3 noise = vec3(snow * 0.85 + step(0.93, streak) * 0.45);
-	vec3 colour = mix(noise * 0.9, picture * 1.25, image_amount);
-	colour = mix(colour, noise, static_amount * image_amount * 0.55);
-	colour += (snow - 0.5) * 0.08;
+	// The tape's snow, its pixels square on a 4:3 face, a little brighter as
+	// a tube shows it.
+	vec3 noise = tape_snow(vec2(uv.x * 0.75, uv.y), field, true) * 1.35;
+	float snow = dot(noise, vec3(0.299, 0.587, 0.114));
+	// The picture through it: each piece of the snow gives way at its own
+	// moment, its darkest first, so the picture comes in pieces that hold.
+	float through = smoothstep(snow - 0.08, snow + 0.08, image_amount * 1.25 - 0.1);
+	vec3 colour = mix(noise * 0.9, picture * 1.25, through);
+	colour = mix(colour, noise, static_amount * through * 0.5);
+	colour += (snow - 0.5) * 0.06;
 	// Rolling hum bar and the alternating field of interlaced scanlines.
 	float bar = smoothstep(0.0, 0.12, abs(fract(uv.y - t * 0.11) - 0.5) - 0.28);
 	colour *= 0.82 + 0.18 * bar;

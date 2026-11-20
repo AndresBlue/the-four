@@ -367,7 +367,9 @@ func update_screen(step: float) -> void:
 	broadcast.twitch = clampf((time - 22.0) / 3.0, 0.0, 1.0)
 	broadcast.clock = time - step
 	broadcast.pose(step)
-	screen.set_shader_parameter("image_amount", clampf((time - 18.2) / 1.5, 0.0, 1.0))
+	# The snow gives way over the thing on the channel, slowly: it was there
+	# all along (tv_screen.gdshader).
+	screen.set_shader_parameter("image_amount", smoothstep(18.2, 23.0, time))
 	var burst := 0.5 if rng.randf() < 0.04 else 0.0
 	screen.set_shader_parameter("static_amount", clampf(lerpf(1.0, 0.3, peek) + burst + jolt * 0.25, 0.0, 1.0))
 	screen.set_shader_parameter("unstable", clampf(jolt + (0.6 if rng.randf() < 0.02 else 0.0), 0.0, 1.0))

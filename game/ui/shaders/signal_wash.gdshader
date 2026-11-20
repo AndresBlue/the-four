@@ -1,14 +1,11 @@
 shader_type canvas_item;
 // A picture going the way a weak analogue signal goes: the lines swell and roll
 // like water, the picture runs sideways into a smear and the snow eats it.
-// wash 0 is the clean picture, 1 is nothing left of it.
+// wash 0 is the clean picture, 1 is nothing left of it. Its snow is the
+// tape's own (tape_snow.gdshaderinc), as every static of the game is.
 uniform float wash : hint_range(0.0, 1.0) = 0.0;
 
-float hash(vec2 p) {
-	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-	p3 += dot(p3, p3.yzx + 33.33);
-	return fract((p3.x + p3.y) * p3.z);
-}
+#include "res://game/presentation/shaders/tape_snow.gdshaderinc"
 
 // Off the edge of the little picture there is nothing, not its edge repeated.
 float inside(vec2 uv) {
@@ -42,7 +39,7 @@ void fragment() {
 	// blurred, even with the tape's wear at nothing).
 	col.rgb /= max(col.a, 0.001);
 	// The snow: over what is left of the picture, and grains of it given up.
-	float snow = hash(floor(FRAGCOORD.xy / 2.0) + frame * 17.0);
+	float snow = dot(tape_snow(SCREEN_UV, floor(TIME * 60.0), true), vec3(0.299, 0.587, 0.114)) * 1.3;
 	float grain = hash(floor(FRAGCOORD.xy / 3.0) + frame * 3.1);
 	col.rgb = mix(col.rgb, vec3(0.85, 0.85, 0.82) * snow, w * 0.75);
 	col.a *= smoothstep(w * 1.2 - 0.2, w * 1.2, grain);
