@@ -6,27 +6,34 @@
 // first and then as stretches of grey with the levels and the lengths the
 // references measure, and both times he saw pixel art with digital noise in
 // it: what was missing is the coding itself. So that is done once, outside
-// (tools/dev/tape_snow.py: a tape's lines, predicted and corrected in blocks
-// as a video is, each frame with the levels the references have), and this
-// shows the frames it made:
+// (tools/dev/tape_snow.py: a tape's lines through a real coder, each frame
+// with the levels the references have), and this shows the frames it made:
 //   - one of three, read from anywhere in it and either way round, another
 //     every two fields. Two of them are sharp (dashes of light and of black
-//     a line or two tall over stretches of grey, flat across their blocks of
-//     four pixels) and one is of a moment with no bits to spare (smooth, a
-//     shade off from one block of sixteen to the next, only the strongest
-//     dashes left): the noise bigger than the rest that he pointed at;
+//     a line or two tall over stretches of grey, with points and short
+//     upright slivers at the edges of blocks) and one is of a moment with no
+//     bits to spare (flat pieces a block or several across, a shade apart,
+//     and only the strongest dashes): the noise bigger than the rest that
+//     he pointed at;
 //   - a line read all wrong, bright from somewhere along it to its end, in
 //     dashes: ragged, thicker here and thinner there, two or three lines
 //     with its glow, and the tape darker under it half the times;
 //   - the colour, with nothing to lock to. A tape's colour has no fine
-//     detail, and a video's has less, in blocks of eight pixels: a stain of
-//     blue or violet over a ragged patch of those blocks, with a point of
-//     yellow in some; and, some of the time, where the heads change over
-//     towards the foot, two runs of two or three lines each, one right under
-//     the other, every one a stretch of one dark hue after another with
-//     gaps, over a tape gone dark and flat. (As thin lines of clean, bright
+//     detail, and a video's has less: a faint tint to some of its blocks of
+//     sixteen; smears a few pixels across, soft, blue mostly, a hundredth of
+//     the picture in some frames and next to none in others; now and then a
+//     stain of blue or violet over a ragged patch, soft at its edge, with a
+//     point of yellow in
+//     it (with hard edges, in blocks, it read as a sticker on the picture,
+//     and one in every frame as a thing the program put there); and,
+//     some of the time, where the heads change over towards the
+//     foot, three bands four or five lines tall and soft at their edges,
+//     every one a stretch of one dim hue after another with gaps, over a
+//     tape gone dark and flat, a shade to each block of sixteen, with a few
+//     blocks of the snow let through stark. (As thin lines of clean, bright
 //     colour, and then as lines whose hue turned smoothly along them, they
-//     were the first thing he saw that no tape does.)
+//     were the first thing he saw that no tape does; measured, the
+//     references' colour is half as strong as it looks.)
 // The mean of a frame is the same as the next one's: it is the noise that
 // flashes, never the picture as a whole (tools/capture/film_check.py).
 float hash(vec2 p) {
@@ -77,9 +84,14 @@ vec3 chroma_from(vec2 iq) {
 float snow_frame(vec2 p, float frame) {
 	vec2 q = p / SNOW_FRAME;
 	if (hash(vec2(frame, 3.0)) > 0.5) q.x = -q.x;
-	vec3 three = textureLod(tape_snow_frames, q + vec2(hash(vec2(frame, 1.0)), hash(vec2(frame, 2.0))), 0.0).rgb;
+	// Not a straight line from one of its pixels to the next: each is flat
+	// over its middle half, as a player's scaling leaves a video. (Read
+	// plainly, a black line one pixel tall was a grey smear with one black
+	// line of the screen in it; the references' is black for all three.)
+	vec2 texel = (q + vec2(hash(vec2(frame, 1.0)), hash(vec2(frame, 2.0)))) * SNOW_FRAME - 0.5;
+	vec3 three = textureLod(tape_snow_frames, (floor(texel) + 0.5 + smoothstep(0.25, 0.75, fract(texel))) / SNOW_FRAME, 0.0).rgb;
 	float which = hash(vec2(frame, 4.0));
-	return which < 0.36 ? three.r : which < 0.72 ? three.g : three.b;
+	return which < 0.4 ? three.r : which < 0.8 ? three.g : three.b;
 }
 
 // `at` runs 0 to 1 over the picture, `field` counts the fields so far. With
@@ -108,36 +120,55 @@ vec3 tape_snow(vec2 at, float field, bool soft) {
 	}
 	vec3 snow = vec3(light);
 	if (soft) {
-		// A stain of colour, for three frames: the blocks of a patch, more
-		// of them towards its middle.
+		// A tint to some of the blocks of sixteen, faint: a video's colour is
+		// coded by blocks too, and worse than its light. (Measured, a window
+		// of the references has four times the colour the smears alone gave,
+		// most of it this weak.)
+		vec2 block = floor(p / 16.0) + frame * vec2(7.0, 3.0);
+		float tinted = hash(block);
+		if (tinted > 0.6) snow += chroma_from(vec2(hash(block + 11.0), hash(block + 23.0)) - 0.5) * (tinted - 0.6) * 0.025 * (0.5 + 2.0 * light);
+		// Smears of colour, another lot every frame: a few pixels each and
+		// soft all the way to the middle (a hundred of them in one frame and
+		// a dozen in the next), blue mostly, or purple, red or green. Smaller
+		// and harder they were dots of red, green and blue, which is what a
+		// screen has and a tape has not.
+		vec2 patch_at = p / vec2(12.0, 8.0) + frame * vec2(0.31, 0.77);
+		float mote = hash(floor(patch_at) + frame * vec2(1.3, 2.9));
+		if (mote > 1.0 - 0.065 * hash(vec2(frame, 17.0))) {
+			// (`mote` is all but 1 here: only its last figures tell one from another.)
+			float sort = fract(mote * 7919.0);
+			snow += chroma_of(sort < 0.55 ? 0.33 : sort < 0.75 ? 0.2 : sort < 0.9 ? 0.03 : 0.7) * (0.06 + 0.32 * light) * smoothstep(0.5, 0.0, length(fract(patch_at) - 0.5));
+		}
+		// A stain of colour, for three frames: ragged, and soft at its edge.
 		float held = floor(frame / 3.0);
 		vec2 cell = p / vec2(72.0, 40.0) + held * vec2(0.37, 0.61);
 		float there = hash(floor(cell) + held * vec2(11.0, 3.0));
-		if (there > 0.994) {
-			vec2 block = floor(p / 8.0);
-			vec2 f = (block * 8.0 + 4.0) / vec2(72.0, 40.0) + held * vec2(0.37, 0.61) - floor(cell) - 0.5;
-			float stain = step(0.42, 1.0 - length(f) * 2.2 + (hash(block + held) - 0.5) * 0.7);
+		if (there > 0.9985) {
+			vec2 f = fract(cell) - 0.5;
+			float stain = smoothstep(0.48, 0.2, length(f) + 0.14 * (line_noise(p.x / 9.0 + held, 2259.0) + line_noise(p.y / 5.0 - held, 2510.0) - 1.0));
 			// (`there` is all but 1 here: only its last figures tell one from another.)
 			float shade = fract(there * 4513.0);
-			snow += chroma_of(shade < 0.75 ? 0.33 - 0.08 * shade : 0.1) * stain * (0.05 + light * 0.3);
-			if (fract(there * 997.0) > 0.6) snow += (chroma_of(0.83) * 0.5 + 0.2) * smoothstep(0.1, 0.03, length((fract(cell) - 0.5 - vec2(0.05, -0.04)) * vec2(1.0, 0.6)));
+			snow += chroma_of(shade < 0.75 ? 0.33 - 0.08 * shade : 0.1) * stain * (0.04 + light * 0.22);
+			if (fract(there * 997.0) > 0.6) snow += (chroma_of(0.83) * 0.4 + 0.15) * smoothstep(0.12, 0.02, length((f - vec2(0.05, -0.04)) * vec2(1.0, 0.6)));
 		}
 		// The foot, where the heads change over.
 		float slow = floor(frame * 0.25);
 		if (at.y > 0.8 && hash(vec2(slow, 21.0)) > 0.65) {
-			float top = (0.855 + 0.03 * hash(vec2(slow, 23.0))) * 480.0;
-			snow = mix(snow, vec3(0.09 + 0.2 * light), 0.8 * smoothstep(top - 2.0, top + 2.0, p.y));
-			// (Its colour is in blocks of eight pixels along the line.)
-			float along = floor(p.x / 8.0) * 8.0;
-			for (int k = 0; k < 2; k++) {
-				float off = p.y - top - 5.0 - float(k) * 17.0;
-				float band = smoothstep(4.4, 3.4, abs(off));
+			float top = (0.845 + 0.03 * hash(vec2(slow, 23.0))) * 480.0;
+			// Under it the tape is dark and all but flat, a shade to each block
+			// of sixteen; a few of the blocks among the bands are the snow
+			// itself, let through whole and stark.
+			vec2 square = floor(p / 16.0);
+			float through = step(0.955, hash(square * 1.7 + slow)) * step(top + 4.0, p.y) * step(p.y, top + 44.0);
+			vec3 foot = mix(vec3(0.125 + 0.03 * hash(square + slow * 3.0) + 0.08 * light), vec3(min(light * 2.2 - 0.1, 0.7)), through);
+			snow = mix(snow, foot, 0.94 * smoothstep(top - 2.0, top + 2.0, p.y));
+			for (int k = 0; k < 3; k++) {
+				float which = float(k);
+				float band = smoothstep(4.6, 1.6, abs(p.y - top - 8.0 - which * (10.0 + 4.0 * hash(vec2(slow, which + 31.0))))) * (1.0 - through);
 				if (band <= 0.0) continue;
-				// Which of its lines this is: each has stretches and hues of its own.
-				float which = float(k) * 3.0 + floor(off / 2.5 + 1.5);
-				band *= step(0.42, stretches(along / 75.0 + slow * 1.7, 0.01, which + 4016.0));
-				vec2 iq = vec2(stretches(along / 55.0 + slow * 3.1, 0.01, which + 3514.0), stretches(along / 55.0 - slow * 2.3, 0.01, which + 3765.0)) - 0.5;
-				snow = mix(snow, vec3(0.03 + 0.3 * light), 0.9 * band) + chroma_from(iq) * 0.42 * band;
+				band *= smoothstep(0.38, 0.46, stretches(p.x / 80.0 + slow * 1.7, 0.1, which + 4016.0));
+				vec2 iq = vec2(stretches(p.x / 60.0 + slow * 3.1, 0.06, which + 3514.0), stretches(p.x / 60.0 - slow * 2.3, 0.06, which + 3765.0)) - 0.5;
+				snow = mix(snow, vec3(0.1), 0.5 * band) + chroma_from(iq) * 0.3 * band;
 			}
 		}
 	}
