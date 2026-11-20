@@ -1023,11 +1023,13 @@ func populate_floor(with_director: bool) -> void:
 	# A floor opens on the same card as every sector after it, and the notice
 	# of what this one wants follows once the card is cut and the deck has
 	# found the picture. Not over the observer: watching is not filming, and
-	# the card covered every floor R put up.
+	# the card covered every floor R put up. Neither is put up for a script (a
+	# test, a capture): its pictures are of the floor, and the notice was in
+	# every one taken in a floor's first seconds.
 	if not automation and not observer and not match_net.local_is_locust():
 		ui.show_transit(kind.title_of(session.stage), lifts.stage_errand(session.stage), lifts.OPENING_CARD, true)
-	lifts.pending_brief = session.stage
-	lifts.brief_wait = lifts.OPENING_CARD + rig.ENTRY_SECONDS if not automation else 0.0
+	lifts.pending_brief = 0 if automation else session.stage
+	lifts.brief_wait = 0.0 if automation else lifts.OPENING_CARD + rig.ENTRY_SECONDS
 
 # --- Online floors ---------------------------------------------------------------
 
