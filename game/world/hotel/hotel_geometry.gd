@@ -664,10 +664,7 @@ func flush() -> void:
 			# only pieces of furniture cast, never what stands on them.
 			if not entry.casts or (size.y < SHADOW_MODEL and not mesh.has_meta("casts")):
 				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			if size.y < SMALL_MODEL and maxf(size.x, size.z) < 0.8 and not entry.kit:
-				# Small things are not drawn from afar.
-				instance.visibility_range_end = SMALL_REACH
-				instance.visibility_range_end_margin = 2.0
+			if size.y < SMALL_MODEL and maxf(size.x, size.z) < 0.8 and not entry.kit: far_small(instance)
 			batch.parent.add_child(instance)
 	model_batches.clear()
 	turn_hands(clock_time if clock_time >= 0 else UNTOLD)
@@ -726,6 +723,22 @@ var model_batches := {}
 const SHADOW_MODEL := 0.6
 const SMALL_MODEL := 0.3
 const SMALL_REACH := 16.0
+## Things drawn only out to a distance go fading over this many metres past
+## it, never at once (the offices; tools/dev/popping_probe.gd counts the rest).
+const FAR_FADE := 8.0
+
+## Small things are not drawn from afar: the hotel cuts them at SMALL_REACH
+## (office_geometry fades them, farther).
+func far_small(instance: GeometryInstance3D) -> void:
+	instance.visibility_range_end = SMALL_REACH
+	instance.visibility_range_end_margin = 2.0
+
+## Drawn out to `reach` from its middle, then fading out over `fade` metres.
+static func fade_out(node: GeometryInstance3D, reach: float, fade := FAR_FADE) -> GeometryInstance3D:
+	node.visibility_range_end = reach
+	node.visibility_range_end_margin = fade
+	node.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	return node
 
 ## How far every placed model stands off what it was put on (metres), and how
 ## far a wall stops short of a doorway's jamb: surfaces in one plane flicker
@@ -813,7 +826,7 @@ func decals_drawn() -> bool:
 ## Engraved figures on the door plaques.
 const PLAQUE_INK := Color(0.07, 0.05, 0.03)
 
-func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38, reach := 0.0, ink := Color("d3bd8e")) -> void:
+func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38, reach := 0.0, ink := Color("d3bd8e")) -> Label3D:
 	var label := Label3D.new()
 	label.text = words
 	label.position = pos
@@ -830,6 +843,7 @@ func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38, r
 		label.visibility_range_end = reach
 		label.visibility_range_end_margin = 1.0
 	parent.add_child(label)
+	return label
 
 ## Staged sets (opening scene, title screen), built outside the floor plan.
 ## A papered wall between two floor points, with doorway gaps centred at the
@@ -1445,7 +1459,7 @@ func lamp_light(node: Node3D, room: Dictionary, spec: Dictionary) -> OmniLight3D
 	# is gone: a shadow that faded earlier left lamps shining through walls and
 	# closed doors between that distance and the light's own fade.
 	light.distance_fade_enabled = true
-	set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
+	fade_lamp(light)
 	node.add_child(light)
 	light.set_meta("room", int(room.id))
 	lights.append(light)
@@ -2599,6 +2613,11 @@ func probe_settings(probe: ReflectionProbe) -> void:
 	var mode := ReflectionProbe.AMBIENT_ENVIRONMENT if shadowed and not preset.bounce else ReflectionProbe.AMBIENT_DISABLED
 	if probe.ambient_mode != mode: probe.ambient_mode = mode
 
+## A ceiling lamp's distance fade: the preset's (office_geometry ends a big
+## room's sooner, before round_rooms cuts it).
+func fade_lamp(light: Light3D) -> void:
+	set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
+
 ## Distance fade of a lamp; its shadow ends exactly where its light does.
 static func set_fade(lamp: Light3D, begin: float, length: float) -> void:
 	if lamp.distance_fade_begin != begin: lamp.distance_fade_begin = begin
@@ -2629,7 +2648,7 @@ func apply_quality(new_preset: Dictionary) -> void:
 	if kit != bool(preset.detail_kit): set_kit(preset.detail_kit)
 	lacquer(preset.surface_detail > 4.5)
 	for light in lights:
-		set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
+		fade_lamp(light)
 		var size: float = LAMP_SIZE * preset.penumbra
 		if light.light_size != size: light.light_size = size
 	for lamp in practicals:
@@ -3127,20 +3146,31 @@ func round_probes() -> void:
 	# last one is gone.
 	if preset.probes > 0 or probes_made > 0:
 		var wanted: Array[Dictionary] = []
+		var keep_far := keeps_far_probes()
 		for slot in probe_slots:
 			var used: bool = preset.probes >= 2 or (preset.probes == 1 and slot.every_third)
-			if used and not echo_view and lights[slot.room].visible:
+			var lamp: Light3D = lights[slot.room]
+			# Kept while its lamp is only past its reach (not put out, not on
+			# another planta): it is made again, a frame's hitch, on coming back.
+			var far_kept: bool = keep_far and slot.probe != null and not lamp.has_meta("off") and room_planta[slot.room] == int(round_at.here) and lit(slot.room)
+			if used and not echo_view and (lamp.visible or far_kept):
 				slot.near = (slot.spot as Vector3).distance_squared_to(player_position)
 				wanted.append(slot)
 			elif slot.probe != null: drop_probe(slot)
 		wanted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.near < b.near)
 		var made := 0
 		for k in wanted.size():
-			if wanted[k].probe == null and k < PROBES_SHOWN:
+			if wanted[k].probe == null and k < PROBES_SHOWN and lights[wanted[k].room].visible:
 				if probes_at_once > 0 and made >= probes_at_once: continue
 				make_probe(wanted[k])
 				made += 1
-			elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
+			elif wanted[k].probe != null and k >= probes_kept(): drop_probe(wanted[k])
+
+## How far down the order a made probe is kept (office_geometry keeps more).
+func probes_kept() -> int: return PROBES_KEPT
+
+## Whether a probe is kept while its lamp is only out of reach (the offices).
+func keeps_far_probes() -> bool: return false
 
 ## The wall lamps, the bounce, the furniture lamps, the exit signs and the cars.
 func round_lamps() -> void:

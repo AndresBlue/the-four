@@ -72,6 +72,12 @@ if ($python) {
     $checks[-1].out = $log
     $checks[-1].err = Join-Path $evidence 'verify_perf_report_err.log'
 }
+# Nothing pops near the eye on floor 2: a walk through 24 rooms of its three
+# plantas on Ultra, and every mesh, lamp, shadow or room shown or hidden at
+# once in sight within 20 m is counted; at most 5 a minute (it was 64 before
+# the fades of 20 November 2026; tools/dev/popping_probe.gd).
+$log = Join-Path $evidence 'verify_popping_probe.log'
+Add-Check 'dev/popping_probe' 'popping_probe' (Godot-Arguments 'res://tools/dev/popping_probe.gd' $log $true @('--test-profile','--automation','--silent','--no-enemy','--floor=2','--seed=81','--quality=3','--rooms=8','--label=verify','--max=5')) 240 'plain' 1 $log
 # The creature on its own feet: journeys between rooms, walking and hunting.
 # Any stop over two seconds, any hop of its last-resort protocol and any
 # journey not finished is a failure (tools/dev/creature_stuck_probe.gd).

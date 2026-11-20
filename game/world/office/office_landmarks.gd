@@ -338,6 +338,9 @@ static func label(parent: Node3D, words: String, at: Transform3D, ink: Color, fo
 	text.double_sided = false
 	text.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	text.visibility_range_end = reach
+	# Fading out past it, never cut at once (hotel_geometry.fade_out).
+	text.visibility_range_end_margin = 6.0
+	text.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	text.transform = at
 	parent.add_child(text)
 	return text

@@ -198,7 +198,7 @@ func restore(_data: Dictionary) -> void: pass
 ## (hotel_geometry SMALL_REACH); text on a plate stands this far off it, this
 ## small a pixel, in light letters or, on a light plate, dark ones.
 const SHADOW_PIECE := 0.6
-const EQUIPMENT_REACH := 16.0
+const EQUIPMENT_REACH := 32.0
 const PLATE_OFF := 0.0015
 const PLATE_PIXEL := 0.0015
 const PLATE_INK := Color("e8e2cf")
@@ -213,7 +213,10 @@ func equipment(mesh: Mesh, xform: Transform3D, parent: Node3D = null) -> MeshIns
 	var size: Vector3 = mesh.get_meta("size", mesh.get_aabb().size)
 	if size.y < SHADOW_PIECE:
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# Past the torch's reach, and fading out after (hotel_geometry.fade_out).
 		node.visibility_range_end = EQUIPMENT_REACH
+		node.visibility_range_end_margin = 8.0
+		node.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	var holder: Node3D = parent if parent != null else level.hotel
 	holder.add_child(node)
 	lay_on_room(node)

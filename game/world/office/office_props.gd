@@ -659,6 +659,9 @@ static func plate_text(parent: Node3D, mesh: Mesh, at: Transform3D, words: Strin
 	label.shaded = true
 	label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	label.visibility_range_end = PLATE_REACH
+	# Fading out past it, never cut at once (hotel_geometry.fade_out).
+	label.visibility_range_end_margin = 6.0
+	label.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	label.position = at * centre
 	# A label reads from its +Z.
 	label.rotation.y = atan2(facing.x, facing.z)

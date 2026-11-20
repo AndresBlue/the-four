@@ -235,7 +235,11 @@ func show_cam(i: int) -> void:
 	eye.global_transform = Transform3D(mount, from)
 	level.cams_eye = from
 	if is_instance_valid(level.hotel):
+		# One new reflection probe at most, as in a round: uncapped, a switch
+		# of camera made up to 24 in one frame.
+		level.hotel.probes_at_once = 1
 		level.hotel.update_visibility(from, bool(level.settings.values.shadows))
+		level.hotel.probes_at_once = 0
 		was_dark = not level.hotel.lit(int(cam.room))
 	night = 1.0 if was_dark else 0.0
 	was_open = open_at(selected)

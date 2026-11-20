@@ -772,3 +772,65 @@ Después el filtro cambió otra vez (ruido sin bordes duros, grano de cinta sobr
 | Medio | sala 25 | 4,95 | 5,19 a 5,20 |
 
 Dentro del ruido de esa noche no se distingue una versión de la otra. Con el grano de cinta apagado a mano el banco dio lo mismo (Medio caminando 5,33; Muy bajo 0,66). Queda por repetir con la máquina en reposo, para tener cifras comparables con la tabla de arriba, y en un equipo con gráfica integrada, que es donde las cuentas por píxel del grano podrían notarse.
+
+## 16. Lo que salta a la vista en el piso 2 (20 de noviembre de 2026)
+
+El autor vio props y luces de emergencia que aparecían cerca del jugador, y la visión lejana recortada, en un piso que se juega a oscuras. El orden del encargo: que nada aparezca, desaparezca ni cambie de golpe a la vista; que la visión lejana no se recorte; y solo después, el tiempo de fotograma.
+
+### Cómo se mide
+
+`tools/dev/popping_probe.gd`, sin ventana: el jugador recorre a paso de andar (3,8 m/s) las 16 salas más cercanas de cada planta, una tras otra, con la mirada barriendo a los lados. Cada tres fotogramas anota todo lo que se muestra, se oculta o cambia de sombra de golpe estando en el encuadre, a 20 m o menos y a la vista (un rayo de la física hasta el centro de su caja; una lámpara se ve por lo que alumbra y no lo necesita): una malla cortada por su rango de visibilidad, un nodo o una sala mostrados u ocultos, una lámpara encendida o apagada sin fundido, una sombra puesta o quitada, un nodo creado o borrado. Lo que hace un fundido por distancia es gradual y no cuenta; una sala mostrada u oculta cuenta una vez, no una por pieza; lo que lleva el jugador (la linterna, el piloto de la cámara) no es el mundo. En el primer segundo de cada planta no anota nada, porque la sonda salta allí y el jugador llega en montacargas. Una vez por segundo cuenta además lo que falta a lo lejos: mallas en el encuadre y a la vista más allá de su rango (hasta 60 m) y salas ocultas a la vista. Escribe `evidence/popping/<etiqueta>.json` con cada salto y desde dónde se vio, e imprime una línea `POPPING`. `tools/capture/popping_capture.gd` saca, con ventana, la foto de un paso antes y la del sitio de un salto anotado.
+
+`verify.ps1` la corre en Ultra, semilla 81, 24 salas, y falla con más de cinco saltos por minuto.
+
+### Lo que había
+
+Semilla 81, las tres plantas, 48 salas, dos minutos de paseo:
+
+| Preset | Saltos | Por minuto | Mallas que faltaban a lo lejos, a la vista (media de cada comprobación) |
+|---|---|---|---|
+| Ultra | 126 | 63,6 | 1,2 |
+| Medio | 126 | 63,6 | 1,0 |
+| Muy bajo | 57 | 28,8 | 0,9 |
+
+- 64 eran los focos de las unidades de emergencia, a 11 m de mediana: se veían los seis más cercanos a menos de 18 m, reordenados cuatro veces por segundo, sin fundido, y al cambiar el orden uno se apagaba y otro se encendía. Muy bajo no los tiene (no da sombras).
+- Unos 50 eran lotes de props pequeños de una sala cortados a 16 m (`SMALL_REACH`): detectores de humo, rejillas, rociadores, señales de ruta, flechas, termostatos, alarmas. La linterna llega a 24 m: el corte se hacía en su luz.
+- 7 eran rótulos cortados a 20 m.
+- En todo el repositorio no se usaba `visibility_range_fade_mode`: cada rango de visibilidad era un corte en seco.
+
+Leído en el código y no visto por la sonda en ese paseo: las piezas de equipo de los objetivos de menos de 0,6 m también se cortaban a 16 m; los focos de luz por las puertas, los seis más cercanos a menos de 14 m, igual que las unidades; y en las salas grandes de Bajo y Muy bajo la lámpara del techo se cortaba (a `room_reach` menos su alcance) antes de acabar su fundido, aún con luz.
+
+### Lo que se cambió
+
+Solo en las oficinas: el hotel pasa por los mismos métodos y sigue como estaba.
+
+- Props pequeños y piezas de equipo: se dibujan hasta 32 m y se desvanecen en los 8 m siguientes (`hotel_geometry.fade_out()`, `office_geometry.far_small()`, `objective.equipment()`). Los rótulos conservan su alcance y se desvanecen en 6 m.
+- Unidades de emergencia: todas las que están a menos de 18 m lucen y dan sombra; su luz se desvanece entre 10 y 16 m y su sombra entre 6 y 12 m, así que no se encienden, apagan ni ganan sombra de golpe. En Compatibilidad siguen dando sombra solo las tres más cercanas.
+- Focos de puerta: todos los que están a su alcance, desvaneciéndose entre 7 y 12 m.
+- La lámpara del techo de una sala grande acaba su fundido 4 m antes de su corte (`office_geometry.fade_lamp()`).
+- Sondas de reflejo: una ya hecha se conserva mientras esté entre las 56 más cercanas de su planta (antes, 32; el atlas tiene 64 sitios), aunque su lámpara quede fuera de alcance, para no rehacerla, un tirón, al volver. La consola de cámaras hace como mucho una por vuelta; antes hacía hasta 24 en un fotograma al cambiar de cámara.
+
+### Lo que dio
+
+| Preset | Saltos | Por minuto | Mallas que faltan a lo lejos, a la vista (media de cada comprobación) |
+|---|---|---|---|
+| Ultra | 126 → 3 | 63,6 → 1,5 | 1,2 → 0,6 |
+| Medio | 126 → 3 | 63,6 → 1,5 | 1,0 → 0,4 |
+| Muy bajo | 57 → 1 | 28,8 → 0,5 | 0,9 → 0,4 |
+
+Los que quedan en Ultra: la sombra de una lámpara de hito, que solo la da con el jugador dentro de su sala (5 m); un resplandor de salida a 12,8 m, ya al 7 % de su luz; un lote a 19,7 m.
+
+En el mismo paseo se hicieron 8 sondas de reflejo, frente a 16. En la partida del autor fueron 1.574 en quince minutos, sobre todo en la planta 3, la de las cámaras; esa parte no la recorre la sonda.
+
+El coste, con el banco del piso 2 (semilla 81; Ultra a 2560×1440 con el 3D al 0,67, Medio y Muy bajo a 1080p): el paseo dibuja unas 200 llamadas más y su fotograma medio pasó de 9,09 a 9,49 ms en Ultra, de 7,68 a 7,03 en Medio y de 5,20 a 5,43 en Muy bajo. Las vistas fijas quedaron dentro del ruido entre medidas (±0,3 ms).
+
+Las capturas de antes y después de cuatro saltos están en `evidence/popping/shots/` (fuera de git). A oscuras y a 16 m, un detector del techo o el foco de una unidad sobre una pared son pocos píxeles: la foto fija los enseña mal y la cifra de la sonda es la medida.
+
+### Lo que queda, ordenado por beneficio y coste
+
+1. Las sondas de reflejo al llegar a una planta: una por vuelta, hasta 24 en los primeros seis segundos, cada una un fotograma de unos 22 ms. Hacerlas durante el viaje en montacargas quitaría esos tirones; el coste es la lógica de saber cuándo va a cambiar de planta.
+2. La compilación de pipelines al ver por primera vez una sala (58 tirones en la partida del autor): calentarlos por planta durante la carga o el montacargas.
+3. `lurker.travel_cache_miss`: un Dijkstra en GDScript sobre todo el grafo de la planta, unos 11 ms, rehecho cada vez que cambia una puerta de su ala (399 veces en la partida). Invalidar solo lo que cambia o hacerlo nativo.
+4. Los picos de `director.physics` (123 ms), `game.sanity` (60 ms, con `audio.nav_path`) y `game.process` (75 ms) de la partida del autor: hace falta medirlos por dentro.
+5. `floor.spawn_creature`: 0,93 s con la partida ya empezada; pasarlo a la carga.
+6. Cambian el aspecto, para que decida el autor: alargar el fundido de las lámparas del techo en Bajo y Medio (empieza a 30 m) para ver luz más lejos, a cambio de más luces en el cálculo; la sombra de la lámpara de hito con fundido por distancia en vez de solo dentro de su sala; y los volúmenes de rebote de Alto y Ultra, los ocho más cercanos, que se muestran sin fundido (la sonda no los vio saltar en este paseo).

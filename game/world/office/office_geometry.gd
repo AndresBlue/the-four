@@ -1084,7 +1084,15 @@ func post_desk(node: Node3D, spot: Dictionary, size := POST_DESK) -> void:
 ## and their light.
 const EMERGENCY_Y := 2.45
 const EMERGENCY_REACH := 18.0
-const EMERGENCY_CAST := 6
+## Their light fades over EMERGENCY_FADE metres and is gone two metres before
+## EMERGENCY_REACH, where round_lamps puts them away (it counts four times a
+## second, from the listener); their shadow fades from EMERGENCY_SHADOW over
+## as many. So none is lit, put out or given its shadow at once in sight
+## (tools/dev/popping_probe.gd): every one in reach shines and casts, and the
+## distance says how much. Compatibility, with no shadow fade to speak of,
+## keeps its three nearest casting.
+const EMERGENCY_FADE := 6.0
+const EMERGENCY_SHADOW := 6.0
 const EMERGENCY_CAST_COMPAT := 3
 const EMERGENCY_ENERGY := 1.4
 const EMERGENCY_RANGE := 9.0
@@ -1170,6 +1178,10 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	light.shadow_bias = 0.04
 	light.light_bake_mode = Light3D.BAKE_DISABLED
 	light.light_volumetric_fog_energy = 0.0
+	light.distance_fade_enabled = true
+	light.distance_fade_begin = EMERGENCY_REACH - 2.0 - EMERGENCY_FADE
+	light.distance_fade_length = EMERGENCY_FADE
+	light.distance_fade_shadow = EMERGENCY_SHADOW
 	# From before its heads, now under the box, and 35 degrees down: -Z of the light along +Z of the unit.
 	light.transform = Transform3D(Basis.looking_at(Vector3(0, -sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)))), Vector3(0, -0.1, 0.16))
 	if board_at != Vector3.INF:
@@ -1231,7 +1243,7 @@ func round_lamps() -> void:
 	if emergency.is_empty() or round_at.is_empty(): return
 	var at: Vector3 = round_at.position
 	var casting: bool = round_at.shadows and not echo_view
-	var most := EMERGENCY_CAST_COMPAT if RenderingServer.get_current_rendering_method() == "gl_compatibility" else EMERGENCY_CAST
+	var most := EMERGENCY_CAST_COMPAT if RenderingServer.get_current_rendering_method() == "gl_compatibility" else emergency.size()
 	var near: Array = []
 	for k in emergency.size():
 		var e: Dictionary = emergency[k]
@@ -1240,13 +1252,15 @@ func round_lamps() -> void:
 		var lens_material: Material = emergency_on() if out else plain_material(Color("bdb8a8"))
 		if lens.material_override != lens_material: lens.material_override = lens_material
 		var distance: float = (e.spot as Vector3).distance_to(at)
-		if out and casting and distance < EMERGENCY_REACH: near.append([distance, k])
+		# Every unit within reach shines and casts (EMERGENCY_FADE).
+		if out and casting and distance < EMERGENCY_REACH: near.append([distance - (1.5 if e.light.shadow_enabled else 0.0), k])
 		elif e.light.visible: e.light.visible = false
 	near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	for place in near.size():
 		var light: SpotLight3D = emergency[int(near[place][1])].light
-		var shown: bool = place < most
-		if light.visible != shown: light.visible = shown
+		if not light.visible: light.visible = true
+		var casts: bool = place < most
+		if light.shadow_enabled != casts: light.shadow_enabled = casts
 
 ## How much each light of the planta lights the air (light_volumetric_fog_energy),
 ## by contrast: the small hard sources a lot (the battery units, the desk and
@@ -1317,7 +1331,10 @@ const SPILL_PAST := 0.3
 const SPILL_ENERGY := 1.5
 const SPILL_AIR := 25.0
 const SPILL_NEAR := 14.0
-const SPILLS_MOST := 6
+## They fade over this many metres and are gone two metres before SPILL_NEAR,
+## where round_spills puts them away: never put out at once in sight.
+## Shadowless, every one in reach shines.
+const SPILL_FADE := 5.0
 ## Every spill: {light, door, room, corridor, planta}.
 var spills: Array = []
 
@@ -1343,6 +1360,9 @@ func door_spill(door: Node3D, room: Dictionary, corridor: Dictionary, center: Ve
 	light.shadow_enabled = false
 	light.light_bake_mode = Light3D.BAKE_DISABLED
 	light.light_volumetric_fog_energy = 0.0
+	light.distance_fade_enabled = true
+	light.distance_fade_begin = SPILL_NEAR - 2.0 - SPILL_FADE
+	light.distance_fade_length = SPILL_FADE
 	light.visible = false
 	holder.add_child(light)
 	spills.append({"light": light, "door": door, "room": int(room.id), "corridor": int(corridor.id), "planta": FLOOR.planta_of(center.y)})
@@ -1360,9 +1380,7 @@ func round_spills() -> void:
 	for place in near.size():
 		var s: Dictionary = spills[int(near[place][1])]
 		var light: SpotLight3D = s.light
-		var shown: bool = place < SPILLS_MOST
-		if light.visible != shown: light.visible = shown
-		if not shown: continue
+		if not light.visible: light.visible = true
 		light.light_energy = SPILL_ENERGY * (1.0 - drained(int(s.room)))
 		ROOM_LAYERS.light_only(light, int(room_layers.mask[int(s.corridor)]) if layered and not room_layers.is_empty() else 0)
 		var air_share: float = SPILL_AIR if preset.lamp_fog else 0.0
@@ -1601,7 +1619,7 @@ func zone_sign(boundary: Node3D, x: float, inner: int, label: String, colour: Co
 	var face := inner * 0.09
 	box(boundary, Vector3(x, SIGN_Y, face + inner * SIGN_DEPTH * 0.5), Vector3(wide, SIGN_HIGH, SIGN_DEPTH), "plaque")
 	box(boundary, Vector3(x - wide * 0.5 + SIGN_MARGIN + SWATCH * 0.5, SIGN_Y, face + inner * (SIGN_DEPTH + 0.0005)), Vector3(SWATCH, SWATCH, 0.001), key)
-	text(boundary, label, Vector3(x + (SIGN_MARGIN + SWATCH) * 0.5, SIGN_Y, face + inner * (SIGN_DEPTH + 0.001)), 0.0 if inner > 0 else PI, 12, NUMBER_REACH, Color("e8e4d6"))
+	fade_out(text(boundary, label, Vector3(x + (SIGN_MARGIN + SWATCH) * 0.5, SIGN_Y, face + inner * (SIGN_DEPTH + 0.001)), 0.0 if inner > 0 else PI, 12, 0.0, Color("e8e4d6")), NUMBER_REACH, TEXT_FADE)
 
 ## Whether this boundary's zone sign reaches within `half` of `at` along the wall.
 func sign_under(boundary: Node3D, at: float, half: float) -> bool:
@@ -1722,7 +1740,7 @@ func personal_sign(boundary: Node3D, x: float, length: float, height: float, inn
 	var y := (GLASS_HEAD + MULLION * 0.5 + top) * 0.5
 	var face := inner * 0.09
 	box(boundary, Vector3(x, y, face + inner * SIGN_DEPTH * 0.5), Vector3(PERSONAL_SIGN.x, PERSONAL_SIGN.y, SIGN_DEPTH), "plaque")
-	text(boundary, "PERSONAL", Vector3(x, y, face + inner * (SIGN_DEPTH + 0.001)), 0.0 if inner > 0 else PI, 14, NUMBER_REACH, Color("d3bd8e"))
+	fade_out(text(boundary, "PERSONAL", Vector3(x, y, face + inner * (SIGN_DEPTH + 0.001)), 0.0 if inner > 0 else PI, 14, 0.0, Color("d3bd8e")), NUMBER_REACH, TEXT_FADE)
 
 ## The plain wall a glazed run of the security post keeps for its card reader
 ## (office_generator.furnish_glass()), in the boundary's x: from the run's end
@@ -2204,6 +2222,7 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 	# A hotel batten's light is its own where the pools light (batten_lights()).
 	if spec.get("fitted", false): light.set_meta("fitted", true)
 	light.omni_range = ROOM_LAYERS.lamp_range(FLOOR.size_of(room), ROOM_LAYERS.OFFICE_LAMP_LEAST)
+	fade_lamp(light)
 	if halos.has(int(room.id)): halos[int(room.id)].base = light.light_energy
 	if OFFICE.lamp_of(room) == "troffer":
 		light.omni_attenuation = LAMP_ATTENUATION if pools_shown() else LAMP_ATTENUATION_ALONE
@@ -2940,3 +2959,22 @@ func apply_quality(new_preset: Dictionary) -> void:
 func bounces(group: String) -> bool:
 	var material := material_of(group)
 	return not (material.begins_with("troffer_lens") or material.begins_with("troffer_fail") or material.begins_with("lens_off") or material.begins_with("glow_"))
+
+## Small things in the offices are drawn past the torch's 24 m and fade out
+## after, never cut at once in its light (tools/dev/popping_probe.gd).
+const OFFICE_SMALL_REACH := 32.0
+## Text fades over this many metres past its reach.
+const TEXT_FADE := 6.0
+func far_small(instance: GeometryInstance3D) -> void: fade_out(instance, OFFICE_SMALL_REACH)
+
+## A big room's lamp ends its fade before round_rooms cuts it at room_reach
+## less its range: with the preset's fade it was cut still lit, a pop.
+func fade_lamp(light: Light3D) -> void:
+	var length: float = preset.lamp_fade[1]
+	set_fade(light, clampf(float(preset.room_reach) - (light as OmniLight3D).omni_range - 4.0 - length, 0.0, preset.lamp_fade[0]), length)
+
+## A probe made is kept while among the nearest 56 of the planta (the atlas
+## has 64 places) and while its lamp is only past its reach: walking back and
+## forth, making them again was a hitch every time (1,574 in 15 minutes).
+func probes_kept() -> int: return 56
+func keeps_far_probes() -> bool: return true
