@@ -263,6 +263,10 @@ func sample(level) -> Dictionary:
 		]
 		var rect: Rect2 = level.get_viewport().get_visible_rect()
 		data["viewport"] = [rect.size.x, rect.size.y, level.get_viewport().scaling_3d_scale]
+		# The window in pixels: with canvas_items stretch the 3D is drawn at
+		# this size times the scale, not at the viewport's logical size above.
+		var window: Vector2i = level.get_window().size
+		data["window"] = [window.x, window.y]
 		data["objects"] = RenderingServer.viewport_get_render_info(viewport, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
 		data["shadow_draw_calls"] = RenderingServer.viewport_get_render_info(viewport, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 		data["shadow_primitives"] = RenderingServer.viewport_get_render_info(viewport, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME)
@@ -281,21 +285,31 @@ func sample(level) -> Dictionary:
 	return data
 
 
-## Lamps shown and, of those, the ones casting shadows. The list is taken once
-## per floor (a walk of the whole tree, some milliseconds, counted as "trace").
+## Lamps shown, those of them the camera is near enough to be drawn (a lamp
+## past its distance fade is not), and those of these casting a shadow (past
+## its shadow's own fade, it casts none). The list is taken once per floor (a
+## walk of the whole tree, some milliseconds, counted as "trace").
 ## shortcut: a lamp made after the first sample of a floor is not counted;
 ## gather again on a signal of the geometry if one ever is.
 func lamps_on(level) -> Array:
 	if not is_same(lights_of, level.manifest):
 		lights_of = level.manifest
 		lights = level.find_children("*", "Light3D", true, false)
-	var on := 0
+	var camera: Camera3D = level.get_viewport().get_camera_3d()
+	var eye: Vector3 = camera.global_position if camera != null else Vector3.ZERO
+	var shown := 0
+	var reached := 0
 	var shadowed := 0
 	for light in lights:
-		if not is_instance_valid(light) or not (light as Light3D).is_visible_in_tree(): continue
-		on += 1
-		if (light as Light3D).shadow_enabled: shadowed += 1
-	return [on, shadowed]
+		if not is_instance_valid(light): continue
+		var lamp := light as Light3D
+		if not lamp.is_visible_in_tree(): continue
+		shown += 1
+		var far := eye.distance_to(lamp.global_position) if lamp.distance_fade_enabled else 0.0
+		if far > lamp.distance_fade_begin + lamp.distance_fade_length: continue
+		reached += 1
+		if lamp.shadow_enabled and far <= lamp.distance_fade_shadow + lamp.distance_fade_length: shadowed += 1
+	return [shown, reached, shadowed]
 
 
 func enqueue(row: Dictionary, frame_at := 0) -> void:

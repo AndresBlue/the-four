@@ -23,6 +23,12 @@ HITCH_MIN_MS = 1000.0 / 30.0
 # Spans this long that cross frames or run on other threads are named as what
 # was going on during a hitch.
 LONG_SPAN_US = 10_000
+# What the game said (a probe made, a search ended) this long before a frame
+# began counts as said for it: its cost often lands in the next frame's draw.
+SIGNAL_BEFORE_US = 30_000
+# Rows that are not something the game said.
+NOT_SIGNALS = ("frame", "begin", "span", "main_stall", "session_start", "session_end", "dropped", "broken", "player_mark")
+BUDGET_MS = 1000.0 / 60.0
 # The parts of a frame no named work accounts for (frame_parts).
 UNNAMED = ("física sin nombre", "proceso sin nombre", "dibujo", "resto")
 
@@ -94,6 +100,14 @@ def cause_of(frame, parts):
     return name, us
 
 
+def lamps(ctx):
+    """(shown, within their fade, casting shadows); the traces of 20 Nov had no middle one."""
+    l = ctx.get("lights")
+    if not l:
+        return None
+    return (l[0], l[1], l[2]) if len(l) >= 3 else (l[0], None, l[1])
+
+
 def context_of(frame):
     ctx = frame.get("ctx", {})
     room = ctx.get("room")
@@ -109,10 +123,12 @@ def analyse(rows):
     info = start.get("detail", {})
     main_thread = info.get("main_thread", 1)
     t0 = start.get("at_us") or next((r["at_us"] for r in rows if "at_us" in r), 0)
-    frames, samples, spans, marks, stalls = [], [], [], [], []
+    frames, samples, spans, marks, stalls, signals = [], [], [], [], [], []
     ctx = {}
     for row in rows:
         kind = row.get("event")
+        if kind not in NOT_SIGNALS and "at_us" in row:
+            signals.append((row["at_us"], row["name"] if kind == "end" else kind))
         if kind == "frame":
             if "sample" in row:
                 ctx = row["sample"]
@@ -134,6 +150,12 @@ def analyse(rows):
     ms = [f["us"] / 1000.0 for f in pool]
     p50 = pcts(ms, [50])[0]
     hitch_ms = max(HITCH_MIN_MS, HITCH_TIMES * p50)
+    signals.sort()
+    signal_at = [t for t, _ in signals]
+
+    def said(f):
+        lo = bisect.bisect_left(signal_at, f["start_us"] - SIGNAL_BEFORE_US)
+        return {signals[i][1] for i in range(lo, bisect.bisect_right(signal_at, f["at_us"]))}
     long_spans = sorted((s for s in spans if s.get("us", 0) >= LONG_SPAN_US), key=lambda s: s["start_us"])
     starts = [s["start_us"] for s in long_spans]
     hitches = []
@@ -153,7 +175,21 @@ def analyse(rows):
             where = "" if s.get("tid") == main_thread else " en otro hilo"
             during.append(f"{s['name']}{where} ({num(s['us'] / 1000.0)} ms)")
         hitches.append({"frame": f, "ms": f["us"] / 1000.0, "cause": cause, "cause_ms": cause_us / 1000.0,
-                        "top": top, "during": during[:4], "t": (f["at_us"] - t0) / 1e6})
+                        "top": top, "during": during[:4], "said": sorted(said(f)), "t": (f["at_us"] - t0) / 1e6})
+    # What the game said before the hitches played, against the other frames.
+    in_hitch, in_rest = defaultdict(int), defaultdict(int)
+    hitch_ids = {id(h["frame"]) for h in hitches}
+    played_hitches = sum(1 for f in playing if id(f) in hitch_ids)
+    for f in playing:
+        for name in said(f):
+            (in_hitch if id(f) in hitch_ids else in_rest)[name] += 1
+    rest_count = max(1, len(playing) - played_hitches)
+    before = []
+    for name, count in in_hitch.items():
+        share, other = count / max(1, played_hitches), in_rest[name] / rest_count
+        if count >= 3 and share >= 3 * other:
+            before.append({"name": name, "hitches": count, "share": share, "other": other})
+    before.sort(key=lambda b: -b["hitches"])
     # Named work over the frames played.
     totals = defaultdict(lambda: {"own": 0, "frames": 0, "calls": 0, "max_call": 0, "worst_frame": 0, "phase": None, "per_frame": []})
     for f in pool:
@@ -191,20 +227,24 @@ def analyse(rows):
         if f["ctx"].get("room") is not None:
             rooms[f["ctx"]["room"]].append(f)
     room_rows = []
-    hitch_ids = {id(h["frame"]) for h in hitches}
     for room, group in rooms.items():
         values = [f["us"] / 1000.0 for f in group]
         ctxs = [f["ctx"] for f in group]
+        lit = [l for l in map(lamps, ctxs) if l]
         room_rows.append({"room": room, "name": ctxs[-1].get("room_name", ""), "planta": ctxs[-1].get("planta"),
                           "seconds": sum(f["us"] for f in group) / 1e6, "mean": mean(values),
+                          "over": sum(max(0.0, v - BUDGET_MS) for v in values) / 1000.0,
                           "p95": pcts(values, [95])[0], "max": max(values),
                           "hitches": sum(1 for f in group if id(f) in hitch_ids),
                           "gpu": mean([f.get("gpu_ms", f["ctx"].get("gpu_ms", 0.0)) for f in group]),
                           "draws": mean([c.get("draw_calls", 0) for c in ctxs]),
                           "shadow_draws": mean([c.get("shadow_draw_calls", 0) for c in ctxs]),
-                          "lights": mean([c.get("lights", [0, 0])[0] for c in ctxs]),
-                          "shadows": mean([c.get("lights", [0, 0])[1] for c in ctxs])})
-    room_rows.sort(key=lambda r: -r["p95"])
+                          "lights": mean([l[0] for l in lit]),
+                          "reached": mean([l[1] for l in lit]) if lit and lit[0][1] is not None else None,
+                          "shadows": mean([l[2] for l in lit])})
+    # Where the time over a 60 FPS frame went: a room of one bad second ranks
+    # below one walked through for minutes a little over budget.
+    room_rows.sort(key=lambda r: -r["over"])
     # Seconds of the game, the worst by their mean frame.
     seconds = defaultdict(list)
     for f in playing:
@@ -228,7 +268,7 @@ def analyse(rows):
         o["main"] = o["main"] or s.get("tid") == main_thread
     play_samples = [c for row, c in samples if row.get("state") == "PLAYING"]
     return {"info": info, "t0": t0, "rows": rows, "frames": frames, "playing": playing, "pool": pool, "ms": ms,
-            "hitch_ms": hitch_ms, "hitches": hitches, "work": work, "phases": phases, "gpu": gpu, "rooms": room_rows,
+            "hitch_ms": hitch_ms, "hitches": hitches, "before": before, "work": work, "phases": phases, "gpu": gpu, "rooms": room_rows,
             "worst_seconds": worst_seconds, "groups": groups, "ops": ops, "marks": marks, "stalls": stalls,
             "samples": play_samples, "unfocused": unfocused and bool(playing), "ended": any(r.get("event") == "session_end" for r in rows),
             "dropped": sum(r.get("count", 0) for r in rows if r.get("event") == "dropped"),
@@ -248,9 +288,12 @@ def render(a, source):
     duration = (a["frames"][-1]["at_us"] - a["t0"]) / 1e6 if a["frames"] else 0.0
     played = sum(f["us"] for f in a["playing"]) / 1e6
     view = first.get("viewport", [0, 0, 1])
+    window = first.get("window")
+    size = (f"ventana {window[0]}×{window[1]}, 3D a {num(view[2], 2)} ({int(window[0] * view[2])}×{int(window[1] * view[2])})" if window
+            else f"{int(view[0])}×{int(view[1])} a escala {num(view[2], 2)}")
     out.append(f"Versión {info.get('version', '?')}, Godot {info.get('godot', '?')}, {info.get('renderer', '?')} ({info.get('driver', '?')}), "
                f"{info.get('gpu', '?')}, {info.get('cpu', '?')} ({info.get('cores', '?')} hilos), {info.get('os', '?')}. "
-               f"Preset {first.get('preset', first.get('quality', '?'))}, {int(view[0])}×{int(view[1])} a escala {num(view[2], 2)}, "
+               f"Preset {first.get('preset', first.get('quality', '?'))}, {size}, "
                f"VSync {'sí' if first.get('vsync') else 'no'}, límite {first.get('fps_cap', '?')} FPS, dificultad {first.get('difficulty', '?')}, "
                f"semilla {first.get('seed')}. Traza de {num(duration, 0)} s, {num(played, 0)} s en partida con foco "
                f"({len(a['playing'])} fotogramas).")
@@ -283,6 +326,8 @@ def render(a, source):
             causes[h["cause"]] += 1
         common = sorted(causes.items(), key=lambda item: -item[1])[:3]
         out.append("- Lo que más se come los tirones: " + ", ".join(f"{name} ({count})" for name, count in common) + ".")
+    for b in a["before"][:2]:
+        out.append(f"- Antes de los tirones: `{b['name']}` en el {num(100 * b['share'], 0)} % de ellos (en el {num(100 * b['other'], 1)} % del resto de fotogramas).")
     if a["phases"]:
         top = max(a["phases"], key=lambda p: p["mean"])
         out.append(f"- La fase que más pesa es {top['name']}: {num(top['mean'], 2)} ms de {num(avg, 2)} "
@@ -303,7 +348,10 @@ def render(a, source):
     if a["rooms"]:
         r = a["rooms"][0]
         named_room = f" ({r['name']})" if r["name"] else ""
-        out.append(f"- Sala peor por p95: {r['room']}{named_room}, p95 {num(r['p95'], 1)} ms en {num(r['seconds'], 0)} s.")
+        out.append(f"- Sala que más tiempo pierde sobre 16,7 ms: {r['room']}{named_room}, {num(r['over'], 1)} s en {num(r['seconds'], 0)} s, p95 {num(r['p95'], 1)} ms.")
+    plantas = [(key, values) for key, values in a["groups"].get("Planta", []) if key is not None]
+    if len(plantas) > 1:
+        out.append("- Por planta, fotograma medio: " + ", ".join(f"{key}: {num(mean(values), 2)} ms (p99 {num(pcts(values, [99])[0], 1)})" for key, values in plantas) + ".")
     # Distribution.
     out += ["", "## Fotograma en partida", ""]
     over = [(limit, sum(1 for v in ms if v > limit)) for limit in (1000 / 60, 1000 / 30, 50, 100)]
@@ -345,8 +393,16 @@ def render(a, source):
             f = h["frame"]
             phases = "/".join(num(f.get(k, 0) / 1000.0, 0) for k in ("phys_us", "proc_us", "draw_us")) if "phys_us" in f else ""
             rows.append([num(h["t"], 1), num(h["ms"], 1), h["cause"], ", ".join(f"{n} {num(us / 1000.0, 1)}" for n, us in h["top"]),
-                         phases, f.get("compiles", ""), f.get("physics_ticks", ""), context_of(f), "; ".join(h["during"])])
-        out.append(table(["s", "ms", "Causa", "Los tres mayores (ms)", "Fís./proc./dib. (ms)", "Compil.", "Ticks", "Dónde", "En curso"], rows))
+                         phases, f.get("compiles", ""), f.get("physics_ticks", ""), context_of(f), "; ".join(h["during"]),
+                         ", ".join(f"`{n}`" for n in h["said"][:4])])
+        out.append(table(["s", "ms", "Causa", "Los tres mayores (ms)", "Fís./proc./dib. (ms)", "Compil.", "Ticks", "Dónde", "En curso", "Señales"], rows))
+    if a["before"]:
+        out += ["", "### Lo que pasa justo antes de los tirones", "",
+                f"Lo que el juego dijo (un evento, una operación acabada) en el fotograma o en los {SIGNAL_BEFORE_US // 1000} ms anteriores, "
+                "en los tirones frente al resto de fotogramas en partida; solo lo que sale al menos tres veces más en los tirones. "
+                "Un coste que ningún tiempo del fotograma nombra (una sonda de reflejo que se dibuja fuera del viewport) asoma aquí.", ""]
+        out.append(table(["Señal", "Tirones con ella", "% de los tirones", "% del resto"],
+                         [[f"`{b['name']}`", b["hitches"], num(100 * b["share"], 0), num(100 * b["other"], 1)] for b in a["before"][:15]]))
     else:
         out.append("Ninguno.")
     others = [h for h in a["hitches"] if h["frame"].get("state") != "PLAYING"]
@@ -358,11 +414,14 @@ def render(a, source):
             f"{state} {len(v)} (peor {num(max(v), 0)} ms)" for state, v in states.items()) + "."]
     # Rooms.
     if a["rooms"]:
-        out += ["", "## Salas, por p95", "", "Solo salas con al menos un segundo de partida; las luces son las encendidas en el árbol y, de ellas, las que dan sombra.", ""]
-        out.append(table(["Sala", "Nombre", "Planta", "s", "Media", "p95", "Máx.", "Tirones", "GPU", "Llamadas", "Llamadas de sombra", "Luces", "Con sombra"],
-                         [[r["room"], r["name"], r["planta"], num(r["seconds"], 0), num(r["mean"], 2), num(r["p95"], 2), num(r["max"], 1), r["hitches"],
-                           num(r["gpu"], 2), num(r["draws"], 0), num(r["shadow_draws"], 0), num(r["lights"], 0), num(r["shadows"], 0)]
-                          for r in a["rooms"] if r["seconds"] >= 1.0][:20]))
+        out += ["", "## Salas, por el tiempo que pierden", "",
+                "Ordenadas por lo que sus fotogramas pasaron de 16,7 ms, sumado. Luces: las que están en el árbol, las que quedan al alcance "
+                "de su distancia de desvanecido (las que se dibujan, si caen en la vista) y, de estas, las que dan sombra.", ""]
+        out.append(table(["Sala", "Nombre", "Planta", "s", "Sobre 16,7 ms (s)", "Media", "p95", "Máx.", "Tirones", "GPU", "Llamadas", "Llamadas de sombra", "Luces", "Al alcance", "Con sombra"],
+                         [[r["room"], r["name"], r["planta"], num(r["seconds"], 0), num(r["over"], 2), num(r["mean"], 2), num(r["p95"], 2), num(r["max"], 1), r["hitches"],
+                           num(r["gpu"], 2), num(r["draws"], 0), num(r["shadow_draws"], 0), num(r["lights"], 0),
+                           num(r["reached"], 0) if r["reached"] is not None else "", num(r["shadows"], 0)]
+                          for r in a["rooms"]][:20]))
     # Seconds.
     if a["worst_seconds"]:
         out += ["", "## Los peores segundos", ""]
@@ -388,8 +447,8 @@ def render(a, source):
             if values:
                 p = pcts(values, [50, 95])
                 rows.append([label, num(mean(values), 1), num(p[0], 1), num(p[1], 1), num(max(values), 1)])
-        for label, index in (("Luces encendidas", 0), ("Luces con sombra", 1)):
-            values = [c["lights"][index] for c in a["samples"] if "lights" in c]
+        for label, index in (("Luces en el árbol", 0), ("Luces al alcance", 1), ("Luces con sombra", 2)):
+            values = [lamps(c)[index] for c in a["samples"] if lamps(c) and lamps(c)[index] is not None]
             if values:
                 p = pcts(values, [50, 95])
                 rows.append([label, num(mean(values), 1), num(p[0], 0), num(p[1], 0), max(values)])
@@ -421,7 +480,7 @@ def self_test():
         row = {"event": "frame", "at_us": at, "start_us": at - us, "us": us, "state": state, "focused": True, "stage": stage,
                "phys_us": phys, "proc_us": proc, "draw_us": draw, "named_us": named or [0, 1000, 0, 0], "gpu_ms": 3.0, "physics_ticks": 1,
                "timings": timings if timings is not None else {"a": [1, 1000, 1000, 1000, 1]},
-               "sample": {"room": room, "room_name": name, "planta": 1, "preset": "Alto", "lights": [10, 2], "draw_calls": 500}}
+               "sample": {"room": room, "room_name": name, "planta": 1, "preset": "Alto", "lights": [10, 6, 2], "draw_calls": 500}}
         if compiles:
             row["compiles"] = compiles
         return row
@@ -439,6 +498,8 @@ def self_test():
     at += 80_000
     rows.append(frame(at, 80_000, room=6, name="Sala B", draw=75_000, timings={}, named=[0, 0, 0, 0], compiles=12))
     rows.append({"event": "end", "name": "bounce.room", "at_us": at - 1000, "start_us": at - 60_000, "us": 59_000, "tid": 7})
+    rows.append({"event": "geometry.probe_created", "at_us": at - 90_000, "tid": 1, "detail": {}})  # 10 ms before it began
+    rows.append({"event": "geometry.probe_created", "at_us": 500_000, "tid": 1, "detail": {}})  # in an ordinary frame
     at += 10_000
     rows.append(frame(at, 500_000, state="LOADING"))
     rows.append({"event": "session_end", "at_us": at})
@@ -450,6 +511,10 @@ def self_test():
     assert causes == ["lurker.brain", "dibujo con compilaciones de pipelines"], causes
     assert a["hitches"][1]["during"] == ["bounce.room en otro hilo (59,0 ms)"], a["hitches"][1]["during"]
     assert a["rooms"][0]["room"] == 6 and a["rooms"][0]["hitches"] == 2, a["rooms"][0]
+    over = (40 * (20 - BUDGET_MS) + (120 - BUDGET_MS) + (80 - BUDGET_MS)) / 1000
+    assert abs(a["rooms"][0]["over"] - over) < 1e-9, a["rooms"][0]["over"]
+    assert a["hitches"][1]["said"] == ["bounce.room", "geometry.probe_created"], a["hitches"][1]["said"]
+    assert a["rooms"][0]["reached"] == 6, a["rooms"][0]
     by_name = {w["name"]: w for w in a["work"]}
     # Own times add up: lurker.physics keeps 30 of its 100 ms, and the 10 ms
     # its tick spent outside both are physics nobody names.

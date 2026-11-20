@@ -668,7 +668,7 @@ Para saber qué se come el fotograma a lo largo de una partida real, y no solo e
 - **En el juego exportado:** `Registrar rendimiento.bat`, que va en el zip junto a `TheFour.exe`. Juega con los ajustes y el Continuar de quien lo abre, escribe en la carpeta `Rendimiento`, junto al juego, un `.jsonl` por partida con la fecha en el nombre y, al cerrar el juego, abre esa carpeta. Ese archivo (y su `.hitches.jsonl`) es lo que hay que pedir a quien informa de un problema.
 - **A mano:** `TheFour.exe -- --perf-log` (escribe en `user://perf/`), `--perf-log=<carpeta>` o `--perf-log=<archivo>.jsonl`. Con `--test-profile`, además, `--perf-seed=<n>` fija la semilla de la primera Nueva partida.
 
-Apagado no cuesta nada: cada gancho mira antes si hay traza (`perf != null`), y las señales del registro solo se conectan al encenderlo. Encendido cuesta unos 0,1 ms por fotograma (la fila `trace` del informe), más unos 20 ms una vez por piso, en el primer fotograma de partida, al reunir las luces del piso. La traza ocupa de 1,5 a 2,5 MB por minuto según los FPS.
+Apagado no cuesta nada: cada gancho mira antes si hay traza (`perf != null`), y las señales del registro solo se conectan al encenderlo. Encendido cuesta unos 0,1 ms por fotograma (la fila `trace` del informe), más unos 20 ms una vez por piso, en el primer fotograma de partida, al reunir las luces del piso. La traza ocupa unos 5 MB por minuto a 100 FPS; en zip, unas ocho veces menos (la partida de abajo: 76 MB en 15 minutos, 9,2 MB comprimida).
 
 ### Qué guarda
 
@@ -678,7 +678,7 @@ Apagado no cuesta nada: cada gancho mira antes si hay traza (`perf != null`), y 
 - `timings`: por trabajo con nombre, `[llamadas, total, mayor llamada, propio, fase]` en microsegundos. El tiempo propio es el total menos lo que tardó otro trabajo con nombre dentro de él (`lurker.brain` dentro de `lurker.physics`), así que los propios se suman sin contar dos veces; `named_us` es esa suma en cada fase.
 - `state`, `stage`, `floor`, `focused` y `physics_ticks`.
 
-Cada 250 ms, en cada fotograma lento y en cada cambio de estado, una muestra (`sample`): posición, planta, sala y su nombre, preset, dificultad, semilla, VSync y límite de FPS, resolución y escala, apagón, luces encendidas y con sombra, llamadas de dibujo y de sombra, objetos, primitivas, memoria de vídeo, compilaciones por tipo, nodos, lo que hace The Lurker y las sondas de reflejo. Las operaciones largas (`begin` y `end`) llevan su principio y su fin: la carga del piso por partes, el horneado de rebote en sus hilos, la ronda de visibilidad de salas, las búsquedas de ruta de The Lurker. F8 deja una `player_mark`.
+Cada 250 ms, en cada fotograma lento y en cada cambio de estado, una muestra (`sample`): posición, planta, sala y su nombre, preset, dificultad, semilla, VSync y límite de FPS, tamaño de la ventana y escala del 3D (con el estiramiento `canvas_items` el 3D se dibuja a la ventana por la escala, no a los 1280×720 lógicos), apagón, luces (las que están en el árbol, las que quedan al alcance de su distancia de desvanecido y, de estas, las que dan sombra), llamadas de dibujo y de sombra, objetos, primitivas, memoria de vídeo, compilaciones por tipo, nodos, lo que hace The Lurker y las sondas de reflejo. Las operaciones largas (`begin` y `end`) llevan su principio y su fin: la carga del piso por partes, el horneado de rebote en sus hilos, la ronda de visibilidad de salas, las búsquedas de ruta de The Lurker. F8 deja una `player_mark`.
 
 Los trabajos con nombre: `game.physics`, y dentro `game.interaction`, `game.sanity` y `game.objectives`; `game.process`; `lurker.physics`, y dentro `lurker.senses`, `lurker.brain` y `lurker.intent`; `lurker.drain`; `audio.physics`, `audio.duct_route` y `audio.nav_path`; `director.physics`; `geometry.base_process` (el parpadeo de los tubos, el horneado de rebote y los cuerpos que siguen las capas de luz) y `geometry.halos`; `geometry.visibility`, la ronda que enciende y apaga salas; `player.physics` y `player.process`; `ui.process`; `net.process` y `net.physics`; y `trace`, lo que cuesta la traza. Cómo se mide uno nuevo, en [DEVELOPMENT.md](DEVELOPMENT.md) («Herramientas del rediseño del piso 2»).
 
@@ -686,11 +686,12 @@ Los trabajos con nombre: `game.physics`, y dentro `game.interaction`, `game.sani
 
 `python -I tools/benchmarks/perf_report.py <traza o carpeta>` escribe `<traza>.report.md` al lado; con una carpeta, lee su `.jsonl` más reciente. Cuenta los fotogramas en partida y con foco; si la ventana nunca tuvo el foco, como en un banco, cuenta los de partida y lo avisa. Lee también las trazas de antes del 20 de noviembre, sin fases ni tiempo propio. Trae, en este orden:
 
-- **Lectura rápida:** media y percentiles, cuántos tirones y qué los causa, la fase que más pesa, el trabajo de cada fotograma que más pesa, lo que nadie nombra, lo que cuesta la traza y la sala peor.
+- **Lectura rápida:** media y percentiles, cuántos tirones y qué los causa, lo que más se repite justo antes de ellos, la fase que más pesa, el trabajo de cada fotograma que más pesa, lo que nadie nombra, lo que cuesta la traza, la sala que más tiempo pierde y el fotograma medio de cada planta.
 - **Dónde se va el fotograma:** las cuatro fases y la GPU.
 - **Qué se come el fotograma:** cada trabajo con su tiempo propio medio, su p99, su peor fotograma y su mayor llamada, y las filas «física sin nombre» y «proceso sin nombre», lo que la fase gastó fuera de todo trabajo con nombre. Si pesan más que lo medido, hay que ponerle nombre a algo más antes de optimizar a ciegas.
 - **Tirones en partida:** un tirón es un fotograma de 2,5 veces la mediana y nunca de menos de 33,3 ms. Cada uno lleva su causa (el trabajo o la fase sin nombre que más tiempo propio se llevó; «dibujo con compilaciones de pipelines» si se compilaron en él), los tres mayores, las fases, la sala, la planta, la etapa, el apagón, lo que hacía The Lurker y lo que estaba en curso (una carga, un horneado en otro hilo). Los de fuera de partida (cargas, menús) van aparte.
-- **Salas por p95**, **los peores segundos**, la partida **por etapa, apagón, planta y preset**, el **render** de las muestras, las **operaciones con principio y fin** y las **marcas F8**, cada una con el peor tirón de los cinco segundos anteriores.
+- **Lo que pasa justo antes de los tirones:** cada evento del juego y cada operación acabada en el fotograma o en los 30 ms anteriores, con el porcentaje de tirones y el del resto de fotogramas que lo tienen; solo sale lo que es al menos tres veces más frecuente en los tirones. Así aparece un coste que ningún tiempo del fotograma nombra, como el de una sonda de reflejo, que se dibuja fuera del viewport y cuyo tiempo no entra en la CPU ni en la GPU que este mide.
+- **Salas por el tiempo que pierden** (lo que sus fotogramas pasaron de 16,7 ms, sumado: una sala de un segundo malo queda por debajo de una que se cruza durante minutos un poco por encima), **los peores segundos**, la partida **por etapa, apagón, planta y preset**, el **render** de las muestras, las **operaciones con principio y fin** y las **marcas F8**, cada una con el peor tirón de los cinco segundos anteriores.
 
 `verify.ps1` prueba la cuenta del tiempo propio (`tests/hotel/perf_trace_test.gd`) y el informe sobre una traza inventada (`perf_report.py --self-test`).
 
@@ -705,7 +706,22 @@ Para probarlo se usó el banco del piso 2 con la traza encendida, con The Lurker
 - Lo que nadie nombra en el `_process` son 1,8 ms por fotograma, más que todo lo medido de cada fotograma en esa fase (1,4 ms).
 - Los ocho tirones de «resto», de 76 a 968 ms, son las ocho capturas del banco, que guarda cada imagen justo después de dibujar; no son del juego.
 
-Es un recorrido del banco y no una partida jugada: no pasa por el apagón, por las etapas 2 y 3 ni por las otras plantas. Una partida a mano con `Registrar piso 2.cmd` está pendiente.
+Es un recorrido del banco y no una partida jugada: no pasa por el apagón, por las etapas 2 y 3 ni por las otras plantas.
+
+### La primera partida a mano (20 de noviembre de 2026)
+
+El autor jugó el piso 2 con `Registrar piso 2.cmd`: 15 minutos (877 s en partida), las tres etapas y sus tres plantas, sin apagón. Ultra, pantalla completa de 2560×1440 con el 3D a 0,67, VSync, límite de 120 FPS, Equilibrada, en Forward+ con la RTX 4060 Ti y el Ryzen 9 5900X. La traza (`evidence/perf/20261120-164535-43916/`, fuera de git) dijo:
+
+- Fotograma medio de 9,84 ms (102 FPS), p99 de 27,4 ms y 583 tirones (de 33,3 ms o más), uno cada dos segundos de media; solo tres pasan de 100 ms.
+- La planta 1 es la peor: media de 12,8 ms y p99 de 42 ms, frente a 9,3 y 22,9 en la planta 2 y 8,6 y 16,0 en la 3.
+- Los tirones son sobre todo de dibujo: 344, y 58 más con compilaciones de pipelines. En los que el dibujo se lleva más de la mitad del fotograma hay, de mediana, nueve veces más primitivas de sombra que en un fotograma normal (768.000 frente a 83.000) y seis veces y media más llamadas de sombra (1.812 frente a 276), pero la GPU que mide el viewport apenas sube (10,1 ms frente a 7,1, y no más en los tres fotogramas siguientes) y la CPU de su render tampoco (4,0 frente a 1,9).
+- El 76 % de esos tirones de dibujo llega en los 30 ms siguientes a crear una sonda de reflejo (`geometry.probe_created`), lo que solo pasa antes del 1,1 % de los fotogramas normales; el fotograma que sigue a crear una dibuja 22 ms de mediana, cuando lo normal son 4,5. Se crearon 1.574 sondas en la partida. De todos los tirones, el 53 % viene tras crear una y el 69 % tras una vuelta de la ronda de visibilidad, que solo precede al 21 % del resto.
+- De tanto en tanto, un trabajo con nombre se dispara: `director.physics` llega a 123 y 87 ms en la etapa 2, `game.sanity` a 60 y 46 ms en la planta 3 (con `audio.nav_path` en 15 ms) y `game.process` a 75 ms. `lurker.travel_cache_miss` pasó 399 veces, con 11 ms de media y hasta 15, y es la causa de 36 tirones.
+- `floor.spawn_creature` tarda 0,93 s con el estado ya en `PLAYING`, como en el banco: un fotograma de 1,37 s al empezar.
+- Lo medido explica casi todo el fotograma: sin nombre quedan 0,56 ms de proceso y 0,18 de física por fotograma. Aun así, 91 tirones tienen por causa «proceso sin nombre»: en los 90 en que lo sin nombre se lleva al menos el 40 % del fotograma son 22 ms de mediana, y en 31 de ellos acaba de pasar la ronda de visibilidad.
+- En la planta 1 había, de mediana, 650 luces en el árbol (hasta 937); en la 2, 167, y en la 3, 23. Esa traza no dice cuántas quedaban al alcance de su distancia de desvanecido: la medida se añadió después.
+
+Con esta partida se corrigió el registro: anotaba el tamaño lógico (1280×720) en vez de la ventana, contaba como encendidas luces que no se dibujan por su distancia de desvanecido, y el informe ordenaba las salas por un p95 de un segundo de muestra y no buscaba lo que precede a los tirones.
 
 ### Tirones del sonido por los ductos
 
