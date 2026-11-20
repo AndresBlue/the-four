@@ -9,14 +9,18 @@ New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Nu
 # Checks run side by side, as many at once as -Jobs (by default a third of the
 # machine's threads, at most eight). They can: every run of a script with
 # --test-profile keeps files of its own, named after the script
-# (game/app/hotel_main.gd). Three batches, one after the other:
+# (game/app/hotel_main.gd). Four batches, one after the other:
 #   1. Everything on a fixed 60 FPS clock, which only goes slower when the
 #      machine is busy, never wrong: the tests, the probes, the light layers and
 #      the shaders. The longest start first, by how long each took the last time
 #      (evidence/verification.json).
-#   2. Online play, the four scenarios at once, each on its own port: host and
+#   2. Online play, four scenarios at once, each on its own port: host and
 #      guests on the real clock.
-#   3. The audio tests, on the real clock as well and with nothing else
+#   3. The offices' online scenario, alone: three processes that build the
+#      offices, one of them twice, on the real clock. Beside three other
+#      scenarios it ran out of time on a busy machine (its guest back in the
+#      room, not on the floor within its two minutes), and passed alone.
+#   4. The audio tests, on the real clock as well and with nothing else
 #      building floors beside them.
 # A check that runs out of time is a failure, and the rest go on.
 if ($Jobs -le 0) { $Jobs = [Math]::Max(2, [Math]::Min(8, [int][Math]::Floor([Environment]::ProcessorCount / 3))) }
@@ -56,7 +60,7 @@ foreach ($test in $tests) {
     # The offices' test runs as three parts side by side; its generator part
     # makes 64 floors twice, each one validated as it is drawn.
     $limit = if ($name -eq 'office_test_generator') { 600 } else { 360 }
-    Add-Check $test $name (Godot-Arguments ('res://tests/' + $test + '.gd') $log (-not $audio) $user) $limit 'plain' $(if ($audio) { 3 } else { 1 }) $log
+    Add-Check $test $name (Godot-Arguments ('res://tests/' + $test + '.gd') $log (-not $audio) $user) $limit 'plain' $(if ($audio) { 4 } else { 1 }) $log
 }
 # The creature on its own feet: journeys between rooms, walking and hunting.
 # Any stop over two seconds, any hop of its last-resort protocol and any
@@ -121,7 +125,7 @@ foreach ($scenario in @('coop', 'versus', 'late', 'observer', 'office_coop', 'lu
     # lurker_match plays two whole floors: its own longer limit.
     $limit = if ($scenario -eq 'lurker_match') { 660 } else { 540 }
     $inner = if ($scenario -eq 'lurker_match') { 600 } else { 420 }
-    Add-Check "net/$scenario" "net_$scenario" @('-NoProfile','-File',(Join-Path $PSScriptRoot 'net_test.ps1'),'-GodotPath',$GodotPath,'-Scenario',$scenario,'-Port',$port,'-TimeoutSeconds',$inner) $limit 'net' 2 '' $powershell
+    Add-Check "net/$scenario" "net_$scenario" @('-NoProfile','-File',(Join-Path $PSScriptRoot 'net_test.ps1'),'-GodotPath',$GodotPath,'-Scenario',$scenario,'-Port',$port,'-TimeoutSeconds',$inner) $limit 'net' $(if ($scenario -eq 'office_coop') { 3 } else { 2 }) '' $powershell
     $checks[-1].out = Join-Path $evidence "verify_net_$($scenario)_out.log"
     $checks[-1].err = Join-Path $evidence "verify_net_$($scenario)_err.log"
 }
@@ -189,7 +193,8 @@ $clock = Get-Date
 Write-Output "Comprobando con $Jobs a la vez."
 Invoke-Batch ($checks | Where-Object { $_.batch -eq 1 }) $Jobs
 Invoke-Batch ($checks | Where-Object { $_.batch -eq 2 }) ([Math]::Min($Jobs, 4))
-Invoke-Batch ($checks | Where-Object { $_.batch -eq 3 }) ([Math]::Min($Jobs, 2))
+Invoke-Batch ($checks | Where-Object { $_.batch -eq 3 }) 1
+Invoke-Batch ($checks | Where-Object { $_.batch -eq 4 }) ([Math]::Min($Jobs, 2))
 Write-Output ("Hecho en {0:N0} s." -f ((Get-Date) - $clock).TotalSeconds)
 $results = $checks | Sort-Object order | ForEach-Object { [PSCustomObject]@{ test = $_.test; passed = $_.passed; exit_code = $_.exit_code; seconds = $_.seconds } }
 $results | ConvertTo-Json | Set-Content -LiteralPath $lastResults -Encoding UTF8
