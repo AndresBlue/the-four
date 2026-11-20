@@ -64,6 +64,66 @@ var key_in: Array = []
 var key_holders := {}
 const KEYS_A_STAGE := 2
 
+## What a survivor carried lies where they fell (the author, 20 November
+## 2026): each key and each slip with a number of the code is a thing on the
+## floor, which anybody alive picks up and has from then on
+## (code_objective.gd lays it, and is asked for it). By what it is -- a key:
+## its piece's index; a slip: minus its place in the code -- the thing lying
+## there. Whose it was stays in key_holders and found_by meanwhile, so that it
+## is theirs again when everybody is on their feet (give_back()).
+var fallen := {}
+
+## What a seat has on it, as `fallen` names things.
+func carried(seat: int) -> Array:
+	var things: Array = []
+	for index in key_holders:
+		if int(key_holders[index]) == seat and not fallen.has(int(index)): things.append(int(index))
+	for slot in found_by:
+		if int(found_by[slot]) == seat and not fallen.has(-int(slot)): things.append(-int(slot))
+	return things
+
+func let_fall(thing: int, lying: Node3D) -> void:
+	take_up(thing)
+	fallen[thing] = lying
+
+func take_up(thing: int) -> void:
+	if fallen.has(thing) and is_instance_valid(fallen[thing]): fallen[thing].queue_free()
+	fallen.erase(thing)
+
+## Picked up: that seat's from now on.
+func picked(thing: int, seat: int) -> void:
+	if not fallen.has(thing): return
+	take_up(thing)
+	if thing >= 0: key_holders[thing] = seat
+	else: found_by[-thing] = seat
+
+## Who has each key and each slip now, and what lies where somebody fell:
+## what a floor kept or caught up with cannot tell from the furniture gone
+## through, which only says who found a thing (floor_save.gd, match_net's
+## catch-up; given back by hotel_main.catch_up_progress()).
+func carried_state() -> Dictionary:
+	var lying: Array = []
+	for thing in fallen:
+		if is_instance_valid(fallen[thing]): lying.append([int(thing), fallen[thing].get_meta("at")])
+	return {"keys": key_holders.duplicate(), "notes": found_by.duplicate(), "fallen": lying}
+
+func restore_carried(data: Dictionary) -> void:
+	var keys: Dictionary = data.get("keys", {})
+	for index in keys: key_holders[int(index)] = int(keys[index])
+	var notes: Dictionary = data.get("notes", {})
+	for slot in notes: found_by[int(slot)] = int(notes[slot])
+	var handler = level.objective(&"code")
+	if handler == null: return
+	for entry in data.get("fallen", []): handler.apply("drop", int(entry[0]), -1, {"at": entry[1]}, true)
+
+## Everybody on their feet again (a stage given back, or the next one): what
+## a seat let fall and nobody picked up is in its hands again. Left lying, it
+## was on a planta nobody goes back to.
+func give_back(seat: int) -> void:
+	for thing in fallen.keys():
+		var whose := int(key_holders.get(thing, -1)) if int(thing) >= 0 else int(found_by.get(-int(thing), -1))
+		if whose == seat: take_up(int(thing))
+
 ## The keypad of the last door, and what is being typed into it.
 var lock: Node3D
 
@@ -89,6 +149,7 @@ func place_containers() -> void:
 	panels.clear()
 	key_in.clear()
 	key_holders.clear()
+	fallen.clear()
 	close_lock()
 	if level.manifest.get("gates", []).is_empty(): return
 	for spot in level.hotel.containers:
@@ -175,6 +236,8 @@ const KEY_IN := ["GothicCommode_01", "drawer_cabinet", "painted_wooden_cabinet"]
 func place_key() -> void:
 	key_in.clear()
 	key_holders.clear()
+	# (Here too: this is run on every floor, and the offices put no furniture.)
+	fallen.clear()
 	if containers.is_empty(): return
 	var refuges: Array = level.manifest.get("refuges", [])
 	var by_wing := {}
@@ -199,9 +262,12 @@ func place_key() -> void:
 ## Whether this machine's player has the key.
 func has_key() -> bool: return holds_key(level.player.slot)
 
-## A key is its finder's alone, until they have gone: then it is anybody's.
+## A key is its finder's alone (or of whoever picked it up where its finder
+## fell), until they have gone: then it is anybody's. One lying on the floor
+## is nobody's.
 func holds_key(seat: int) -> bool:
 	for index in key_holders:
+		if fallen.has(int(index)): continue
 		var holder := int(key_holders[index])
 		if holder == seat or gone(holder): return true
 	return false
@@ -456,6 +522,7 @@ func notes_found() -> Array:
 	return slips
 
 func holds_note(slot: int) -> bool:
+	if fallen.has(-slot): return false
 	var finder := int(found_by.get(slot, level.player.slot))
 	return finder == level.player.slot or gone(finder)
 

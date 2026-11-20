@@ -570,6 +570,26 @@ func run() -> void:
 	level.net.players = {}
 	level.found_by[1] = level.player.slot
 	level.code.key_holders = key_before
+	# Whoever falls lets go of what they carry: the key and the slips lie where
+	# they fell, anybody alive picks one up and it is theirs, and what nobody
+	# picked up is back in its owner's hands when everybody is on their feet
+	# again (the author, 20 November 2026).
+	level.code.key_holders[key_index] = level.player.slot
+	var carried: int = level.code.carried(level.player.slot).size()
+	level.objectives_on_death(level.player.slot, level.player.global_position)
+	check("Quien cae suelta la llave y las notas donde estaba", carried == DIG.COUNT + 1 and level.code.fallen.size() == carried and level.notes_found().is_empty() and not level.code.has_key())
+	check("En el suelo, cada cosa con su RECOGER", level.code.fallen.values().all(func(lying): return lying.word(level.player.slot) == "RECOGER"))
+	level.match_net.use_office(&"code", "pick", -1)
+	check("Recoger una se lleva el montón entero: las notas y la llave", level.code.fallen.is_empty() and level.notes_found().size() == DIG.COUNT and level.code.has_key())
+	level.objectives_on_death(level.player.slot, level.player.global_position)
+	var lying_now: Dictionary = level.code.carried_state()
+	check("Lo que está en el suelo viaja con el piso guardado", lying_now.fallen.size() == carried and lying_now.notes.size() == DIG.COUNT and lying_now.keys.has(key_index))
+	level.code.take_up(-2)
+	level.code.restore_carried(lying_now)
+	check("Y vuelve a estar en el suelo al retomarlo", level.code.fallen.size() == carried and is_instance_valid(level.code.fallen[-2]))
+	level.objectives_on_return(level.player.slot)
+	check("Al levantarse todos, cada uno vuelve con lo que llevaba", level.code.fallen.is_empty() and level.notes_found().size() == DIG.COUNT and level.code.has_key())
+	level.code.key_holders = key_before
 	# The third sector counts both: the sets, and the numbers found.
 	level.refresh_briefing()
 	check("En el sector 3 la pausa cuenta televisores y números", level.ui.briefing.progress.size() == 2 and String(level.ui.briefing.progress[1][1]) == "%d / %d" % [DIG.COUNT, DIG.COUNT])

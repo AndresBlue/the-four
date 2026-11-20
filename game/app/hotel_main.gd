@@ -1611,6 +1611,8 @@ func catch_up_progress(progress: Dictionary) -> void:
 		code_entered = true
 		if is_instance_valid(lock): lock.set_open(true)
 	for index in progress.get("panels", []): code.apply_panel(int(index), "open", true)
+	# Whose each key and slip is by now, and what lies where somebody fell.
+	if progress.has("carried"): code.restore_carried(progress.carried)
 	# The offices' handlers: the card, the board, the air, as the host has them.
 	var kept: Dictionary = progress.get("objectives", {})
 	for objective_name in kept:

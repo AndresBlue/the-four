@@ -647,13 +647,10 @@ func lay_card(owner: int, at: Vector3) -> void:
 	var plate := BoxMesh.new()
 	plate.size = Vector3(0.2, 0.004, 0.13)
 	card_mesh.mesh = plate
-	# Pale, and seen where no lamp is on: a card on a dark floor that nobody
-	# noticed was a card nobody picked up (the author never saw one).
+	# Pale, as the papers are, and as them with no light of its own: the torch
+	# picks it out (hotel_container.plant_note).
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color8(236, 228, 204)
-	material.emission_enabled = true
-	material.emission = Color8(236, 228, 204)
-	material.emission_energy_multiplier = 0.35
 	card_mesh.material_override = material
 	card_mesh.position = Vector3(0, 0.002, 0.35)
 	card_mesh.rotation.y = randf() * TAU
