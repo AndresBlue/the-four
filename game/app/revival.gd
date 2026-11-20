@@ -149,6 +149,9 @@ func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF
 			level.session.participants[seat] = level.session.Life.EXPLORING
 			raised = true
 	if raised: level.session.changed.emit()
+	# With what they carried: what a seat let go of as it fell is in its hand
+	# again, wherever it lay (the offices' cards).
+	for seat_key in places: level.objectives_on_return(int(seat_key))
 	for seat_key in places:
 		var seat := int(seat_key)
 		if seat == level.player.slot: restore_local_player(places[seat_key])

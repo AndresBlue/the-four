@@ -75,6 +75,10 @@ func bot_errands(_team) -> Array: return []
 ## The host: a survivor fell at `point` (caught, or gone for good).
 func on_death(_seat: int, _point: Vector3) -> void: pass
 
+## Every machine: a seat is on its feet again, between stages or with a stage
+## given back (revival.apply_revival).
+func on_return(_seat: int) -> void: pass
+
 ## A paper a usable of this handler shows when read ("read" usables).
 func paper_of(_index: int) -> Dictionary: return {}
 

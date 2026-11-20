@@ -84,6 +84,27 @@ func walk(seed_asked: int) -> void:
 	check("%s: en el lector de la seguridad, PASAR FICHA" % tag, air.word_of(air.usables[3], player.slot) == "PASAR FICHA")
 	level.match_net.use_office(&"air", "post", 3)
 	check("%s: con la ficha se abre la seguridad" % tag, air.post_open and not air.post_door.locked and air.post_door.opened)
+	# Caught inside the post, and the stage given back: its door is locked
+	# again, and the card that opens it has to be in hand again, not lying
+	# behind that door (the author's floor of 19 November 2026: nobody could
+	# get in, and the floor could not be finished).
+	var files = level.objective(&"files")
+	player.global_position = FLOOR.position_of(m.rooms[int(m.air.security.room)]) + Vector3(0, 0.04, 0)
+	await frames(3)
+	level.objectives_on_death(player.slot, player.global_position)
+	check("%s: quien cae dentro de la seguridad suelta su ficha dentro" % tag, not files.has_card(player.slot) and files.pickups.has(player.slot))
+	check("%s: en el nivel 3 también se puede coger del suelo" % tag, files.word_of(files.pickups[player.slot], player.slot) == "COGER")
+	level.apply_revival({player.slot: level.revival_point()}, true)
+	for i in 900:
+		if level.rewind.is_empty(): break
+		await physics_frame
+	check("%s: devuelta la etapa, la seguridad vuelve a estar cerrada" % tag, not air.post_open and air.post_door.locked)
+	check("%s: y cada uno vuelve con su ficha en la mano" % tag, files.has_card(player.slot) and not files.pickups.has(player.slot))
+	player.global_position = air.usables[3].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	check("%s: con la que se abre otra vez" % tag, air.word_of(air.usables[3], player.slot) == "PASAR FICHA")
+	level.match_net.use_office(&"air", "post", 3)
+	check("%s: y la seguridad queda abierta" % tag, air.post_open and not air.post_door.locked)
 	# The cameras' eight rooms, each shut and locked; the air room one of them.
 	var vent: int = air.vent_cam()
 	check("%s: ocho salas con cierre eléctrico, la de ventilación entre ellas, todas cerradas" % tag, air.unlocked.size() == 8 and vent >= 0 and air.cam_doors.all(func(nodes): return not nodes.is_empty() and nodes.all(func(door): return door.locked and not door.opened)))

@@ -359,6 +359,10 @@ func has_card(seat: int) -> bool: return not held_cards(seat).is_empty()
 
 func word_of(usable, seat: int) -> String:
 	if String(usable.action) == "read": return "LEER"
+	# A card on the floor is picked up on whichever planta it fell: asked only
+	# on the first, as the rest is, it had no word on the other two and lay
+	# there for good.
+	if String(usable.action) == "pick": return "COGER" if alive(seat) else ""
 	if not alive(seat) or level.session.stage != 1: return ""
 	match String(usable.action):
 		"type": return "ESCRIBIR" if not requests.has(seat) else ""
@@ -368,8 +372,6 @@ func word_of(usable, seat: int) -> String:
 				if int(r.station) == int(usable.index) - 1 and int(r.state) == Card.IN_TRAY and (int(owner) == seat or not alive(int(owner))): return "RECOGER"
 			return ""
 		"swipe": return "PASAR FICHA" if held_unswiped(seat) >= 0 else ""
-		"pick": return "COGER"
-		"read": return "LEER"
 	return ""
 
 func hold_of(usable, _seat: int) -> float:
@@ -481,6 +483,7 @@ func apply(action: String, index: int, seat: int, data: Dictionary, quiet: bool)
 			if requests.has(index):
 				requests[index].state = Card.DROPPED
 				requests[index].holder = -1
+				requests[index]["dropper"] = seat
 				var at: Vector3 = data.get("at", Vector3.ZERO)
 				requests[index]["drop"] = at
 				lay_card(index, at)
@@ -608,6 +611,23 @@ func on_death(seat: int, point: Vector3) -> void:
 		apply("drop", int(owner), seat, {"at": at}, false)
 		level.match_net.tell_office(ID, "drop", int(owner), seat, {"at": at})
 
+## Whoever comes back comes back with what they carried: the cards a seat let
+## go of as it fell and nobody picked up are in its hand again. Left where
+## they lay, they were on a planta nobody goes back to or, with a stage given
+## back, behind the post's door, which that had locked again: nobody could get
+## in and the floor could not be finished (the author's game of 19 November
+## 2026).
+func on_return(seat: int) -> void:
+	for owner in requests:
+		var r: Dictionary = requests[owner]
+		if int(r.state) != Card.DROPPED or int(r.get("dropper", owner)) != seat: continue
+		r.state = Card.HELD
+		r.holder = seat
+		if pickups.has(owner):
+			pickups[owner].queue_free()
+			pickups.erase(owner)
+	show_state()
+
 ## A dropped card lying on the floor: the card's colour on a small plate, a
 ## usable to pick it up (its index is the card's owner).
 func lay_card(owner: int, at: Vector3) -> void:
@@ -618,17 +638,24 @@ func lay_card(owner: int, at: Vector3) -> void:
 	usable.handler = self
 	usable.index = owner
 	usable.action = "pick"
-	usable.box = Vector3(0.4, 0.3, 0.4)
-	usable.position = at - Vector3(0, 0, 0.2)
+	# A wide box for a small thing on the floor: the brackets come up on a
+	# look towards it, not only on the card itself.
+	usable.box = Vector3(0.7, 0.4, 0.7)
+	usable.position = at - Vector3(0, 0, 0.35)
 	level.hotel.add_child(usable)
 	var card_mesh := MeshInstance3D.new()
 	var plate := BoxMesh.new()
 	plate.size = Vector3(0.2, 0.004, 0.13)
 	card_mesh.mesh = plate
+	# Pale, and seen where no lamp is on: a card on a dark floor that nobody
+	# noticed was a card nobody picked up (the author never saw one).
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color8(222, 205, 165)
+	material.albedo_color = Color8(236, 228, 204)
+	material.emission_enabled = true
+	material.emission = Color8(236, 228, 204)
+	material.emission_energy_multiplier = 0.35
 	card_mesh.material_override = material
-	card_mesh.position = Vector3(0, 0.002, 0.2)
+	card_mesh.position = Vector3(0, 0.002, 0.35)
 	card_mesh.rotation.y = randf() * TAU
 	usable.add_child(card_mesh)
 	pickups[owner] = usable

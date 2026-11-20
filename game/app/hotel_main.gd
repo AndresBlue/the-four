@@ -1751,6 +1751,10 @@ func objective_snapshots() -> Dictionary:
 func objectives_on_death(seat: int, point: Vector3) -> void:
 	for handler in objectives.values(): handler.on_death(seat, point)
 
+## And is on its feet again (the cards come back with it).
+func objectives_on_return(seat: int) -> void:
+	for handler in objectives.values(): handler.on_return(seat)
+
 ## How much of a sound at a point is covered (the offices' fans running on
 ## planta 3): the most any handler covers. Nothing on floor 1.
 func sound_mask(point: Vector3) -> float:
