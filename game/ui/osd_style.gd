@@ -1,10 +1,13 @@
 extends RefCounted
 ## Shared camcorder on-screen-display look: one monospace font, white ink with
 ## hard shadows, flat controls. Used by the in-world overlay, HUD and menus.
-## Home Video (GGBotNet, CC0): the five by seven dots of a deck's own lettering,
-## made narrower by NARROW (tools/dev/condense_font.py): as it came, the
-## author found the menus' lettering wide.
-const FONT_PATH := "res://assets/fonts/home_video/HomeVideo-Narrow.ttf"
+## Home Video (GGBotNet, CC0): the dots of a deck's own lettering, made narrower
+## by NARROW and with the antialiasing of a low picture baked into it
+## (tools/dev/osd_font.py): as it came, the author found the lettering wide
+## and, large, a game of blocks. A bitmap font, drawn at any size; what it has
+## no glyph for comes from the same font as outlines (FALLBACK_PATH).
+const FONT_PATH := "res://assets/fonts/home_video/HomeVideo-Narrow-Soft.fnt"
+const FALLBACK_PATH := "res://assets/fonts/home_video/HomeVideo-Narrow.ttf"
 const NARROW := 0.85
 ## What the camcorder itself writes on the tape (REC, the clock): how far in
 ## from the picture's sides, clear of the tape's ragged edges (analog.gdshader).
@@ -27,16 +30,18 @@ static var cached_theme: Theme
 
 static func font() -> Font:
 	if cached_font != null: return cached_font
+	var system := SystemFont.new()
+	# Menlo is the Mac's own, and the nearest it has to Consolas: without it
+	# a Mac, which has neither Consolas nor Lucida Console, lands on Courier New.
+	system.font_names = PackedStringArray(["Consolas", "Menlo", "Lucida Console", "Courier New", "monospace"])
+	system.font_weight = 600
+	system.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
+	cached_font = system
 	if ResourceLoader.exists(FONT_PATH):
+		# What neither of its two forms has (a credit's kanji, a star) is the
+		# system's to draw.
 		cached_font = load(FONT_PATH)
-	else:
-		var system := SystemFont.new()
-		# Menlo is the Mac's own, and the nearest it has to Consolas: without it
-		# a Mac, which has neither Consolas nor Lucida Console, lands on Courier New.
-		system.font_names = PackedStringArray(["VCR OSD Mono", "Consolas", "Menlo", "Lucida Console", "Courier New", "monospace"])
-		system.font_weight = 600
-		system.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
-		cached_font = system
+		cached_font.fallbacks = ([load(FALLBACK_PATH)] if ResourceLoader.exists(FALLBACK_PATH) else []) + [system]
 	return cached_font
 
 static func pixel(width: int, height: int, fill: Callable) -> ImageTexture:
@@ -237,12 +242,11 @@ static func text(words: String, size := 20, color := INK) -> Label:
 	return result
 
 ## The camcorder's own lettering (the author's reference 14, "AM 11:59 / JUN.
-## 15 1986"): the same dots, but tall, narrow and heavy, as its character
-## generator wrote them. Narrowed towards its left end, or its right one.
+## 15 1986"): the same dots, but tall and narrow, as its character generator
+## wrote them; its weight is put on with its softness (mark_soft.gdshader).
+## Narrowed towards its left end, or its right one.
 static func mark(words: String, from_right := false) -> Label:
 	var result := text(words, MARK_SIZE)
-	result.add_theme_constant_override("outline_size", 2)
-	result.add_theme_color_override("font_outline_color", INK)
 	result.add_theme_constant_override("line_spacing", 4)
 	result.scale.x = MARK_NARROW
 	if from_right: result.resized.connect(func() -> void: result.pivot_offset.x = result.size.x)

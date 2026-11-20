@@ -128,8 +128,8 @@ var overlay: Control
 ## Above the tape (the analog filter is layer 5): see _ready.
 const OUTSIDE_LAYER := 6
 var outside: CanvasLayer
-## The softness over the menus: none with reduced effects, with the slider at
-## nothing, or while the boot plays its own tape.
+## The softness over the menus: none with reduced effects or with the slider
+## at nothing.
 const SOFT := preload("res://game/ui/shaders/tape_soft.gdshader")
 var soft: ColorRect
 var column: VBoxContainer
@@ -650,7 +650,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Créditos", "credits")
 			action("Salir", "quit")
 		"pause":
-			set_osd("❚❚ PAUSA", "", "")
+			set_osd("⏸ PAUSA", "", "")
 			backdrop.modulate.a = 0.9
 			title(column, "PAUSA", 72)
 			briefing_panel(column)
@@ -734,7 +734,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 4)
 			action("Volver", "main")
 		"multiplayer":
-			set_osd("MENU ▸ MULTIJUGADOR", "", "")
+			set_osd("MENU › MULTIJUGADOR", "", "")
 			title(column, "MULTIJUGADOR", 64)
 			label(column, "%d A %d JUGADORES" % [NET.MIN_PLAYERS, NET.MAX_SURVIVORS], 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -751,7 +751,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 12)
 			action("Volver", "main")
 		"mp_steam":
-			set_osd("MULTIJUGADOR ▸ STEAM", "", "")
+			set_osd("MULTIJUGADOR › STEAM", "", "")
 			title(column, "STEAM", 64)
 			label(column, "CON TUS AMIGOS DE STEAM, SIN ABRIR PUERTOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -761,7 +761,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "multiplayer")
 			side.visible = false
 		"mp_ip":
-			set_osd("MULTIJUGADOR ▸ IP / LAN", "", "")
+			set_osd("MULTIJUGADOR › IP / LAN", "", "")
 			title(column, "IP / LAN", 64)
 			label(column, "EN TU RED LOCAL, O POR INTERNET CON UN PUERTO ABIERTO", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -771,7 +771,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "multiplayer")
 			side.visible = false
 		"host_ip":
-			set_osd("MULTIJUGADOR ▸ CREAR SALA", "", "")
+			set_osd("MULTIJUGADOR › CREAR SALA", "", "")
 			title(column, "CREAR SALA", 64)
 			label(column, "IP / LAN", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -790,7 +790,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "mp_ip")
 			side.visible = false
 		"join_steam":
-			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "STEAM")
+			set_osd("MULTIJUGADOR › UNIRSE", "", "STEAM")
 			title(column, "UNIRSE", 64)
 			label(column, "STEAM", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -820,7 +820,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 				entry(found, room.name, func(): if net.join_steam(lobby_id, settings.values.player_name, settings.values.character): menu("steam_wait"), false, 22)
 			buttons["join_steam"] = entry(found_column, "Actualizar", func(): action_requested.emit("join_steam"), false, 24)
 		"steam_invite":
-			set_osd("SALA ▸ INVITAR", "", "STEAM")
+			set_osd("SALA › INVITAR", "", "STEAM")
 			title(column, "INVITAR", 64)
 			label(column, "TUS AMIGOS CONECTADOS A STEAM", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 14)
@@ -850,7 +850,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver a la sala", "lobby_back")
 			side.visible = false
 		"steam_wait":
-			set_osd("MULTIJUGADOR ▸ STEAM", "", "")
+			set_osd("MULTIJUGADOR › STEAM", "", "")
 			title(column, "STEAM", 64)
 			spacer(column, 18)
 			label(column, net.status if net != null and not net.status.is_empty() else "Conectando…", 20).add_theme_color_override("font_color", STYLE.AMBER)
@@ -858,7 +858,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Cancelar", "lobby_leave")
 			side.visible = false
 		"join":
-			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "")
+			set_osd("MULTIJUGADOR › UNIRSE", "", "")
 			title(column, "UNIRSE", 64)
 			spacer(column, 18)
 			label(column, "IP / LAN", 20).add_theme_color_override("font_color", STYLE.SOFT)
@@ -878,7 +878,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			difficulty_screen()
 		"rules":
 			var hosting: bool = net != null and net.is_host
-			set_osd("SALA ▸ REGLAS", "", "ANFITRIÓN" if hosting else "")
+			set_osd("SALA › REGLAS", "", "ANFITRIÓN" if hosting else "")
 			side.visible = false
 			column.custom_minimum_size.x = RULES_SCREEN.SIZE.x
 			title(column, "REGLAS", 44)
@@ -893,7 +893,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			if hosting and not rule_pickers.is_empty(): focus_wanted = "rule_first"
 			if hosting and not rule_pickers.is_empty(): buttons["rule_first"] = rule_pickers.values()[0]
 		"online_pause":
-			set_osd("❚❚ MENÚ", "", "LA PARTIDA SIGUE")
+			set_osd("⏸ MENÚ", "", "LA PARTIDA SIGUE")
 			backdrop.modulate.a = 0.75
 			title(column, "MENÚ", 72)
 			label(column, "LA PARTIDA NO SE DETIENE", 20).add_theme_color_override("font_color", STYLE.AMBER)
@@ -917,7 +917,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			code_corner()
 		# The code, alone in the middle (code_panel()), and under it what it did.
 		"code":
-			set_osd("CRÉDITOS ▸ CÓDIGO", "", "")
+			set_osd("CRÉDITOS › CÓDIGO", "", "")
 			side.visible = false
 			column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			code_panel(column)
@@ -927,7 +927,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 	# First start on an integrated GPU: it starts on Muy bajo; the lighter
 	# renderer is the player's call (it restarts the game).
 	if kind == "main" and message.is_empty() and settings.integrated_gpu and settings.values.renderer == "forward_plus":
-		message = "Gráfica integrada: preset Muy bajo. Si va sobrado, sube el preset en Ajustes ▸ Gráficos; si aun así va lento, prueba ahí el renderizador Compatibilidad."
+		message = "Gráfica integrada: preset Muy bajo. Si va sobrado, sube el preset en Ajustes › Gráficos; si aun así va lento, prueba ahí el renderizador Compatibilidad."
 	if not message.is_empty():
 		spacer(column, 14)
 		paragraph(column, message, 16, 560, STYLE.AMBER)
@@ -1010,7 +1010,7 @@ func unlock(id: String) -> void:
 ## and four short lines (DIFFICULTY.TRAITS). Picking one keeps it and starts
 ## the game.
 func difficulty_screen() -> void:
-	set_osd("MENU ▸ NUEVA PARTIDA", "", "")
+	set_osd("MENU › NUEVA PARTIDA", "", "")
 	title(column, "DIFICULTAD", 64)
 	label(column, "LA BESTIA QUE TE ESPERA EN EL HOTEL", 20).add_theme_color_override("font_color", STYLE.SOFT)
 	spacer(column, 24)
@@ -1081,7 +1081,7 @@ const LOBBY_CHOICE := 260
 ## The room: who is in, the host's options and the way into the match.
 func lobby_screen() -> void:
 	var hosting: bool = net.is_host
-	set_osd("MULTIJUGADOR ▸ SALA", "", "ANFITRIÓN" if hosting else "")
+	set_osd("MULTIJUGADOR › SALA", "", "ANFITRIÓN" if hosting else "")
 	title(column, "SALA", 64)
 	var seats: Array = net.players.keys()
 	seats.sort()
@@ -1736,7 +1736,7 @@ func show_settings(back: String) -> void:
 	return_action = back
 	overlay.show()
 	backdrop.modulate.a = 1.0
-	set_osd("MENU ▸ AJUSTES", "", "")
+	set_osd("MENU › AJUSTES", "", "")
 	side.visible = false
 	column.custom_minimum_size.x = 1000
 	title(column, "AJUSTES", 58)
@@ -1787,7 +1787,7 @@ func show_settings(back: String) -> void:
 	# The scale and the upscaler are the player's own and no preset touches
 	# them: on the two presets for modest machines, what FSR 2.2 costs is said.
 	if int(settings.values.quality) in [PRESETS.VERY_LOW, PRESETS.LOW] and PRESETS.scaling_mode(settings.values) == Viewport.SCALING_3D_MODE_FSR2:
-		paragraph(graphics, "El escalado está en FSR 2.2, que en una gráfica modesta cuesta más que todo lo demás de este preset junto. En IMAGEN ▸ Escalado, «Automático» usa el del preset.", 16, 900, STYLE.AMBER)
+		paragraph(graphics, "El escalado está en FSR 2.2, que en una gráfica modesta cuesta más que todo lo demás de este preset junto. En IMAGEN › Escalado, «Automático» usa el del preset.", 16, 900, STYLE.AMBER)
 	options(graphics, "Renderizador", "renderer", ["Forward+ (completo)", "Compatibilidad (gráfica integrada)"], ["forward_plus", "gl_compatibility"])
 	if settings.renderer_pending():
 		paragraph(graphics, "El renderizador cambia al reiniciar el juego.", 16, 900, STYLE.AMBER)
@@ -2219,7 +2219,7 @@ func show_characters(back := "multiplayer") -> void:
 	clear()
 	screen = "characters"
 	overlay.show()
-	set_osd("MULTIJUGADOR ▸ PERSONAJE", "", "")
+	set_osd("MULTIJUGADOR › PERSONAJE", "", "")
 	title(column, "PERSONAJE", 64)
 	spacer(column, 24)
 	var visual_script := preload("res://game/player/avatars/avatar_visual.gd")
@@ -2403,7 +2403,9 @@ func _process(delta: float) -> void:
 		if absf(roll) > 0.0: pad_scroll.scroll_vertical += int(roll * 900.0 * delta)
 	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
 	var worn: float = 0.0 if settings == null or settings.values.reduced else float(settings.values.vhs)
-	soft.visible = overlay.visible and worn > 0.0 and not is_instance_valid(intro)
+	# Over the boot as well: left out of it, it came on a moment after the
+	# menu did, like a filter laid over a picture that had been sharp.
+	soft.visible = overlay.visible and worn > 0.0
 	if soft.visible: (soft.material as ShaderMaterial).set_shader_parameter("amount", worn)
 	(noise.material as ShaderMaterial).set_shader_parameter("amount", noise_amount if overlay.visible else 0.0)
 	osd_left.modulate.a = 1.0 if screen != "failed" or fposmod(clock, 1.0) < 0.6 else 0.25
@@ -2557,6 +2559,9 @@ func play_intro() -> void:
 	look.set_shader_parameter("vhs", worn)
 	look.set_shader_parameter("scanlines", lines)
 	look.set_shader_parameter("inset", inset)
+	# The deck's own blue and lettering, as soft as they were liked: by the
+	# law the picture had before it was made sharper (analog.gdshader, soft).
+	look.set_shader_parameter("soften", 0.1 + 3.8 * worn)
 	deck.material = look
 	intro.add_child(deck)
 	var hiss := AudioStreamPlayer.new()
@@ -2587,6 +2592,7 @@ func play_intro() -> void:
 		blue.hide()
 		black.hide()
 		look.set_shader_parameter("inset", 0.0)
+		look.set_shader_parameter("soften", 0.0)
 		look.set_shader_parameter("signal_loss", snow))
 	intro_tween.tween_property(hiss, "volume_db", -16.0, 0.15)
 	intro_tween.tween_interval(0.75)

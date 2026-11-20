@@ -309,6 +309,7 @@ func apply_settings() -> void:
 	# pass: there the tape filter's own versions are used.
 	var lensless: bool = hunter or not preset.lens
 	for key in ["vhs", "scanlines"]: level.post_material.set_shader_parameter(key, 0.0 if reduced else level.settings.values[key])
+	level.camcorder.soften(0.0 if reduced or lurker_seat() else float(level.settings.values.vhs))
 	level.post_material.set_shader_parameter("grain", 0.0 if reduced or not lensless else level.settings.values.grain)
 	level.post_material.set_shader_parameter("chromatic", 0.0 if reduced or not hunter else level.settings.values.chromatic * 0.5)
 	level.post_material.set_shader_parameter("vignette", 0.0 if reduced or not lensless else 0.45)

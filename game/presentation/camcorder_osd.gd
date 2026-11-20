@@ -135,10 +135,44 @@ static func microphone_icon() -> Array:
 		[Vector2(0.5, 0.72), Vector2(0.5, 0.88)],
 		[Vector2(0.34, 0.88), Vector2(0.66, 0.88)]]
 
+## The camcorder's lettering is softer than the picture it is burnt into: the
+## blur of an old recording is right on these words and too much on the
+## picture and the menus (the author, 19 November 2026). Each corner's
+## lettering is drawn as a group and softened along the lines before the tape
+## has it (mark_soft.gdshader). The groups are small: only what is written in
+## them is read again.
+const MARK_SOFT := preload("res://game/presentation/shaders/mark_soft.gdshader")
+var soft_look := ShaderMaterial.new()
+var corners: Array[Control] = []
+
+## A piece of the picture to write in: a Control the size of the picture, so
+## anchors mean in it what they mean on the layer itself.
+func soft_corner() -> Control:
+	var group := CanvasGroup.new()
+	group.fit_margin = 12.0
+	group.clear_margin = 12.0
+	group.material = soft_look
+	add_child(group)
+	var corner := Control.new()
+	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	group.add_child(corner)
+	corners.append(corner)
+	return corner
+
+func fit_corners() -> void:
+	for corner in corners: corner.size = get_viewport().get_visible_rect().size
+
+## How soft, by the tape's wear (the player's VHS slider; 0 with reduced
+## effects): the law the whole picture had at first.
+func soften(wear: float) -> void:
+	soft_look.set_shader_parameter("soft", 1.6 + wear * 5.0 if wear > 0.0 else 0.0)
+
 func _ready() -> void:
 	# Under the interface and under the tape: the OSD is burnt into the
 	# recording, and so is anything the game writes over it.
 	layer = 3
+	soft_look.shader = MARK_SOFT
+	get_viewport().size_changed.connect(fit_corners)
 	canvas = Control.new()
 	canvas.name = "Canvas"
 	canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -151,7 +185,8 @@ func _ready() -> void:
 	rec.offset_left = -300 - STYLE.MARK_INSET
 	rec.offset_top = 40
 	rec.offset_right = -STYLE.MARK_INSET
-	add_child(rec)
+	var top_right := soft_corner()
+	top_right.add_child(rec)
 	# Drawn shape rather than a glyph, so it works with any fallback font.
 	dot = Panel.new()
 	var round_style := StyleBoxFlat.new()
@@ -165,14 +200,14 @@ func _ready() -> void:
 	dot.offset_top = 55
 	dot.offset_bottom = 73
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(dot)
+	top_right.add_child(dot)
 	clock = STYLE.mark("")
 	clock.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	clock.offset_left = STYLE.MARK_INSET
 	clock.offset_top = -164
 	clock.offset_right = STYLE.MARK_INSET + 620
 	clock.offset_bottom = -58
-	add_child(clock)
+	soft_corner().add_child(clock)
 	focus_label = STYLE.text("", 20)
 	focus_label.set_anchors_preset(Control.PRESET_CENTER)
 	focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -180,7 +215,7 @@ func _ready() -> void:
 	focus_label.offset_right = 200
 	focus_label.offset_top = 44
 	focus_label.offset_bottom = 74
-	add_child(focus_label)
+	soft_corner().add_child(focus_label)
 	notice = STYLE.text("", 30)
 	notice.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -188,7 +223,8 @@ func _ready() -> void:
 	notice.offset_right = 420
 	notice.offset_top = -150
 	notice.offset_bottom = -110
-	add_child(notice)
+	soft_corner().add_child(notice)
+	fit_corners()
 	hide()
 
 ## The recording date derives from the floor seed, so a retry shows the same tape.

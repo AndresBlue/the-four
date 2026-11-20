@@ -60,6 +60,9 @@ uniform float entry : hint_range(0.0, 1.0) = 0.0;
 // One field whose colour comes off the tape wrong (references 11 and 13).
 // The tape does it by itself once in a long while; 1 here makes it do it now.
 uniform float chroma_slip : hint_range(0.0, 1.0) = 0.0;
+// Softness over what the wear gives, in the pixels `unit` counts: the boot's
+// blue and its PLAY, which are the deck's own and were liked soft.
+uniform float soften = 0.0;
 // hash, noise1, line_noise and tape_snow: the snow of a tape with nothing on it.
 #include "res://game/presentation/shaders/tape_snow.gdshaderinc"
 
@@ -102,8 +105,11 @@ void fragment() {
 	// head-switching tear at the bottom of the frame.
 	float line = floor(uv.y / px.y);
 	float wobble = (noise1(uv.y * 38.0 + t * 1.3) - 0.5) * 0.0022 + sin(uv.y * 190.0 + t * 3.0) * 0.00035;
-	float band_pos = fract(t * 0.043);
-	float band = smoothstep(0.06, 0.0, abs(uv.y - band_pos)) * (0.6 + 0.4 * noise1(t * 4.0));
+	// The tracking band is a fault that comes and goes, not a bar always
+	// crossing the picture: for some seconds it is there, more of it or
+	// less, and somewhere else each time; for longer there is none.
+	float band_pos = fract(t * 0.043 + noise1(t * 0.31 + 3.0) * 0.6);
+	float band = smoothstep(0.06, 0.0, abs(uv.y - band_pos)) * smoothstep(0.58, 0.82, noise1(t * 0.13 + 11.0)) * (0.45 + 0.75 * noise1(t * 1.7));
 	float field_line = floor(at.y * 240.0);
 	float jitter = (hash(vec2(field_line, floor(t * 30.0))) - 0.5) * 0.006 * band;
 	uv.x += (wobble + jitter) * vhs;
@@ -174,11 +180,17 @@ void fragment() {
 	// counted in pixels, a bigger screen showed a sharper tape. `unit` is one
 	// pixel of the 1280 the interface is laid out on.
 	float unit = 1.0 / 1280.0;
-	float soft = 1.6 + vhs * 5.0 + entry * 4.0;
+	// The picture is no softer than the author liked it (the slider at 5 %, by
+	// the first law, without losing the rest of the tape to get there); the
+	// camcorder's own lettering is softened apart, before it gets here
+	// (mark_soft.gdshader), and what is written over the snow, below, by the
+	// first law still.
+	float soft = 1.5 + vhs * 1.2 + soften + entry * 4.0;
+	float mark_soft = 1.6 + vhs * 5.0;
 	vec3 center = tap(uv);
 	float luma;
 	vec2 chroma = vec2(0.0);
-	float chroma_width = unit * (1.5 + vhs * 9.0);
+	float chroma_width = unit * (1.5 + vhs * 6.0);
 	float chroma_delay = unit * vhs * 3.0;
 	if (lite) {
 		vec3 here = rgb_to_yiq(center);
@@ -243,8 +255,11 @@ void fragment() {
 	}
 	// Tracking band noise, dropouts and interference.
 	vec3 snow = vec3(0.0);
-	if (band * vhs > 0.001 || head > 0.0 || damage > 0.0 || bar > 0.0) snow = tape_snow(at, floor(t * 60.0), !lite);
-	color += (snow - 0.22) * band * 0.85 * vhs;
+	if (head > 0.0 || damage > 0.0 || bar > 0.0) snow = tape_snow(at, floor(t * 60.0), !lite);
+	// The band's own is the same snow drawn out along the lines, as the grain
+	// of the picture under it is: as fine across as down, it sat on the
+	// picture like a grid of dots.
+	if (band * vhs > 0.001) color += (tape_snow(vec2(at.x * 0.28, at.y), floor(t * 60.0), !lite) - 0.22) * band * 0.85 * vhs;
 	color = mix(color, snow, bar * 0.85);
 	// One field in a great many, the colour of the picture comes off the tape
 	// wrong: bands of it down the screen, or from some height down, over a
@@ -354,14 +369,14 @@ void fragment() {
 		if (lite) {
 			run = rgb_to_yiq(here.rgb).yz * 0.5 + (rgb_to_yiq(mark_tap(uv + vec2(chroma_delay - chroma_width * 2.0, 0.0)).rgb).yz + rgb_to_yiq(mark_tap(uv + vec2(chroma_delay + chroma_width * 2.0, 0.0)).rgb).yz) * 0.25;
 		} else {
-			body = here * 0.5 + (mark_tap(uv - vec2(unit * soft, 0.0)) + mark_tap(uv + vec2(unit * soft, 0.0))) * 0.25;
+			body = here * 0.5 + (mark_tap(uv - vec2(unit * mark_soft, 0.0)) + mark_tap(uv + vec2(unit * mark_soft, 0.0))) * 0.25;
 			run = vec2(0.0);
 			float apart = 6.0 / float(max(chroma_taps - 1, 1));
 			for (int i = 0; i < chroma_taps; i++) run += rgb_to_yiq(mark_tap(uv + vec2((-3.0 + float(i) * apart) * chroma_width + chroma_delay, 0.0)).rgb).yz;
 			run /= float(chroma_taps);
 		}
 		float written_luma = rgb_to_yiq(body.rgb).x;
-		if (vhs > 0.0 && !lite) written_luma += (written_luma - rgb_to_yiq((mark_tap(uv - vec2(unit * soft * 3.0, 0.0)).rgb + mark_tap(uv + vec2(unit * soft * 3.0, 0.0)).rgb) * 0.5).x) * 0.35 * vhs;
+		if (vhs > 0.0 && !lite) written_luma += (written_luma - rgb_to_yiq((mark_tap(uv - vec2(unit * mark_soft * 3.0, 0.0)).rgb + mark_tap(uv + vec2(unit * mark_soft * 3.0, 0.0)).rgb) * 0.5).x) * 0.35 * vhs;
 		vec3 written = yiq_to_rgb(vec3(written_luma, run * (1.0 - vhs * 0.25)));
 		// Graded as if on black, less what the grade makes of black itself
 		// where nothing is written: the snow beside a word keeps its own.

@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://ocfr3wjdifla"
+path="res://.godot/imported/HomeVideo-Narrow-Soft.fnt-85cb3e3dec1f14d4694e609342498ebe.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/home_video/HomeVideo-Narrow-Soft.fnt"
+dest_files=["res://.godot/imported/HomeVideo-Narrow-Soft.fnt-85cb3e3dec1f14d4694e609342498ebe.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2
