@@ -684,7 +684,7 @@ Al repetir el barrido con ambas correcciones, coincidieron la audibilidad, la sa
 
 ## 15. El marco de la cinta (19 de noviembre de 2026)
 
-El filtro de la cinta (`analog.gdshader`) ganó ese día las franjas laterales, la banda inferior, el ruido en bloques, el fotograma de color y la entrada del vídeo ([DEVELOPMENT.md](DEVELOPMENT.md), «Iluminación y posprocesado»). Nada de eso añade lecturas de la imagen: son cuentas por píxel, y las de los bordes y la nieve solo se hacen donde se ven (un 14 % del ancho, la banda de tracking, las últimas líneas).
+El filtro de la cinta (`analog.gdshader`) ganó ese día las franjas laterales, la banda inferior, el ruido en bloques, el fotograma de color y la entrada del vídeo ([DEVELOPMENT.md](DEVELOPMENT.md), «Iluminación y posprocesado»). Nada de eso añade lecturas de la imagen: son cuentas por píxel, y las de los bordes y la nieve solo se hacen donde se ven (un 14 % del ancho, la banda de tracking, las últimas líneas). Desde el 20 de noviembre la nieve es una lectura de una textura de 864 × 480 (`tape_snow_frames`, 1,2 MB en la gráfica) y unas pocas cuentas para la línea brillante y el color, donde antes eran decenas de cuentas de ruido por píxel; su coste no se ha medido.
 
 Medido antes y después con `./tools/benchmarks/run_bench.ps1 -Label vhs_antes -Extra '--qualities=1,2,4'` y `-Label vhs_despues`, en Forward+, semilla 81, 1080p, RTX 4060 Ti. GPU en ms (media):
 

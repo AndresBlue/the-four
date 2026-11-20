@@ -411,14 +411,18 @@ void fragment() {
 		vec3 torn = tap(vec2(fract(rolled.x), uv.y));
 		color = mix(color, torn, loss * 0.85);
 		color = mix(color, vec3(dot(color, vec3(0.333))), loss * 0.85);
-		// A blank tape's snow (tape_snow): fat dashes along the lines, struck
-		// again every field, with the odd bright line torn across.
-		vec3 dead = tape_snow(rolled, field, !lite);
-		// Rolling hum bar and the alternating field of interlaced lines.
+		// A blank tape's snow (tape_snow), another frame of it every two
+		// fields. Read where the screen is, not where the picture has rolled
+		// or been torn to: it is a video's, with blocks of its own that stand
+		// where they are (dragged about line by line it came out sheared, and
+		// its blocks as a diagonal grain). Its pixels are square in a
+		// narrower picture too.
+		vec3 dead = tape_snow(vec2(at.x * wide, at.y), field, !lite);
+		// A rolling hum bar over it, about the levels the references have. (No
+		// lines of a field drawn across it: their snow has been through a
+		// video, and has none.)
 		float bar = smoothstep(0.0, 0.12, abs(fract(rolled.y - t * 0.11) - 0.5) - 0.28);
-		dead *= 0.82 + 0.18 * bar;
-		float lines = 0.5 + 0.5 * sin((SCREEN_UV.y * 480.0 + mod(field, 2.0)) * 3.14159);
-		dead *= 0.62 + 0.38 * lines;
+		dead *= 0.99 + 0.14 * bar;
 		if (rewinding > 0.0) {
 			// Dark between the bars, and the bars are the noise itself, torn.
 			// Two of them up the picture, each point of it lit twice a

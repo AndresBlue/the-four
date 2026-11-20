@@ -68,6 +68,10 @@ surface_detail={
 "type": "float",
 "value": 4.0
 }
+tape_snow_frames={
+"type": "sampler2D",
+"value": "res://assets/textures/tape/tape_snow.png"
+}
 
 [steam]
 

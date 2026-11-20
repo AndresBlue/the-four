@@ -3,7 +3,8 @@ extends SceneTree
 ## black, the deck's blue with PLAY in 4:3, the snow of the blank tape, the
 ## picture found in slanted bands, and the menu. One frame per beat, by where
 ## the sequence itself has got to (hotel_ui.play_intro), into evidence/vhs/.
-##   godot --path . --script tools/capture/boot_capture.gd -- --test-profile --silent
+##   godot --path . --script tools/capture/boot_capture.gd -- --test-profile --silent [--tall]
+## --tall: 1440 lines, as tape_capture.gd has it.
 var level
 var look: ShaderMaterial
 
@@ -27,6 +28,13 @@ func run() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://evidence/vhs"))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	if OS.get_cmdline_user_args().has("--tall"):
+		# (After the game is there: it puts its window back as it starts.)
+		await process_frame
+		DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
+		DisplayServer.window_set_position(DisplayServer.screen_get_position(DisplayServer.window_get_current_screen()))
+		DisplayServer.window_set_size(Vector2i(2560, 1440))
+		for i in 4: await process_frame
 	level.ui.play_intro()
 	var deck: ColorRect = level.ui.intro.get_node("Deck")
 	look = deck.material

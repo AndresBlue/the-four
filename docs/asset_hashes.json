@@ -2762,5 +2762,9 @@
   "assets/fonts/home_video/HomeVideo-Narrow-Dense.png": {
     "bytes": 155340,
     "sha256": "725c464c0377f6a8fb76bf54f14493032479dc90d8ae9b6d85627ff85304e8ae"
+  },
+  "assets/textures/tape/tape_snow.png": {
+    "bytes": 678206,
+    "sha256": "79a3a6f0d8fe5c3c6204257512e6893a84c34ef42a444aa2e19272eeb0c8352f"
   }
 }

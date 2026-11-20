@@ -4,7 +4,10 @@ extends SceneTree
 ## strip and the camcorder's lettering; a field whose colour came off wrong;
 ## the snow of a lost signal; and the picture found as a tape starts. Into
 ## evidence/vhs/<prefix>_*.png. With a window.
-##   godot --path . --script tools/capture/tape_capture.gd -- --automation --test-profile --silent [--prefix=game] [--seed=81]
+##   godot --path . --script tools/capture/tape_capture.gd -- --automation --test-profile --silent [--prefix=game] [--seed=81] [--tall] [--snow]
+## --tall: 1440 lines, three to each of the video's 480 as the references have
+## them (at 720 a line of the snow is a line and a half of the screen, and
+## blurred). --snow: only the snow, six frames of it.
 var level
 var prefix := "game"
 var floor_seed := 81
@@ -29,8 +32,21 @@ func run() -> void:
 	root.add_child(level)
 	await process_frame
 	await level.start_floor(floor_seed)
+	if OS.get_cmdline_user_args().has("--tall"):
+		# (After the floor: the game puts its window back as it loads one.)
+		DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
+		DisplayServer.window_set_position(DisplayServer.screen_get_position(DisplayServer.window_get_current_screen()))
+		DisplayServer.window_set_size(Vector2i(2560, 1440))
+		for i in 4: await process_frame
 	level.locust.set_physics_process(false)
 	level.locust.position = Vector3(0, -50, 0)
+	if OS.get_cmdline_user_args().has("--snow"):
+		level.rig.lost_signal = 4.0
+		await shot("snow", 40)
+		for i in 5: await shot("snow_%d" % i, 7)
+		print("TAPE listo")
+		quit()
+		return
 	# The floor's first view, and the benchmark's lit room (hotel_benchmark.gd).
 	await shot("llegada", 60)
 	var room: Dictionary = level.manifest.rooms[lit_room]
