@@ -225,10 +225,14 @@ func _enter_tree() -> void:
 	if own_files:
 		settings.save_path = "user://test_hotel_%s_settings.json" % test_name
 		session.checkpoint_path = "user://test_hotel_%s_checkpoint.json" % test_name
+	# The performance trace, in an exported game too and on the player's own
+	# profile (Registrar rendimiento.bat beside TheFour.exe): a file, or a
+	# folder or nothing for a file named by the time (session_perf.path_for).
+	for argument in user_args:
+		if argument == "--perf-log" or argument.begins_with("--perf-log="): perf_path = PERF.path_for(argument.trim_prefix("--perf-log").trim_prefix("="))
 	if test_profile:
 		for argument in user_args:
-			if argument.begins_with("--perf-log="): perf_path = argument.trim_prefix("--perf-log=")
-			elif argument.begins_with("--perf-seed="):
+			if argument.begins_with("--perf-seed="):
 				var wanted := argument.trim_prefix("--perf-seed=")
 				if wanted.is_valid_int() and int(wanted) >= 0 and int(wanted) <= 2147483647: perf_seed = int(wanted)
 		settings.trace_display = not scripted and not perf_path.is_empty() and not user_args.has("--automation")

@@ -36,6 +36,12 @@ $process.WaitForExit()
 $result = $process.ExitCode
 $process.Dispose()
 
+# The summary beside the trace, also of a game that died (tools/benchmarks/perf_report.py).
+$python = Get-Command python -ErrorAction SilentlyContinue
+if ($python -and (Test-Path -LiteralPath $trace -PathType Leaf)) {
+    & $python.Source -I (Join-Path $projectPath 'tools\benchmarks\perf_report.py') $trace
+} elseif (-not $python) { Write-Host 'Sin Python no hay informe: python tools\benchmarks\perf_report.py <traza>' }
+
 $lastLine = if (Test-Path -LiteralPath $trace -PathType Leaf) { Get-Content -LiteralPath $trace -Tail 1 }
 if ($result -ne 0 -or $lastLine -notmatch '"event":"session_end"') {
     throw "La captura termino con codigo $result. Revisa $log y los datos disponibles en $capturePath"

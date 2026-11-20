@@ -2580,7 +2580,14 @@ func lost_signal(seconds := 2.6) -> void:
 	flash_label.add_theme_color_override("font_color", STYLE.ALERT)
 	flash("SEÑAL PERDIDA", seconds)
 
+## Timed for the performance trace when the level has one (session_perf.gd).
 func _process(delta: float) -> void:
+	var trace = get_parent().get("perf")
+	var started := Time.get_ticks_usec() if trace != null else 0
+	step_frame(delta)
+	if trace != null: trace.timed(&"ui.process", started)
+
+func step_frame(delta: float) -> void:
 	clock += delta
 	stack_foot()
 	update_snatches(delta)

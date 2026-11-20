@@ -658,19 +658,54 @@ Montaje del piso (`floor_load_ms`): 13.199 → 15.195 ms en Forward+ y 13.217 �
 
 **Veredicto.** La meta es 60 FPS a 1080p en Alto (`spec_rediseno.md`, sección 10). El criterio de la tabla, para cada vista fija de Forward+ en Alto, es un fotograma p95 de 16,7 ms o menos y que el mayor entre la GPU media y la CPU a 60 FPS (p95) también sea de 16,7 ms o menos. Pasa la vista de lejos (sala 0): fotograma p95 de 8,75 ms y CPU a 60 FPS (p95) de 9,89 ms. NO PASA la de inicio (sala 142): el fotograma p95 de 16,47 ms está dentro de 16,7 ms, pero la CPU a 60 FPS (p95) es de 17,64 ms. NO PASA la de medio (sala 23): el fotograma p95 de 16,62 ms está dentro de 16,7 ms, pero la CPU a 60 FPS (p95) es de 18,87 ms. Muy bajo, Compatibilidad, arrival, walk y el montaje van sin veredicto.
 
-## 14. Captura de tirones durante una partida del piso 2
+## 14. El registro de rendimiento de una partida
 
-Abre `Registrar piso 2.cmd` desde la raíz del proyecto. En Ajustes, reproduce la calidad, resolución, modo de ventana, escala, VSync, límite de FPS y dificultad con los que ves el problema. La sesión usa el perfil de prueba `rendimiento` y permite guardar y continuar partidas en ese perfil. Juega normalmente y pulsa **F8** cuando el juego vuelva a responder tras un tirón. Cierra el juego cuando hayas terminado. Para repetir una semilla en **Nueva partida**, ejecuta `".\Registrar piso 2.cmd" -Seed 7` desde CMD, sustituyendo 7 por la semilla de la captura. Añade `-Stage 2` o `-Stage 3` para saltar a ese sector en una partida individual.
+Para saber qué se come el fotograma a lo largo de una partida real, y no solo en las vistas fijas del banco: cada fotograma con sus fases, el trabajo con nombre que corrió en él y dónde estaba el jugador, y un informe que lo resume para decidir qué optimizar en el piso 2.
 
-El renderizador se elige al arrancar. Usa `-Renderer forward_plus` o `-Renderer gl_compatibility` para fijarlo en una captura. Sin esa opción, Godot usa el mismo renderizador que al abrir el proyecto para jugar.
+### Cómo se graba
 
-Cada lanzamiento imprime su carpeta en `evidence/perf/`. La carpeta completa contiene tres archivos:
+- **Desde el proyecto:** abre `Registrar piso 2.cmd` desde la raíz del proyecto. En Ajustes, reproduce la calidad, resolución, modo de ventana, escala, VSync, límite de FPS y dificultad con los que ves el problema. La sesión usa el perfil de prueba `rendimiento` y permite guardar y continuar partidas en ese perfil. Juega normalmente y pulsa **F8** cuando el juego vuelva a responder tras un tirón. Cierra el juego cuando hayas terminado. Para repetir una semilla en **Nueva partida**, ejecuta `".\Registrar piso 2.cmd" -Seed 7` desde CMD, sustituyendo 7 por la semilla de la captura. Añade `-Stage 2` o `-Stage 3` para saltar a ese sector en una partida individual, y `-Renderer forward_plus` o `-Renderer gl_compatibility` para fijar el renderizador (sin esa opción, Godot usa el mismo que al abrir el proyecto para jugar). Cada lanzamiento deja en `evidence/perf/<fecha>-<pid>/` la traza (`session.jsonl`), el índice de tirones y marcas (`session.hitches.jsonl`), la salida del motor (`godot.log`) y, al cerrar el juego, el informe (`session.report.md`; hace falta Python).
+- **En el juego exportado:** `Registrar rendimiento.bat`, que va en el zip junto a `TheFour.exe`. Juega con los ajustes y el Continuar de quien lo abre, escribe en la carpeta `Rendimiento`, junto al juego, un `.jsonl` por partida con la fecha en el nombre y, al cerrar el juego, abre esa carpeta. Ese archivo (y su `.hitches.jsonl`) es lo que hay que pedir a quien informa de un problema.
+- **A mano:** `TheFour.exe -- --perf-log` (escribe en `user://perf/`), `--perf-log=<carpeta>` o `--perf-log=<archivo>.jsonl`. Con `--test-profile`, además, `--perf-seed=<n>` fija la semilla de la primera Nueva partida.
 
-- `session.hitches.jsonl` reúne fotogramas de al menos 50 ms, pulsaciones de F8 y avisos cuando el hilo principal lleva al menos 500 ms sin llegar al siguiente fotograma. El aviso se escribe desde el hilo del logger mientras dura el bloqueo.
-- `session.jsonl` contiene cada intervalo entre fotogramas y el inicio y fin de las operaciones instrumentadas. Todos comparten un reloj monotónico en microsegundos. Incluye sala, planta, semilla, dificultad, estado de The Lurker y muestras de CPU, GPU, llamadas de dibujo, memoria y compilación de pipelines. Cada trabajo del horneado de rebote lleva su sala, hilo e identificador de grupo. La cola, la espera y el montaje de los volúmenes aparecen por separado.
-- `godot.log` recoge la salida del motor, incluidos errores y advertencias.
+Apagado no cuesta nada: cada gancho mira antes si hay traza (`perf != null`), y las señales del registro solo se conectan al encenderlo. Encendido cuesta unos 0,1 ms por fotograma (la fila `trace` del informe), más unos 20 ms una vez por piso, en el primer fotograma de partida, al reunir las luces del piso. La traza ocupa de 1,5 a 2,5 MB por minuto según los FPS.
 
-Para revisar una marca, busca el intervalo `start_us`–`at_us` de los fotogramas lentos inmediatamente anteriores a F8. Compara primero los que están en `PLAYING` y con foco. `previous_state` señala los intervalos que cruzan un cambio de estado, como el paso de carga a juego. En `timings`, cada entrada indica llamadas, tiempo total y mayor llamada, en microsegundos. Las operaciones pueden estar anidadas, por ejemplo `lurker.brain` dentro de `lurker.physics`, y sus tiempos se solapan. Los monitores de Godot pueden ir rezagados y la GPU se mide en el viewport principal. Los intervalos permiten correlacionar las muestras con actividad del motor, pero la traza solo pone nombre a tareas instrumentadas en el juego. Un `begin` sin su `end` y sin `session_end` permite localizar trabajo que seguía en curso al interrumpirse la captura.
+### Qué guarda
+
+`game/app/session_perf.gd` escribe JSON por líneas desde un hilo propio, así que un bloqueo del hilo principal no la detiene: mientras dura, avisa cada medio segundo con `main_stall`. Cada fotograma (`"event":"frame"`) es el intervalo entre dos `process_frame` y lleva:
+
+- `us`, lo que duró. `phys_us`, `proc_us` y `draw_us`: los ticks de física, el `_process` y el dibujo en el hilo principal, que incluye esperar a la GPU y al VSync; lo que sobra es el resto (eventos del sistema, entrada y la espera del límite de FPS). `gpu_ms`: la GPU medida en el viewport principal, que llega con uno o dos fotogramas de retraso. `compiles`: los pipelines compilados en ese fotograma.
+- `timings`: por trabajo con nombre, `[llamadas, total, mayor llamada, propio, fase]` en microsegundos. El tiempo propio es el total menos lo que tardó otro trabajo con nombre dentro de él (`lurker.brain` dentro de `lurker.physics`), así que los propios se suman sin contar dos veces; `named_us` es esa suma en cada fase.
+- `state`, `stage`, `floor`, `focused` y `physics_ticks`.
+
+Cada 250 ms, en cada fotograma lento y en cada cambio de estado, una muestra (`sample`): posición, planta, sala y su nombre, preset, dificultad, semilla, VSync y límite de FPS, resolución y escala, apagón, luces encendidas y con sombra, llamadas de dibujo y de sombra, objetos, primitivas, memoria de vídeo, compilaciones por tipo, nodos, lo que hace The Lurker y las sondas de reflejo. Las operaciones largas (`begin` y `end`) llevan su principio y su fin: la carga del piso por partes, el horneado de rebote en sus hilos, la ronda de visibilidad de salas, las búsquedas de ruta de The Lurker. F8 deja una `player_mark`.
+
+Los trabajos con nombre: `game.physics`, y dentro `game.interaction`, `game.sanity` y `game.objectives`; `game.process`; `lurker.physics`, y dentro `lurker.senses`, `lurker.brain` y `lurker.intent`; `lurker.drain`; `audio.physics`, `audio.duct_route` y `audio.nav_path`; `director.physics`; `geometry.base_process` (el parpadeo de los tubos, el horneado de rebote y los cuerpos que siguen las capas de luz) y `geometry.halos`; `geometry.visibility`, la ronda que enciende y apaga salas; `player.physics` y `player.process`; `ui.process`; `net.process` y `net.physics`; y `trace`, lo que cuesta la traza. Cómo se mide uno nuevo, en [DEVELOPMENT.md](DEVELOPMENT.md) («Herramientas del rediseño del piso 2»).
+
+### El informe
+
+`python -I tools/benchmarks/perf_report.py <traza o carpeta>` escribe `<traza>.report.md` al lado; con una carpeta, lee su `.jsonl` más reciente. Cuenta los fotogramas en partida y con foco; si la ventana nunca tuvo el foco, como en un banco, cuenta los de partida y lo avisa. Lee también las trazas de antes del 20 de noviembre, sin fases ni tiempo propio. Trae, en este orden:
+
+- **Lectura rápida:** media y percentiles, cuántos tirones y qué los causa, la fase que más pesa, el trabajo de cada fotograma que más pesa, lo que nadie nombra, lo que cuesta la traza y la sala peor.
+- **Dónde se va el fotograma:** las cuatro fases y la GPU.
+- **Qué se come el fotograma:** cada trabajo con su tiempo propio medio, su p99, su peor fotograma y su mayor llamada, y las filas «física sin nombre» y «proceso sin nombre», lo que la fase gastó fuera de todo trabajo con nombre. Si pesan más que lo medido, hay que ponerle nombre a algo más antes de optimizar a ciegas.
+- **Tirones en partida:** un tirón es un fotograma de 2,5 veces la mediana y nunca de menos de 33,3 ms. Cada uno lleva su causa (el trabajo o la fase sin nombre que más tiempo propio se llevó; «dibujo con compilaciones de pipelines» si se compilaron en él), los tres mayores, las fases, la sala, la planta, la etapa, el apagón, lo que hacía The Lurker y lo que estaba en curso (una carga, un horneado en otro hilo). Los de fuera de partida (cargas, menús) van aparte.
+- **Salas por p95**, **los peores segundos**, la partida **por etapa, apagón, planta y preset**, el **render** de las muestras, las **operaciones con principio y fin** y las **marcas F8**, cada una con el peor tirón de los cinco segundos anteriores.
+
+`verify.ps1` prueba la cuenta del tiempo propio (`tests/hotel/perf_trace_test.gd`) y el informe sobre una traza inventada (`perf_report.py --self-test`).
+
+### Una partida corta del piso 2 (20 de noviembre de 2026)
+
+Para probarlo se usó el banco del piso 2 con la traza encendida, con The Lurker y con el audio del mundo calculándose sin sonar: `godot --path . --audio-driver Dummy --script res://tools/benchmarks/hotel_benchmark.gd -- --test-profile --mercy --floor=2 --seed=7 --qualities=2 --background --perf-log=<archivo>`. En Alto, Forward+ y la RTX 4060 Ti, recorre tres salas de la planta 1 y su paseo: 20 s de partida. El informe dijo:
+
+- El dibujo es la fase que más pesa: 5,2 ms de 13,6 de media, con la GPU en 7,1 ms.
+- Al entrar en salas que aún no se habían visto se compilan pipelines dentro del fotograma: cuatro tirones de 45 a 95 ms, con 13 a 276 compilaciones cada uno.
+- La ronda de visibilidad de salas (`geometry.visibility`) llega a 23 ms en un fotograma. De media es el tercer trabajo de cada fotograma (0,36 ms), tras los halos (0,53) y los sentidos de The Lurker (0,40).
+- `floor.spawn_creature` tarda 1,2 s cuando el estado ya es `PLAYING`, aún dentro de la carga del piso: un fotograma de 2,3 s.
+- Lo que nadie nombra en el `_process` son 1,8 ms por fotograma, más que todo lo medido de cada fotograma en esa fase (1,4 ms).
+- Los ocho tirones de «resto», de 76 a 968 ms, son las ocho capturas del banco, que guarda cada imagen justo después de dibujar; no son del juego.
+
+Es un recorrido del banco y no una partida jugada: no pasa por el apagón, por las etapas 2 y 3 ni por las otras plantas. Una partida a mano con `Registrar piso 2.cmd` está pendiente.
 
 ### Tirones del sonido por los ductos
 

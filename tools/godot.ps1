@@ -148,13 +148,14 @@ if ($Mode -eq 'bench-films') {
     # What the exporter leaves behind while it writes the exe's resources
     # (icon, version): not part of the game, which runs without it.
     Get-ChildItem $folder -Filter '*.truncated' -File | Remove-Item -Force
-    # The floor 2 launcher lives in git (tools/export/; exports/ does not):
-    # it goes beside the game and into the zip with it.
-    $launcher = Copy-Item -LiteralPath (Join-Path $projectPath 'tools/export/Probar piso 2.bat') -Destination $folder -PassThru
+    # The launchers live in git (tools/export/; exports/ does not): floor 2,
+    # and the game with its performance trace (docs/PERFORMANCE.md 14). They
+    # go beside the game and into the zip with it.
+    $launchers = @('Probar piso 2.bat', 'Registrar rendimiento.bat') | ForEach-Object { Copy-Item -LiteralPath (Join-Path $projectPath "tools/export/$_") -Destination $folder -PassThru }
     $game = @('TheFour.exe', 'TheFour.pck', 'steam_api64.dll', 'libgodotsteam.windows.template_release.x86_64.dll') | ForEach-Object { Get-Item (Join-Path $folder $_) }
     $game | Select-Object Name, LastWriteTime, Length | Format-Table -AutoSize | Out-String | Write-Output
     if (-not $NoZip) {
-        # What is handed to players: those four files and the launcher in a
+        # What is handed to players: those four files and the launchers in a
         # folder "The Four", in exports/TheFour.zip, replaced by each export.
         Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
         $zipPath = Join-Path $projectPath 'exports/TheFour.zip'
@@ -162,7 +163,7 @@ if ($Mode -eq 'bench-films') {
         $zip = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
         try {
             foreach ($file in $game) { [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, 'The Four/' + $file.Name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null }
-            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $launcher.FullName, 'The Four/' + $launcher.Name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            foreach ($launcher in $launchers) { [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $launcher.FullName, 'The Four/' + $launcher.Name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null }
         } finally { $zip.Dispose() }
         Get-Item $zipPath | Select-Object FullName, Length | Format-List | Out-String | Write-Output
     }

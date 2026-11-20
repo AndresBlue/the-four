@@ -282,7 +282,14 @@ func pad_look(delta: float) -> void:
 	var turn := pad.look(delta, settings, zoom)
 	if turn != Vector2.ZERO: look_by(turn)
 
+## Timed for the performance trace when the level has one (session_perf.gd).
 func _physics_process(delta: float) -> void:
+	var trace = get_parent().get("perf")
+	var started := Time.get_ticks_usec() if trace != null else 0
+	step_physics(delta)
+	if trace != null: trace.timed(&"player.physics", started)
+
+func step_physics(delta: float) -> void:
 	# Where the body was before this tick (smooth_camera).
 	tick_before = tick_after
 	if held:
@@ -624,6 +631,12 @@ func smooth_camera() -> void:
 	camera.position = camera_rest + global_basis.inverse() * lag
 
 func _process(delta: float) -> void:
+	var trace = get_parent().get("perf")
+	var started := Time.get_ticks_usec() if trace != null else 0
+	step_frame(delta)
+	if trace != null: trace.timed(&"player.process", started)
+
+func step_frame(delta: float) -> void:
 	if is_instance_valid(camera) and settings != null:
 		smooth_camera()
 		pad_look(delta)

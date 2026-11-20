@@ -238,7 +238,14 @@ func go() -> void:
 
 # --- Per frame -------------------------------------------------------------------
 
+## Timed for the performance trace when the level has one (session_perf.gd).
 func _process(delta: float) -> void:
+	var trace = level.get("perf") if level != null else null
+	var started := Time.get_ticks_usec() if trace != null else 0
+	step_frame(delta)
+	if trace != null: trace.timed(&"net.process", started)
+
+func step_frame(delta: float) -> void:
 	# Wardrobes are searched, and the shriek listens, offline too: the local
 	# Locust preview is the same code path with nobody connected.
 	# Not under the pause (offline, where this node still runs): a wardrobe
@@ -275,6 +282,12 @@ func _process(delta: float) -> void:
 	update_ping(delta)
 
 func _physics_process(delta: float) -> void:
+	var trace = level.get("perf") if level != null else null
+	var started := Time.get_ticks_usec() if trace != null else 0
+	step_physics(delta)
+	if trace != null: trace.timed(&"net.physics", started)
+
+func step_physics(delta: float) -> void:
 	if not in_match() or not net.active() or level.session.state not in [level.session.State.PLAYING, level.session.State.TRANSITION]: return
 	send_clock -= delta
 	if send_clock > 0.0: return
