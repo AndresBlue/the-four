@@ -2185,6 +2185,18 @@ func batten_model(node: Node3D, room: Dictionary, at: Vector3, along_x: bool, le
 	batten.set_surface_override_material(glass, shown)
 	node.add_child(batten)
 
+## The hum (hotel_geometry.tube_hum()): the battens, bare and old in the
+## service rooms and the archives, as the hotel's; a troffer in good order is
+## not heard, and one failing (FAILING, ceiling()) barely (the author, 20
+## November 2026: so loud that the ambience was played at 5 %). The
+## electrical room's lamp is no tube (lamp_fixture()).
+const TROFFER_HUM_DB := -24.0
+func tube_hum(room: Dictionary) -> float:
+	match OFFICE.lamp_of(room):
+		"batten": return 0.0
+		"troffer": return TROFFER_HUM_DB if not failing_lens.is_empty() else -INF
+	return -INF
+
 ## The electrical room's lamp is made (lights[id] must exist) but stays out.
 func room_lamp(node: Node3D, room: Dictionary) -> void:
 	var spec := lamp_fixture(node, room)

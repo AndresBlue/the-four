@@ -17,6 +17,8 @@ const MODELS := preload("res://game/world/office/office_models.gd")
 const DESKS := preload("res://game/world/office/pieces/desks.gd")
 const KIT := preload("res://game/world/office/pieces/kit.gd")
 const CLUTTER := preload("res://game/world/office/office_clutter.gd")
+const HOTEL_TEST := preload("res://tests/hotel/hotel_test.gd")
+const OFFICE_GEOMETRY := preload("res://game/world/office/office_geometry.gd")
 ## The office's own downloads (tools/props/build_catalogue.gd, area 4c U1).
 const OWN := ["sofa_02", "mid_century_lounge_chair", "rotary_phone_black_sketchfab", "crt_terminal_ibm3278_sketchfab", "water_cooler_bottle_tboiston", "perchero_coat_rack_whostea", "taquilla_zambur", "detector_humo_sousinho", "archivador_gris_ahmagh2e_shut4", "archivador_gris_ahmagh2e_body4", "archivador_gris_ahmagh2e_drawer", "puerta_oficina_sousinho_leaf", "puerta_lisa_sousinho_leaf", "puerta_metal_tboiston_leaf", "puerta_metal_tboiston_frame", "sillon_mirey_a", "extintor_loic", "microfichas_maxdragonn", "perchero_pared_ehnri", "toalla_aprilpolubiec", "retro_oficina_yj_desk", "retro_oficina_yj_chair", "escritorio_madera_collings", "silla_tela_projectkaizen", "butaca_madera_renend", "libreria_libros_collings", "expendedora_attheseedof", "nevera_dylanheyes", "lampara_banquero_meunier", "flexo_sousinho", "cenicero_vidrio_red2000", "portalapices_aspectstudio", "bandeja_sinnervoncrawsz", "cajas_archivo_cozmoth", "globo_collings", "libros_frodoundead_row_a", "libros_frodoundead_row_b", "libros_frodoundead_row_c", "libros_frodoundead_row_d", "impresora_okidata_papaj", "ventilador_joshsmith", "silla_banquero_zamzam", "reloj_mesa_sousinho", "caja_carton_krolzuzanna", "alargador_evan4129", "archivadores_palanca_janexx", "zapato_inciprocal", "wooden_ladder_02", "metal_toolbox", "wooden_broom", "dustpan", "plastic_thermos", "vintage_stapler", "round_spectacles", "mousetrap", "magnifying_glass_01", "boombox", "potted_plant_01", "pachira_aquatica_01_c", "pachira_aquatica_01_d", "calathea_orbifolia_01_a", "calathea_orbifolia_01_c", "anthurium_botany_01_a", "anthurium_botany_01_c", "terminal_ibm3178_maxdragon", "cafetera_kird3rf", "lampara_pie_bilgehankorkmaz", "sillas_espera_connorwassall", "pilea_terracota_allquad", "potus_colgante_kemowolfpaw"]
 ## The kinds that are only a stand-in (office_models.stand_in()).
@@ -32,6 +34,25 @@ func check(title: String, passed: bool, detail := "") -> void:
 	checks += 1
 	if not passed: failed += 1
 	print("PASS " if passed else "FAIL ", title, ("  (" + detail + ")") if not passed and not detail.is_empty() else "")
+
+## The hum (office_geometry.tube_hum()): the battens as the hotel's; of the
+## troffers only the failing ones, TROFFER_HUM_DB under them; nothing else.
+func tube_hums(hotel) -> void:
+	var wrong: Array = []
+	var battens := 0
+	var troffers := 0
+	for entry in hotel.tubes:
+		var room: Dictionary = hotel.manifest.rooms[int(entry.light.get_meta("room", -1))]
+		match OFFICE.lamp_of(room):
+			"batten":
+				battens += 1
+				if float(entry.hum_db) != 0.0: wrong.append(int(room.id))
+			"troffer":
+				troffers += 1
+				if float(entry.hum_db) != OFFICE_GEOMETRY.TROFFER_HUM_DB or not hotel.flickers.any(func(f): return f.light == entry.light): wrong.append(int(room.id))
+			_: wrong.append(int(room.id))
+	var lit: int = hotel.manifest.rooms.filter(func(r): return not FLOOR.is_void(r) and OFFICE.lamp_of(r) == "troffer" and not hotel.dark_ids.has(int(r.id))).size()
+	check("Zumban las regletas; de los fluorescentes de techo, solo los que fallan y mucho más bajo (%d regletas, %d de %d de techo)" % [battens, troffers, lit], wrong.is_empty() and battens > 0 and troffers * 4 <= lit, str(wrong))
 
 func run() -> void:
 	var heavy: Array = []
@@ -55,6 +76,9 @@ func run() -> void:
 	level.set_floor(2)
 	await level.start_floor(7, false, [1], "apacible", 2)
 	var hotel = level.hotel
+	var refuge_wrong: Array = HOTEL_TEST.refuge_signs_wrong(hotel)
+	check("Cada cara de los carteles del refugio señala la puerta del ascensor, no abajo", refuge_wrong.is_empty() and not hotel.manifest.gates.is_empty(), str(refuge_wrong))
+	tube_hums(hotel)
 	var missing: Array = []
 	for kind in MODELS.MODELS.keys() + STAND_ONLY:
 		if MODELS.mesh_of(hotel, String(kind)) == null: missing.append(kind)

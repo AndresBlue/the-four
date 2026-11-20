@@ -33,6 +33,35 @@ static func rooms_on(data: Dictionary, planta: int) -> int:
 		count += 1
 	return count
 
+## The refuge's two signs (hotel_geometry.refuge_sign()): each face's arrow
+## at the door of the lift's lobby, as whoever reads that face sees it from
+## the middle of the room, worked out from where the door stands; and none
+## turned to the middle saying "back". What is wrong, by room; [] when every
+## face of every refuge is right (and has two signs). Also
+## office_dressing_test's.
+static func refuge_signs_wrong(hotel) -> Array:
+	var wrong: Array = []
+	var ways := ["ahead", "left", "right", "back"]
+	for gate in hotel.manifest.gates:
+		var refuge: Dictionary = hotel.manifest.rooms[int(gate.room)]
+		# The offices' last way out is the air shaft, from no refuge.
+		if int(refuge.type) != FLOOR.palette(hotel.manifest).REFUGE: continue
+		var door: Vector3 = FLOOR.portal_between(refuge, hotel.manifest.rooms[int(gate.beyond)]) - FLOOR.position_of(refuge)
+		var boards: Array = hotel.room_nodes[int(gate.room)].get_children().filter(func(n: Node) -> bool: return n.get_node_or_null("Panel") != null and n.get_node_or_null("ExitGlow") != null)
+		if boards.size() != 2: wrong.append("%d: %d carteles" % [int(gate.room), boards.size()])
+		for board: Node3D in boards:
+			var glass: ShaderMaterial = board.get_node("Panel").material_override
+			for face in [1.0, -1.0]:
+				var forward: Vector3 = -board.basis.z * face
+				var ahead := door.dot(forward)
+				var side := door.dot(forward.cross(Vector3.UP))
+				var way: int = (0 if ahead > 0.0 else 3) if absf(ahead) >= absf(side) else (2 if side > 0.0 else 1)
+				var shown: Texture2D = glass.get_shader_parameter("engraving" if face > 0.0 else "engraving_back")
+				var wanted := "res://assets/props/exit_sign/engraving_%s.png" % ways[way]
+				if not bool(glass.get_shader_parameter("two_faced")) or shown == null or shown.resource_path != wanted: wrong.append("%d: %s, no %s" % [int(gate.room), shown.resource_path if shown != null else "nada", ways[way]])
+				if way == 3 and forward.dot(board.position) > 0.01: wrong.append("%d: atrás hacia el medio" % int(gate.room))
+	return wrong
+
 ## The way from where the player stands with the most floor ahead before a
 ## wall or a shut door.
 func clearest_heading(scene) -> float:
@@ -267,6 +296,10 @@ func run() -> void:
 	check("Ningún cartel en el primer tramo del camino a la salida", bare)
 	check("Cada cartel cuelga en un pasillo y señala a lo largo de los pasillos, nunca a una habitación", signs_ok)
 	check("Una flecha hacia la derecha se lee a la izquierda desde el otro lado", ROUTE_SIGNS.way_for(Vector2i(0, -1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.RIGHT and ROUTE_SIGNS.way_for(Vector2i(0, 1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.LEFT and ROUTE_SIGNS.way_for(Vector2i(1, 0), Vector2i(1, 0)) == ROUTE_SIGNS.Way.AHEAD)
+	var refuge_wrong := refuge_signs_wrong(scene.hotel)
+	check("Cada cara de los carteles del refugio señala la puerta del ascensor, no abajo %s" % str(refuge_wrong), refuge_wrong.is_empty() and scene.manifest.gates.size() == 3)
+	# The hum (hotel_geometry.tube_hum()): every batten of the hotel, fully.
+	check("Todas las regletas del hotel zumban como siempre", not scene.hotel.tubes.is_empty() and scene.hotel.tubes.all(func(entry): return float(entry.hum_db) == 0.0))
 	# The plan on the shared sheet: the walls of every planta, the plaster
 	# partitions of the alcoves among them, drawn by what the survivors see
 	# and gone three minutes after it was last seen.

@@ -108,7 +108,7 @@ Lo comprueba `spatial_audio_test`: el tema se va con la criatura cerca, no vuelv
 
 ## Atmósfera local
 
-- Zumbido de fluorescentes: todos los tubos de las salas de servicio zumban, hasta dos fuentes en los más cercanos (13 m), que se apagan con cada parpadeo. Un tubo de otra sala solo llega por la abertura, como cualquier sonido. Medido al 50 % con `tools/audio/measure_hum.gd`: −31 dBFS RMS debajo, −34 a 3 m, −40 a 5 m.
+- Zumbido de fluorescentes: todos los tubos de las salas de servicio zumban, hasta dos fuentes en los más cercanos (13 m), que se apagan con cada parpadeo. En las oficinas (el autor, 20 de noviembre de 2026) zumban igual las regletas a la vista (archivos, almacén, galería de servicio, salas del aire, depósito y maniobra); de los fluorescentes empotrados en el falso techo solo suenan los de las salas con una luminaria que falla (la que parpadea), 24 dB más bajo (`office_geometry.TROFFER_HUM_DB`), y los demás no suenan (`tube_hum()`; lo comprueba `office_dressing_test`). Un tubo de otra sala solo llega por la abertura, como cualquier sonido. Medido al 50 % con `tools/audio/measure_hum.gd`: −31 dBFS RMS debajo, −34 a 3 m, −40 a 5 m.
 - Pasos de The Locust: golpe seco sintetizado de pata punzante sobre un golpe hueco, en cada pisada real de la animación.
 
 Pendiente: escucha crítica con auriculares, balance del aura en partidas humanas y perfiles de las otras criaturas.

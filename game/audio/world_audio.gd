@@ -864,6 +864,6 @@ func update_hum_levels() -> void:
 		var entry = hum.get_meta("entry") if hum.has_meta("entry") else null
 		if entry == null or not hum.playing: continue
 		var level_ratio: float = clampf(entry.light.light_energy / maxf(entry.energy, 0.01), 0.0, 1.0)
-		hum.volume_db = HUM_DB + float(hum.get_meta("route_gain", 0.0)) + linear_to_db(maxf(level_ratio, 0.001))
+		hum.volume_db = HUM_DB + float(entry.get("hum_db", 0.0)) + float(hum.get_meta("route_gain", 0.0)) + linear_to_db(maxf(level_ratio, 0.001))
 		# Lower where the light is being drunk (the hotel's is never drained).
 		hum.pitch_scale = 1.0 - HUM_DRAIN_PITCH * float(level.hotel.drained(int(entry.light.get_meta("room", -1))))

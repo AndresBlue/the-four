@@ -8,6 +8,10 @@ else's is shipped.
 Also the corridors' signs (exit_route_signs.gd): a figure running out of a
 door and an arrow, way_right, way_left, way_ahead and way_back.png.
 
+And the refuge's SALIDA with its arrow pointing ahead, left, right or back,
+towards the door of the lift's lobby: engraving_ahead, _left, _right and
+_back.png.
+
 Writes assets/props/exit_sign/engraving.png, 1024 x 512, imported lossless:
   R  the engraved face, where the sheet scatters the light it guides
   G  the rim of the cut, which catches more of it and reads as a bright edge
@@ -152,6 +156,39 @@ def draw_engraving():
     return mask.resize(SIZE, Image.LANCZOS)
 
 
+# The refuge's signs point at the door of the lift's lobby (the author, 20
+# November 2026: pointing down, people did not see where to go). The down
+# arrow turned, or the corridors' turn back; on the left of the word when it
+# points left, as such signs are drawn.
+TURNS = {"ahead": Image.ROTATE_180, "right": Image.ROTATE_90, "left": Image.ROTATE_270}
+
+
+def draw_engraving_to(kind):
+    box = Image.new("L", SUPER, 0)
+    w = CAP * (0.9 if kind == "back" else 0.64)
+    if kind == "back":
+        turn_arrow(box, 0, TOP, w * 0.96, CAP)
+    else:
+        arrow(box, 0, w)
+    box = box.crop((0, TOP * OVER, round(w * OVER), BASE * OVER))
+    if kind in TURNS:
+        box = box.transpose(TURNS[kind])
+    wide, high = box.width / OVER, box.height / OVER
+    mask = Image.new("L", SUPER, 0)
+    lettering = sum(w for _, w in LETTERS) + GAP * (len(LETTERS) - 1)
+    x = (SIZE[0] - (lettering + ARROW_GAP + wide)) * 0.5
+    y = TOP + (CAP - high) * 0.5
+    if kind == "left":
+        mask.paste(box, (round(x * OVER), round(y * OVER)))
+        x += wide + ARROW_GAP
+    for glyph, w in LETTERS:
+        glyph(mask, x, w)
+        x += w + GAP
+    if kind != "left":
+        mask.paste(box, (round((x - GAP + ARROW_GAP) * OVER), round(y * OVER)))
+    return mask.resize(SIZE, Image.LANCZOS)
+
+
 # --- The corridors' signs: the way out --------------------------------------
 # A figure running out through a door, and an arrow saying which way: right,
 # left (the same, mirrored), ahead (up) and back (a turn). The figure runs
@@ -261,6 +298,8 @@ def save(fill, name):
 
 def main():
     save(draw_engraving(), "engraving.png")
+    for kind in ["ahead", "left", "right", "back"]:
+        save(draw_engraving_to(kind), "engraving_%s.png" % kind)
     right = draw_way("right")
     save(right, "way_right.png")
     save(right.transpose(Image.FLIP_LEFT_RIGHT), "way_left.png")

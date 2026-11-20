@@ -3,7 +3,8 @@ extends SceneTree
 ## sides from where somebody walking up to it would read it, on the first
 ## planta. With a window (needs a renderer):
 ##   godot --path . --script res://tools/capture/route_signs_capture.gd -- --test-profile --automation --silent [--seed=81]
-## Shots in evidence/route_sign_<n>_<front|back>.png.
+## Shots in evidence/route_sign_<n>_<front|back>.png, and the first refuge's
+## signs in evidence/route_sign_refuge_<n>[_door].png.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const WAYS := ["delante", "izquierda", "derecha", "atras"]
 var level
@@ -53,6 +54,26 @@ func run() -> void:
 			face(at)
 			print("SIGN %d %s: dice %s" % [n, side[0], WAYS[int(side[2])]])
 			await shot("%d_%s" % [n, side[0]])
+		n += 1
+	# The first refuge's two signs, 3 m in front of their face to the middle of
+	# the room (or of either, hung across), alone and with the lift's door each
+	# one points at (hotel_geometry.refuge_sign()).
+	var gate: Dictionary = level.manifest.gates[0]
+	var refuge: Dictionary = level.manifest.rooms[int(gate.room)]
+	var middle := FLOOR.position_of(refuge)
+	var door := FLOOR.portal_between(refuge, level.manifest.rooms[int(gate.beyond)]) + Vector3(0, 1.2, 0)
+	n = 0
+	for board in level.hotel.room_nodes[int(gate.room)].get_children():
+		if board.get_node_or_null("Panel") == null: continue
+		var normal: Vector3 = board.global_basis.z
+		if normal.dot(middle - board.global_position) < -0.01: normal = -normal
+		var stand: Vector3 = board.global_position + normal * 3.0
+		level.player.position = Vector3(stand.x, FLOOR.planta_y(0) + 0.04, stand.z)
+		face(board.global_position)
+		print("REFUGE %d: la puerta del ascensor, hacia %s" % [n, str(gate.out)])
+		await shot("refuge_%d" % n)
+		face(board.global_position.lerp(door, 0.5))
+		await shot("refuge_%d_door" % n)
 		n += 1
 	level.queue_free()
 	await process_frame

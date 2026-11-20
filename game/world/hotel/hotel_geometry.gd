@@ -81,7 +81,12 @@ var practicals: Array[OmniLight3D] = []
 # Fluorescent fixtures that flicker (never while effects are reduced).
 var flickers: Array = []
 ## Every fluorescent batten (service rooms), steady or failing: they hum.
+## {light, energy, hum_db (tube_hum())}.
 var tubes: Array = []
+
+## How loud a room's tube hums against world_audio's HUM_DB, in dB; -INF for
+## one that does not. Every batten of the hotel, fully; a floor kind may say.
+func tube_hum(_room: Dictionary) -> float: return 0.0
 var flicker_clock := 0.0
 ## Red start lamps in the reception: {light, material, energy}.
 var beacons: Array = []
@@ -1448,7 +1453,8 @@ func lamp_light(node: Node3D, room: Dictionary, spec: Dictionary) -> OmniLight3D
 	if dark_room(room):
 		light.set_meta("off", true)
 		light.visible = false
-	if service: tubes.append({"light": light, "energy": light.light_energy})
+	var hum := tube_hum(room) if service else -INF
+	if hum > -INF: tubes.append({"light": light, "energy": light.light_energy, "hum_db": hum})
 	if not String(spec.failing).is_empty():
 		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[spec.failing], "glow": materials.light.emission_energy_multiplier})
 	return light
@@ -1464,9 +1470,36 @@ func extras(node: Node3D, room: Dictionary) -> void:
 	var light: OmniLight3D = lights.back()
 	if room.type == palette.RECEPTION: start_beacon(node, room, light)
 	if room.type == palette.REFUGE:
-		exit_sign(node, Vector3(0, 2.25, -2.5), 0.0, height)
-		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
+		refuge_sign(node, room, Vector3(0, 2.25, -2.5), 0.0)
+		refuge_sign(node, room, Vector3(0, 2.45, 4.8), PI)
 		light.light_color = Color("b8d4b6")
+
+## The refuge's SALIDA with its arrow at the door of the lift's lobby (the
+## gate's `out`), on each face for whoever reads it: pointing down, people did
+## not see where to go (the author, 20 November 2026). A sign whose face to
+## the middle of the room would say "back" hangs across instead, clear of the
+## wall: its turn read as down again. Without a gate (the module gallery), down.
+const REFUGE_ENGRAVINGS := [
+	preload("res://assets/props/exit_sign/engraving_ahead.png"),
+	preload("res://assets/props/exit_sign/engraving_left.png"),
+	preload("res://assets/props/exit_sign/engraving_right.png"),
+	preload("res://assets/props/exit_sign/engraving_back.png"),
+]
+
+## `yaw` turns its face to the middle of the room.
+func refuge_sign(node: Node3D, room: Dictionary, pos: Vector3, yaw: float) -> void:
+	var gates: Array = manifest.get("gates", []).filter(func(gate) -> bool: return int(gate.room) == int(room.id))
+	if gates.is_empty():
+		exit_sign(node, pos, yaw, float(room.height))
+		return
+	var out := Vector2i(int(gates[0].out[0]), int(gates[0].out[1]))
+	var normal := Vector2i(roundi(sin(yaw)), roundi(cos(yaw)))
+	if ROUTE_SIGN.way_for(-normal, out) == ROUTE_SIGN.Way.BACK:
+		yaw += PI / 2
+		normal = Vector2i(roundi(sin(yaw)), roundi(cos(yaw)))
+		var half := FLOOR.size_of(room).y * 0.5 - 0.45
+		pos.z = clampf(pos.z, -half, half)
+	exit_sign(node, pos, yaw, float(room.height), REFUGE_ENGRAVINGS[ROUTE_SIGN.way_for(-normal, out)], REFUGE_ENGRAVINGS[ROUTE_SIGN.way_for(normal, out)])
 
 ## Where the night started: a red emergency lamp blinking over the
 ## reception, the one landmark to find the way back by; its lamp turned down.
@@ -1854,8 +1887,8 @@ func box_light(at: Vector3) -> OmniLight3D:
 	return lamp
 
 ## The refuge's sign: a sheet of clear acrylic lit from the diodes buried in
-## its top edge, engraved SALIDA with an arrow pointing down at the room the
-## floor is left from, in an aluminium channel hung from the ceiling on a
+## its top edge, engraved SALIDA with an arrow (refuge_sign()), in an
+## aluminium channel hung from the ceiling on a
 ## stem. The lettering is drawn by the light the sheet guides
 ## (shaders/exit_panel.gdshader); the sign also throws its own green light,
 ## with a shadow, like every other visible lamp in the hotel.

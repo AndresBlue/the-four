@@ -452,9 +452,9 @@ Con eso, en el pasillo de seis apliques casi no hay raya, y la que queda es la d
 
 - **La lámina guía la luz**, y donde está grabada deja de guiarla y la derrama: así, **las letras las dibuja la luz**, no la pintura (`shaders/exit_panel.gdshader`). El panel es más brillante bajo los diodos y pierde algo hacia abajo, los cantos del grabado recogen más que el fondo (de ahí el filo claro de cada letra), y los cantos cortados de la lámina brillan, el de abajo más que ninguno. En lo más claro, el verde se va al blanco, como una luz sobreexpuesta.
 - **Se ven los diodos**, cinco puntos en el canto de arriba, cada uno con su cono abriéndose hacia abajo dentro de la lámina.
-- **Grabado por las dos caras**, como son de verdad: se lee igual desde atrás.
+- **Grabado por las dos caras**, como son de verdad: el texto se lee bien desde atrás, y cada cara lleva su flecha.
 - **La tipografía es nuestra.** No hay ningún archivo de fuente en el proyecto, así que `tools/textures/make_exit_sign.py` dibuja SALIDA y la flecha como contornos: cada letra es su propia figura (la S es un trazo estampado sobre su curva, con los remates cortados a escuadra) y de ahí salen dos máscaras, el fondo del grabado y el canto del corte. No se embarca nada de nadie.
-- **La flecha apunta hacia abajo:** el piso se abandona en esta sala, no más allá, y así se lee igual por las dos caras.
+- **La flecha apunta a la puerta del vestíbulo del ascensor** (el autor, 20 de noviembre de 2026; antes apuntaba hacia abajo y había quien no entendía adónde ir). Cada cara dice dónde está esa puerta para quien la lee desde el medio de la sala: de frente, a la izquierda, a la derecha o detrás (la flecha que da la vuelta). El cartel cuya cara al medio de la sala diría «detrás» se cuelga de través y separado de la pared, y entonces sus dos caras señalan a un lado. Sin ascensor (la galería de módulos) sigue apuntando hacia abajo.
 - **El resto de la luminaria:** canal de aluminio, mordazas negras en las dos esquinas, vástago y florón contra el techo. El canal tapa la luz hacia arriba, así que deja su propia banda de sombra en el techo.
 - **Su luz** es una lámpara más: verde, corta (2,8 m), con sombra, sin rebote y con el mismo desvanecido que las lámparas de mueble, así que no se cuela en la sala de al lado.
 - Comprobado también en Compatibility.
