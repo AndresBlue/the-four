@@ -24,6 +24,8 @@ const SPREAD := 0.2
 const HEAP := 0.5
 const KEY_SCALE := 2.0
 const SLIP := Vector3(0.12, 0.003, 0.16)
+const SHEET := Vector3(0.16, 0.003, 0.21)
+const PHOTO := Vector3(0.09, 0.003, 0.11)
 
 func place() -> void: level.code.place_containers()
 
@@ -61,8 +63,8 @@ func apply(action: String, index: int, seat: int, data: Dictionary, _quiet: bool
 				if is_instance_valid(other) and (other.get_meta("at") as Vector3).distance_to(here) <= HEAP: level.code.picked(int(thing), seat)
 	return data
 
-## The host: whoever falls lets go of the keys and the slips they hold, round
-## where they fell and on what is under them, told to everyone.
+## The host: whoever falls lets go of the keys, the slips and the hints they
+## hold, round where they fell and on what is under them, told to everyone.
 func on_death(seat: int, point: Vector3) -> void:
 	if level.net.is_client(): return
 	var things: Array = level.code.carried(seat)
@@ -79,9 +81,10 @@ func on_death(seat: int, point: Vector3) -> void:
 func on_return(seat: int) -> void: level.code.give_back(seat)
 
 ## A thing lying where its holder fell: the key as it hangs from its drawer,
-## bigger, or a slip as pale as the papers are (and, as them, with no light of
-## its own: the torch picks it out); a usable to pick it up, its box wide
-## enough for the brackets to come up on a look towards it.
+## bigger, or a paper as pale as the papers are (and, as them, with no light
+## of its own: the torch picks it out) -- a slip, a hint's sheet or its
+## photograph; a usable to pick it up, its box wide enough for the brackets
+## to come up on a look towards it.
 func lay(thing: int, at: Vector3) -> Node3D:
 	var usable := USABLE.new()
 	usable.name = "Fallen_%d" % thing
@@ -99,7 +102,7 @@ func lay(thing: int, at: Vector3) -> Node3D:
 		shown.scale = Vector3.ONE * KEY_SCALE
 	else:
 		var slip := BoxMesh.new()
-		slip.size = SLIP
+		slip.size = SLIP if thing > -level.code.HINT_BASE else PHOTO if String(level.code.hint_of(-thing - level.code.HINT_BASE).get("kind", "")) == "polaroid" else SHEET
 		shown.mesh = slip
 		var paper := StandardMaterial3D.new()
 		paper.albedo_color = Color(0.86, 0.8, 0.68)

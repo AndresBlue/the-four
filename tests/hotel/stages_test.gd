@@ -575,12 +575,20 @@ func run() -> void:
 	# picked up is back in its owner's hands when everybody is on their feet
 	# again (the author, 20 November 2026).
 	level.code.key_holders[key_index] = level.player.slot
+	# And a hint out of a drawer, if the stage has one that is not a photograph
+	# (which is taken with a camera of its own when it is had).
+	var drawer_hints: Array = level.code.hints.filter(func(hint): return String(hint.get("place", "")) not in ["surface", "door"] and String(hint.get("kind", "")) != "polaroid")
+	var taken_hint := -1 if drawer_hints.is_empty() else int(drawer_hints[0].id)
+	if taken_hint >= 0:
+		level.code.hints_taken[taken_hint] = level.player.slot
+		level.code.own_hint(taken_hint)
 	var carried: int = level.code.carried(level.player.slot).size()
 	level.objectives_on_death(level.player.slot, level.player.global_position)
-	check("Quien cae suelta la llave y las notas donde estaba", carried == DIG.COUNT + 1 and level.code.fallen.size() == carried and level.notes_found().is_empty() and not level.code.has_key())
+	check("Quien cae suelta la llave, las notas y las pistas donde estaba", carried >= DIG.COUNT + 1 + (1 if taken_hint >= 0 else 0) and level.code.fallen.size() == carried and level.notes_found().is_empty() and not level.code.has_key())
+	check("Y la pista caída deja de marcar su plano", taken_hint < 0 or (level.code.fallen.has(-level.code.HINT_BASE - taken_hint) and not level.code.hints_mine.has(taken_hint)))
 	check("En el suelo, cada cosa con su RECOGER", level.code.fallen.values().all(func(lying): return lying.word(level.player.slot) == "RECOGER"))
 	level.match_net.use_office(&"code", "pick", -1)
-	check("Recoger una se lleva el montón entero: las notas y la llave", level.code.fallen.is_empty() and level.notes_found().size() == DIG.COUNT and level.code.has_key())
+	check("Recoger una se lleva el montón entero: las notas, la llave y las pistas", level.code.fallen.is_empty() and level.notes_found().size() == DIG.COUNT and level.code.has_key() and (taken_hint < 0 or level.code.hints_mine.has(taken_hint)))
 	level.objectives_on_death(level.player.slot, level.player.global_position)
 	var lying_now: Dictionary = level.code.carried_state()
 	check("Lo que está en el suelo viaja con el piso guardado", lying_now.fallen.size() == carried and lying_now.notes.size() == DIG.COUNT and lying_now.keys.has(key_index))
@@ -588,7 +596,8 @@ func run() -> void:
 	level.code.restore_carried(lying_now)
 	check("Y vuelve a estar en el suelo al retomarlo", level.code.fallen.size() == carried and is_instance_valid(level.code.fallen[-2]))
 	level.objectives_on_return(level.player.slot)
-	check("Al levantarse todos, cada uno vuelve con lo que llevaba", level.code.fallen.is_empty() and level.notes_found().size() == DIG.COUNT and level.code.has_key())
+	check("Al levantarse todos, cada uno vuelve con lo que llevaba", level.code.fallen.is_empty() and level.notes_found().size() == DIG.COUNT and level.code.has_key() and (taken_hint < 0 or level.code.hints_mine.has(taken_hint)))
+	print("STAGES pista de cajon probada: ", taken_hint)
 	level.code.key_holders = key_before
 	# The third sector counts both: the sets, and the numbers found.
 	level.refresh_briefing()

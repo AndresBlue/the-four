@@ -65,13 +65,16 @@ var key_holders := {}
 const KEYS_A_STAGE := 2
 
 ## What a survivor carried lies where they fell (the author, 20 November
-## 2026): each key and each slip with a number of the code is a thing on the
-## floor, which anybody alive picks up and has from then on
-## (code_objective.gd lays it, and is asked for it). By what it is -- a key:
-## its piece's index; a slip: minus its place in the code -- the thing lying
-## there. Whose it was stays in key_holders and found_by meanwhile, so that it
-## is theirs again when everybody is on their feet (give_back()).
+## 2026): each key, each slip with a number of the code and each hint taken
+## out of a drawer is a thing on the floor, which anybody alive picks up and
+## has from then on (code_objective.gd lays it, and is asked for it). By what
+## it is -- a key: its piece's index; a slip: minus its place in the code; a
+## hint: minus HINT_BASE and its id -- the thing lying there. Whose it was
+## stays in key_holders, found_by and hints_taken meanwhile, so that it is
+## theirs again when everybody is on their feet (give_back()). A hint read
+## where it lies is not carried: it is still there to be read.
 var fallen := {}
+const HINT_BASE := 100
 
 ## What a seat has on it, as `fallen` names things.
 func carried(seat: int) -> Array:
@@ -80,11 +83,21 @@ func carried(seat: int) -> Array:
 		if int(key_holders[index]) == seat and not fallen.has(int(index)): things.append(int(index))
 	for slot in found_by:
 		if int(found_by[slot]) == seat and not fallen.has(-int(slot)): things.append(-int(slot))
+	for id in hints_taken:
+		if int(hints_taken[id]) == seat and not fallen.has(-HINT_BASE - int(id)): things.append(-HINT_BASE - int(id))
 	return things
+
+## Whose a thing is (or was, while it lies): -1 nobody's.
+func owner_of(thing: int) -> int:
+	if thing >= 0: return int(key_holders.get(thing, -1))
+	if thing > -HINT_BASE: return int(found_by.get(-thing, -1))
+	return int(hints_taken.get(-thing - HINT_BASE, -1))
 
 func let_fall(thing: int, lying: Node3D) -> void:
 	take_up(thing)
 	fallen[thing] = lying
+	# A hint is off this player's sheet while it lies: its marks go with it.
+	if thing <= -HINT_BASE and owner_of(thing) == level.player.slot: hints_mine.erase(-thing - HINT_BASE)
 
 func take_up(thing: int) -> void:
 	if fallen.has(thing) and is_instance_valid(fallen[thing]): fallen[thing].queue_free()
@@ -95,7 +108,10 @@ func picked(thing: int, seat: int) -> void:
 	if not fallen.has(thing): return
 	take_up(thing)
 	if thing >= 0: key_holders[thing] = seat
-	else: found_by[-thing] = seat
+	elif thing > -HINT_BASE: found_by[-thing] = seat
+	else:
+		hints_taken[-thing - HINT_BASE] = seat
+		if seat == level.player.slot: own_hint(-thing - HINT_BASE)
 
 ## Who has each key and each slip now, and what lies where somebody fell:
 ## what a floor kept or caught up with cannot tell from the furniture gone
@@ -105,13 +121,18 @@ func carried_state() -> Dictionary:
 	var lying: Array = []
 	for thing in fallen:
 		if is_instance_valid(fallen[thing]): lying.append([int(thing), fallen[thing].get_meta("at")])
-	return {"keys": key_holders.duplicate(), "notes": found_by.duplicate(), "fallen": lying}
+	return {"keys": key_holders.duplicate(), "notes": found_by.duplicate(), "hints": hints_taken.duplicate(), "fallen": lying}
 
 func restore_carried(data: Dictionary) -> void:
 	var keys: Dictionary = data.get("keys", {})
 	for index in keys: key_holders[int(index)] = int(keys[index])
 	var notes: Dictionary = data.get("notes", {})
 	for slot in notes: found_by[int(slot)] = int(notes[slot])
+	var papers: Dictionary = data.get("hints", {})
+	for id in papers:
+		hints_taken[int(id)] = int(papers[id])
+		if int(papers[id]) == level.player.slot: own_hint(int(id))
+		else: hints_mine.erase(int(id))
 	var handler = level.objective(&"code")
 	if handler == null: return
 	for entry in data.get("fallen", []): handler.apply("drop", int(entry[0]), -1, {"at": entry[1]}, true)
@@ -121,8 +142,9 @@ func restore_carried(data: Dictionary) -> void:
 ## was on a planta nobody goes back to.
 func give_back(seat: int) -> void:
 	for thing in fallen.keys():
-		var whose := int(key_holders.get(thing, -1)) if int(thing) >= 0 else int(found_by.get(-int(thing), -1))
-		if whose == seat: take_up(int(thing))
+		if owner_of(int(thing)) != seat: continue
+		take_up(int(thing))
+		if int(thing) <= -HINT_BASE and seat == level.player.slot: own_hint(-int(thing) - HINT_BASE)
 
 ## The keypad of the last door, and what is being typed into it.
 var lock: Node3D
