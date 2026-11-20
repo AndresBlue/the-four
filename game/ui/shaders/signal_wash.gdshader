@@ -36,6 +36,11 @@ void fragment() {
 	col += (PICTURE(uv + step_y) + PICTURE(uv - step_y)) * 0.08;
 	col = mix(PICTURE(uv), col, clamp(w * 3.0, 0.0, 1.0));
 	col.r = mix(col.r, PICTURE(uv + step_x * 1.5).r, w);
+	// The little picture keeps its colour already times its cover (a viewport
+	// drawn on nothing does); shown as it came, it was covered twice over:
+	// soft ink came out dark and every letter thin (the author: dark and
+	// blurred, even with the tape's wear at nothing).
+	col.rgb /= max(col.a, 0.001);
 	// The snow: over what is left of the picture, and grains of it given up.
 	float snow = hash(floor(FRAGCOORD.xy / 2.0) + frame * 17.0);
 	float grain = hash(floor(FRAGCOORD.xy / 3.0) + frame * 3.1);
@@ -46,6 +51,9 @@ void fragment() {
 	// It thins out towards the edges, so there is no box to see.
 	float edge = smoothstep(0.0, 0.08, UV.x) * smoothstep(0.0, 0.25, 1.0 - UV.x) * smoothstep(0.0, 0.3, UV.y) * smoothstep(0.0, 0.3, 1.0 - UV.y);
 	float haze = snow * w * (1.0 - w) * 1.8 * edge * (0.6 + 0.4 * sin(uv.y * 12.0 + TIME * 6.0));
-	col = vec4(mix(vec3(snow), col.rgb, col.a), max(col.a, haze));
+	// Held, there is no snow in the letters at all: only where the haze covers
+	// more than they do is it mixed in.
+	float cover = max(col.a, haze);
+	col = vec4(mix(vec3(snow), col.rgb, col.a / max(cover, 0.001)), cover);
 	COLOR = col * COLOR;
 }

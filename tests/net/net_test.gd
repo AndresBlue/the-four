@@ -527,7 +527,7 @@ func late_guest() -> void:
 	if card:
 		for node in level.ui.transit.find_children("*", "Label", true, false): words += node.text + " · "
 	print("LATE card: ", words)
-	check("Su viaje va en negro, sin nada escrito", card and words.is_empty())
+	check("Su tarjeta dice el sector al que llega, el 2", card and words.contains("SECTOR 2") and not words.contains("SECTOR 3"), words)
 	check("Y sale en el ala 2", await wait_for(func(): return level.lifts.boarding.is_empty() and level.player.global_position.distance_to(level.hotel.arrivals[0]) < 4.0, 15.0))
 	check("Espera abierta la puerta del sector 2", await wait_for(func(): return not level.hotel.gates[1].locked, 40.0))
 	await pause_for(1.5)

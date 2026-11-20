@@ -15,7 +15,9 @@ func shot(name: String, frames := 30) -> void:
 	root.get_texture().get_image().save_png("res://evidence/rules_%s.png" % name)
 
 func run() -> void:
-	DisplayServer.window_set_size(Vector2i(1280, 720))
+	# --large: a screen bigger than the layout, where what is drawn small and
+	# stretched shows.
+	DisplayServer.window_set_size(Vector2i(1920, 1080) if OS.get_cmdline_user_args().has("--large") else Vector2i(1280, 720))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	for i in 30: await process_frame

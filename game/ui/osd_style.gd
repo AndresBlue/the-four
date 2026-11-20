@@ -8,6 +8,12 @@ extends RefCounted
 ## no glyph for comes from the same font as outlines (FALLBACK_PATH).
 const FONT_PATH := "res://assets/fonts/home_video/HomeVideo-Narrow-Soft.fnt"
 const FALLBACK_PATH := "res://assets/fonts/home_video/HomeVideo-Narrow.ttf"
+## What is written large (a title, a card's head) has its own: the same
+## letters on a grid of dots twice as fine as the font's, each dot one grey.
+## The blur that is antialiasing in small type is a blur one can see in a
+## title, and the author wanted its dots back, more of them and smaller.
+const DISPLAY_PATH := "res://assets/fonts/home_video/HomeVideo-Narrow-Dense.fnt"
+const DISPLAY_FROM := 40
 const NARROW := 0.85
 ## What the camcorder itself writes on the tape (REC, the clock): how far in
 ## from the picture's sides, clear of the tape's ragged edges (analog.gdshader).
@@ -26,9 +32,16 @@ const MUTED := Color(0.58, 0.58, 0.56)
 ## Deeper than it shows: the tape lifts its blacks (the reference is 01).
 const VCR_BLUE := Color(0.02, 0.07, 0.6)
 static var cached_font: Font
+static var cached_display: Font
 static var cached_theme: Theme
 
-static func font() -> Font:
+## The font for lettering of that size (0: the interface's own).
+static func font(size := 0) -> Font:
+	if size >= DISPLAY_FROM and ResourceLoader.exists(DISPLAY_PATH):
+		if cached_display == null:
+			cached_display = load(DISPLAY_PATH)
+			cached_display.fallbacks = [font()]
+		return cached_display
 	if cached_font != null: return cached_font
 	var system := SystemFont.new()
 	# Menlo is the Mac's own, and the nearest it has to Consolas: without it
@@ -232,7 +245,7 @@ static func cell(row: Node, words: String, width: float, size := 17, color := IN
 static func text(words: String, size := 20, color := INK) -> Label:
 	var result := Label.new()
 	result.text = words
-	result.add_theme_font_override("font", font())
+	result.add_theme_font_override("font", font(size))
 	result.add_theme_font_size_override("font_size", size)
 	result.add_theme_color_override("font_color", color)
 	result.add_theme_color_override("font_shadow_color", SHADE)

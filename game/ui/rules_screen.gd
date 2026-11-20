@@ -21,8 +21,8 @@ const SIZE := Vector2(1040, 0)
 const NAME_WIDTH := 360.0
 const VALUE_WIDTH := 380.0
 ## Where what a rule does is shown, and how long it takes to come through.
-const DETAIL_SIZE := Vector2i(1000, 76)
-const DETAIL_IN := 0.9
+const DETAIL_SIZE := Vector2i(1000, 80)
+const DETAIL_IN := 0.3
 
 static func build(ui, parent: Node) -> void:
 	var hosting: bool = ui.net.is_host
@@ -80,12 +80,16 @@ static func detail(ui, parent: Node) -> void:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(holder)
 	var picture := SubViewport.new()
-	picture.size = DETAIL_SIZE
+	picture.size = Vector2i(Vector2(DETAIL_SIZE) * ui.picture_scale())
+	picture.size_2d_override = DETAIL_SIZE
+	picture.size_2d_override_stretch = true
 	picture.transparent_bg = true
 	picture.disable_3d = true
 	picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	holder.add_child(picture)
-	var words := STYLE.text("", 18, STYLE.SOFT)
+	# In full ink and a size up: it is what the screen is read for (the author
+	# never could: soft ink, small, and dark besides).
+	var words := STYLE.text("", 20)
 	words.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	words.position = Vector2(6, 6)
@@ -93,6 +97,7 @@ static func detail(ui, parent: Node) -> void:
 	picture.add_child(words)
 	var screen := TextureRect.new()
 	screen.texture = picture.get_texture()
+	screen.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	screen.size = Vector2(DETAIL_SIZE)
 	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var look := ShaderMaterial.new()

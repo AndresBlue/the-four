@@ -1,14 +1,22 @@
 extends Node
-## The lifts between the wings, the ride in them, and what each sector asks
-## for in the lines the pause screen keeps. Split out of hotel_main.gd, which
-## owns it (`level.lifts`) and calls ride_lifts() and ride_along() from its own
-## loop.
+## The lifts between the wings, the ride in them, and what each sector is
+## called and asks for: the card of the ride, the notice on arriving and the
+## lines the pause screen keeps. Split out of hotel_main.gd, which owns it
+## (`level.lifts`) and calls ride_lifts(), ride_along() and announce_sector()
+## from its own loop.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 
-## What a sector asks for, said whole (game/floors/hotel_floor.gd, with the
-## rest of its rules): only the pause screen writes it. Nothing is written over
-## the picture while a floor is played (the author, 16 November 2026).
+## What a sector asks for, in the fewest words that fit on the tape's card
+## (written in game/floors/hotel_floor.gd, with the rest of its rules).
+## The floor explains nothing else, but nobody guesses on their own that the
+## numbers of the last door are inside the furniture of that wing: a whole
+## sector spent opening drawers at random is not a mystery, it is a wasted
+## evening.
+func stage_errand(stage: int) -> String: return String(level.kind.stage(stage).errand)
+
+## And the same thing said whole, which is what the notice on arriving says and
+## what the pause screen keeps for anybody who wants to check.
 func stage_brief(stage: int) -> String: return String(level.kind.stage(stage).brief)
 
 ## How the sector is going, in the lines the pause screen shows under it:
@@ -19,6 +27,28 @@ func stage_progress() -> Array:
 	var lines: Array = []
 	for handler in level.stage_objectives(): lines.append_array(handler.progress(level.session.stage).lines)
 	return lines
+
+## The notice of a sector, once its lift has opened and the picture is back:
+## six seconds of what this one wants, and then the tape lets it go.
+var pending_brief := 0
+var brief_wait := 0.0
+func announce_sector(delta := 0.0) -> void:
+	brief_wait = maxf(0.0, brief_wait - delta)
+	if pending_brief <= 0 or brief_wait > 0.0 or not boarding.is_empty(): return
+	if not level.match_net.local_is_locust():
+		# The very first floor played on this machine says what is going on
+		# before what to do: somebody new has no other way of knowing.
+		if pending_brief == 1 and not bool(level.settings.values.get("first_game_done", false)) and not level.observer and not level.bot_match:
+			level.ui.show_brief(level.kind.title_of(1), FIRST_BRIEF, level.kind.FIRST_LEAD, FIRST_HOLD)
+			level.settings.values.first_game_done = true
+			level.settings.save_settings()
+		else: level.ui.show_brief(level.kind.title_of(pending_brief), stage_brief(pending_brief))
+	pending_brief = 0
+
+## What the first floor anybody plays opens with (after the floor's own
+## FIRST_LEAD), and how long it stays.
+const FIRST_BRIEF := "Busca refugio, escóndete y encuentra la salida."
+const FIRST_HOLD := 11.0
 
 ## A stage has closed: the creature is put on the survivors' trail, instead of
 ## hunting a wing nobody will come back to. It is not moved anywhere, and it is
@@ -405,14 +435,20 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		level.player.velocity = Vector3.ZERO
 		level.player.held = true
 		boarding = {"point": point, "time": 0.0, "car": car}
-		level.ui.show_transit(RIDE_TIME)
+		# The sector of the wing being arrived in, read off where the car puts
+		# them -- not the stage in hand plus one, which is wrong for anybody
+		# riding a car after the floor has already moved on.
+		var wing := int(FLOOR.room_at(level.manifest.rooms, point).get("wing", level.session.stage))
+		var arriving: int = clampi(wing + 1, 1, level.session.stages)
+		level.ui.show_transit(level.kind.title_of(arriving), stage_errand(arriving), RIDE_TIME)
+		pending_brief = arriving
 	elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]): level.match_net.bodies[seat].ride_to(point)
 
 ## The ride itself, on the machine of whoever is taking it, timed on its
 ## recordings: the doors run shut (DOOR_CLOSING) and the picture goes, the car
-## goes down for as long as descent.wav lasts on black, the bell, and the
-## doors open on the lobby down there with the picture coming back. The
-## riders stand inside the car there, facing out.
+## goes down for as long as descent.wav lasts with the card of the wing ahead
+## over it, the bell, and the doors open on the lobby down there with the
+## picture coming back. The riders stand inside the car there, facing out.
 const RIDE_SHUT := 1.7
 const RIDE_DESCENT_AT := 0.8
 const RIDE_BELL := 7.3
@@ -422,11 +458,13 @@ const RIDE_BLIND := 0.35
 ## The last car does not arrive anywhere: the doors shut, it goes down a while
 ## in the dark, and the floor is over.
 const LEAVE_TIME := 4.0
-## How much tape noise is left over the black in the middle of the ride: the
-## tape breaks up, settles on it, breaks up again as the doors open.
+## How much tape noise is left over the card in the middle of the ride. The
+## card is recorded like everything else, so it cannot be read through a
+## picture that is all snow: the tape breaks up, settles on it, breaks up
+## again as the doors open.
 const RIDE_CARD := 0.2
-## How long the black is held at the start of a floor. There is no car to
-## ride into it, so it is its own beat.
+## How long the card of the first sector is held at the start of a floor.
+## There is no car to ride into it, so it is its own beat.
 const OPENING_CARD := 2.6
 var boarding := {}
 func ride_along(delta: float) -> void:

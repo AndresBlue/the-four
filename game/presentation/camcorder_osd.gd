@@ -140,7 +140,9 @@ static func microphone_icon() -> Array:
 ## picture and the menus (the author, 19 November 2026). Each corner's
 ## lettering is drawn as a group and softened along the lines before the tape
 ## has it (mark_soft.gdshader). The groups are small: only what is written in
-## them is read again.
+## them is read again. REC and the clock, which are there to be seen; not the
+## word under the brackets nor the notice, which are there to be read at once
+## (softened too, the author could not read "CERRAR").
 const MARK_SOFT := preload("res://game/presentation/shaders/mark_soft.gdshader")
 var soft_look := ShaderMaterial.new()
 var corners: Array[Control] = []
@@ -215,15 +217,18 @@ func _ready() -> void:
 	focus_label.offset_right = 200
 	focus_label.offset_top = 44
 	focus_label.offset_bottom = 74
-	soft_corner().add_child(focus_label)
+	add_child(focus_label)
+	# One of the lines at the foot of the picture: the interface gives it its
+	# height, over or under the others that are up (hotel_ui.stack_foot).
 	notice = STYLE.text("", 30)
 	notice.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	notice.offset_left = -420
-	notice.offset_right = 420
+	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	notice.offset_left = -260
+	notice.offset_right = 260
 	notice.offset_top = -150
 	notice.offset_bottom = -110
-	soft_corner().add_child(notice)
+	add_child(notice)
 	fit_corners()
 	hide()
 

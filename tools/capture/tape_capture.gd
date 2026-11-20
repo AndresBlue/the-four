@@ -40,10 +40,13 @@ func run() -> void:
 	level.hotel.update_visibility(level.player.position, true)
 	await shot("still", 60)
 	await shot("still_b", 7)
-	# The picture as it is found, eight moments of it.
-	for step in [0.96, 0.82, 0.68, 0.54, 0.4, 0.3, 0.16, 0.05]:
-		level.rig.entry = step
-		await shot("entry_%02d" % int(step * 100.0))
+	# The picture as it is found: each of its nineteen steps (the rig takes
+	# one frame's worth off it before it is drawn, which stays inside the step).
+	for step in 19:
+		# (Not the frame after a picture was written to disk: that one is long.)
+		for i in 4: await process_frame
+		level.rig.entry = 1.0 - (float(step) + 0.3) / 19.0
+		await shot("entry_%02d" % step, 0)
 	level.rig.entry = 0.0
 	# The tracking band is somewhere else every few seconds.
 	for i in 3: await shot("band_%d" % i, 200)

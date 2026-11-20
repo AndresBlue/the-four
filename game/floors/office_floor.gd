@@ -24,6 +24,8 @@ const GENERATOR_VERSION := PALETTE.VERSION
 ## (game/enemies/lurker/, docs/LURKER.md).
 const CREATURE := "res://game/enemies/lurker/lurker_creature.tscn"
 const CREATURE_KEY := &"lurker"
+## Who is after you, said in red over the first notice anybody gets (lifts.gd).
+const FIRST_LEAD := "The Lurker acecha en las sombras, no dejes que te atrape"
 ## No papers until step 1h.
 const PAPERS := ""
 
@@ -51,11 +53,12 @@ const MILESTONES := [
 ]
 
 ## Stage by stage, from the first: {objectives, level and department (what
-## the planta is), errand (the tape report's), brief (the pause screen's)}.
+## the planta is), errand (the card's and the tape report's), brief (the
+## notice's and the pause screen's: short enough for two lines of it)}.
 const STAGES := [
-	{"objectives": ["files"], "level": "NIVEL 1", "department": "PERSONAL", "errand": "PIDE TU FICHA", "brief": "Pide tu ficha en la ventanilla de Personal, recógela en su estación y pásala por el lector del montacargas."},
-	{"objectives": ["power"], "level": "NIVEL 2", "department": "REGISTRO Y ARCHIVO", "errand": "ARRANCA EL MONTACARGAS", "brief": "Da la corriente al sector de la sala de maniobra desde el cuadro, abre su puerta y baja la palanca del montacargas."},
-	{"objectives": ["air"], "level": "NIVEL 3", "department": "DIRECCIÓN", "errand": "SAL POR EL DUCTO", "brief": "Enciende la climatización desde seguridad, abre la compuerta del ducto principal y llega al pozo."},
+	{"objectives": ["files"], "level": "NIVEL 1", "department": "PERSONAL", "errand": "PIDE TU FICHA", "brief": "Pide tu ficha en Personal, recógela en su estación y pásala por el lector del montacargas."},
+	{"objectives": ["power"], "level": "NIVEL 2", "department": "REGISTRO Y ARCHIVO", "errand": "ARRANCA EL MONTACARGAS", "brief": "Da corriente a la sala de maniobra desde el cuadro, abre su puerta y baja la palanca."},
+	{"objectives": ["air"], "level": "NIVEL 3", "department": "DIRECCIÓN", "errand": "SAL POR EL DUCTO", "brief": "Enciende la climatización en seguridad, abre la compuerta del ducto y llega al pozo."},
 ]
 
 ## The objectives a stage can ask for, and their handlers.

@@ -54,8 +54,9 @@ uniform bool lite = false;
 // middle with black either side of it and the whole screen drawn into it.
 // The boot plays in 4:3 (hotel_ui.play_intro): 0.125 of a 16:9 screen a side.
 uniform float inset : hint_range(0.0, 0.45) = 0.0;
-// The deck finding the picture as a tape starts (the author's references 09
-// and 10): 1 is the first field, cut into slanted bands; 0 is the picture held.
+// The deck finding the picture as a tape starts: 1 as it starts, 0 the
+// picture held, and between them the nineteen steps of ENTRY_STEPS, a
+// thirtieth of a second each.
 uniform float entry : hint_range(0.0, 1.0) = 0.0;
 // One field whose colour comes off the tape wrong (references 11 and 13).
 // The tape does it by itself once in a long while; 1 here makes it do it now.
@@ -65,6 +66,48 @@ uniform float chroma_slip : hint_range(0.0, 1.0) = 0.0;
 uniform float soften = 0.0;
 // hash, noise1, line_noise and tape_snow: the snow of a tape with nothing on it.
 #include "res://game/presentation/shaders/tape_snow.gdshaderinc"
+
+// The entry, step by step as a recording of one has it (nineteen frames at
+// thirty a second that the author took apart, 19 November 2026). The picture
+// is never turned: what looks like bands of it leaning over is the line
+// starting late. Where the deck holds the line the picture stands as it is,
+// a strip of it; where it lets go, the start of the line slips a whole line
+// length in a few lines, the picture runs across with it and the black
+// between two lines crosses the screen as a slanted bar. Fewer slips each
+// step as the deck pulls in; then none, and the black between lines stands
+// as one band down the picture, leaning less each step, until it is off the
+// side. There is no colour until it is held (a deck kills the colour while
+// it has no lock on the lines), and the picture comes up blown out.
+// For each step: how many slips down the height (the sign: which way the
+// line runs); where the black between lines stands at mid height, in
+// picture widths (under -ENTRY_BLANK: off the side, the picture held); how
+// far it leans from the top to the bottom; how much of the picture is white.
+// In the recording the band comes and goes over the same part of the picture
+// (0.75 of the way across, 0.15, 0.25, 0.3, off); here it crosses once, from
+// the right to the left, and no place has it twice: going back and forth, a
+// place under it flashed four times in the second (tools/capture/
+// film_check.py), and nothing in the game is to flash over three.
+const float ENTRY_BLANK = 0.18;
+const vec4 ENTRY_STEPS[19] = vec4[19](
+	vec4(0.0, -1.0, 0.0, 1.0),
+	vec4(-6.0, 0.0, 0.0, 0.92),
+	vec4(7.0, 0.0, 0.0, 0.4),
+	vec4(6.5, 0.0, 0.0, 0.1),
+	vec4(5.5, 0.0, 0.0, 0.0),
+	vec4(10.0, 0.0, 0.0, 0.0),
+	vec4(10.0, 0.0, 0.0, 0.0),
+	vec4(6.0, 0.0, 0.0, 0.0),
+	vec4(5.0, 0.0, 0.0, 0.0),
+	vec4(2.0, 0.0, 0.0, 0.0),
+	vec4(1.0, 0.0, 0.0, 0.0),
+	vec4(0.0, 0.8, 0.05, 0.0),
+	vec4(0.0, 0.56, 0.5, 0.0),
+	vec4(0.0, 0.38, 0.55, 0.0),
+	vec4(0.0, 0.22, 0.46, 0.0),
+	vec4(0.0, 0.08, 0.2, 0.0),
+	vec4(0.0, -0.1, -0.1, 0.0),
+	vec4(0.0, -1.0, 0.0, 0.0),
+	vec4(0.0, -1.0, 0.0, 0.0));
 
 vec3 rgb_to_yiq(vec3 c) {
 	return vec3(dot(c, vec3(0.299, 0.587, 0.114)), dot(c, vec3(0.596, -0.274, -0.322)), dot(c, vec3(0.211, -0.523, 0.312)));
@@ -115,33 +158,58 @@ void fragment() {
 	uv.x += (wobble + jitter) * vhs;
 	// Where the picture has nothing to show: past the end of a line.
 	float blank = 0.0;
-	// A bar of noise across the picture: where one head hands over to the other.
-	float bar = 0.0;
+	// The entry's own: its step (under 0 there is none), where the black
+	// between two lines shows and how grey it is, a bright thread in it, and
+	// how much of the picture is white.
+	int entry_step = -1;
+	float between = 0.0;
+	float between_tone = 0.0;
+	float thread = 0.0;
+	float blown = 0.0;
 	if (entry > 0.0) {
-		// The drum is not yet in step with the tape. The bars where the heads
-		// switch stand close together at first and end far apart, the last of
-		// them under the picture, where it stays (the strip below). It gets
-		// there in jerks, a dozen or so a second, each landing the bars
-		// somewhere else: quick and rough (the author, on a first version
-		// that glided: too slow, too fluid).
-		float jerk = floor(t * 14.0);
-		float rough = clamp(entry * (1.0 + (hash(vec2(jerk, 41.0)) - 0.5) * 0.5), 0.0, 1.0);
-		float done = 1.0 - rough;
-		float apart = 0.2 + 1.1 * done * done;
-		float lowest = 0.2 + 0.8 * done * (2.0 - done) + (hash(vec2(jerk, 43.0)) - 0.5) * 0.7 * entry;
-		float within = fract((at.y - lowest) / apart);
-		bar = smoothstep(0.035, 0.0, min(within, 1.0 - within) * apart) * smoothstep(0.0, 0.2, entry);
-		// Each stretch between two bars is pulled sideways, by more the lower
-		// in it, and round the end of the line, so the black between lines
-		// crosses it as a slanted bar; the top of the picture flags over until
-		// the tension settles, and every line is a little out of its place.
-		float pull = within * rough * (0.25 + 1.15 * rough) + exp(-at.y * 11.0) * 0.09 * entry * (0.75 + 0.25 * sin(t * 31.0)) + (hash(vec2(field_line, jerk)) - 0.5) * 0.03 * entry;
-		float wrapped = fract(uv.x + pull);
-		blank = smoothstep(0.075, 0.045, wrapped) * smoothstep(0.02, 0.2, entry);
-		uv.x = wrapped;
-		// And the whole of it bounces before the vertical hold has it.
-		uv.y += 0.05 * entry * entry * sin(entry * 19.0);
-		blank = max(blank, max(step(uv.y, 0.0), step(1.0, uv.y)));
+		// Each step is held for a thirtieth of a second, two frames of most
+		// screens, and nothing in it moves meanwhile: it is not smooth (the
+		// author, on a first version that glided: too slow, too fluid).
+		entry_step = int(clamp(floor((1.0 - entry) * 19.0 - 0.25), 0.0, 18.0));
+		vec4 now = ENTRY_STEPS[entry_step];
+		float at_step = float(entry_step);
+		float line_length = 1.0 + ENTRY_BLANK;
+		// How far along its line this one starts, in picture widths.
+		float late;
+		float strip = 0.0;
+		if (now.x != 0.0) {
+			// Strips of uneven height. In each the line is held for a part of
+			// it and then let go, faster the further it has gone, until it
+			// has slipped a whole length and is held again: a straight cut
+			// across, and the picture standing under it.
+			float count = abs(now.x);
+			float down = at.y * count + sin(at.y * 9.0 + at_step * 2.4) * 0.04 * count + hash(vec2(at_step, 3.0));
+			strip = floor(down);
+			float held = 0.3 + 0.3 * hash(vec2(strip, at_step));
+			float slipped = pow(clamp((fract(down) - held) / (1.0 - held), 0.0, 1.0), 1.4);
+			// The third step has them running both ways, strip by strip.
+			float way = entry_step == 2 ? step(0.5, hash(vec2(strip, 7.0))) * 2.0 - 1.0 : sign(now.x);
+			late = (0.03 + 0.04 * hash(vec2(strip, at_step + 5.0)) + way * slipped) * line_length;
+			// (In the second step as light as the picture under it will be in
+			// the third: darker, the top of the screen flashed twice.)
+			between_tone = entry_step == 1 ? 0.62 : 0.38 * step(0.65, hash(vec2(strip, at_step + 9.0)));
+		} else {
+			// It waves in the first of these steps and is all but straight after.
+			float stands = now.y + now.z * (at.y - 0.5) + sin(at.y * 7.0 + at_step) * (entry_step == 11 ? 0.045 : 0.006) * step(-ENTRY_BLANK, now.y);
+			// One step of it has a cut across it, a third of the way down.
+			if (entry_step == 13 && at.y < 0.32) stands += 0.08;
+			late = 1.0 - max(stands, -ENTRY_BLANK);
+			between_tone = entry_step == 11 ? 0.03 : 0.3;
+			thread = step(0.45, hash(vec2(field_line, at_step)));
+		}
+		float along = mod(uv.x + late, line_length);
+		between = step(1.0, along);
+		thread *= step(abs(along - 1.0 - ENTRY_BLANK * 0.14), 0.0012);
+		uv.x = min(along, 1.0);
+		blown = now.w;
+		// The second step has no picture yet in its top third: lines of it
+		// reach in, each as far as it gets.
+		if (entry_step == 1 && at.y < 0.27 + 0.16 * line_noise(at.x * 2.5 + hash(vec2(field_line, 2.0)) * 9.0, field_line)) between = 1.0;
 	}
 	// Where the heads switch, under the last lines of the picture (references
 	// 04 and 12): a strip a few lines tall that the deck draws out of step
@@ -185,7 +253,7 @@ void fragment() {
 	// camcorder's own lettering is softened apart, before it gets here
 	// (mark_soft.gdshader), and what is written over the snow, below, by the
 	// first law still.
-	float soft = 1.5 + vhs * 1.2 + soften + entry * 4.0;
+	float soft = 1.5 + vhs * 1.2 + soften + step(0.0, float(entry_step)) * 2.0;
 	float mark_soft = 1.6 + vhs * 5.0;
 	vec3 center = tap(uv);
 	float luma;
@@ -216,13 +284,21 @@ void fragment() {
 		chroma /= float(chroma_taps);
 	}
 	chroma *= 1.0 - vhs * 0.25;
-	// The colour locks after the picture does, and the picture comes up a
-	// touch dim. Its contrast is left as it is: pushed up, as the references
-	// have it, the bright bands crossing the whole screen came to three
-	// flashes a second (film_check.py).
-	chroma *= 1.0 - smoothstep(0.25, 0.4, entry);
-	luma *= 1.0 - 0.1 * smoothstep(0.0, 0.5, entry);
+	// No colour while the deck is finding the picture: it comes back whole,
+	// in the step after the last.
+	if (entry_step >= 0) chroma = vec2(0.0);
 	vec3 color = yiq_to_rgb(vec3(luma, chroma)) * (1.0 - blank);
+	if (entry_step >= 0) {
+		// Blown out as it comes up, and flat while it slips: every step
+		// shows each place another part of the picture, and at the picture's
+		// own contrast a lit wall coming and going was a flash each time
+		// (film_check.py: three in the second, the most there may be).
+		color = mix(color * (1.0 + blown), vec3(0.96), blown);
+		if (entry_step >= 3 && entry_step <= 16) color = mix(color, vec3(0.1), 0.35);
+		color = mix(color, vec3(between_tone + thread * 0.6), between);
+		// The last step is held, and a bright bar stands across it.
+		if (entry_step == 18) color = mix(color, vec3(0.92), smoothstep(0.783, 0.787, at.y) * smoothstep(0.826, 0.82, at.y) * 0.9);
+	}
 	if (lens_blood > 0.0) {
 		float lens_wide = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
 		float lens_film = blood_on_lens(SCREEN_UV * vec2(lens_wide, 1.0), lens_wide);
@@ -255,20 +331,18 @@ void fragment() {
 	}
 	// Tracking band noise, dropouts and interference.
 	vec3 snow = vec3(0.0);
-	if (head > 0.0 || damage > 0.0 || bar > 0.0) snow = tape_snow(at, floor(t * 60.0), !lite);
+	if (head > 0.0 || damage > 0.0) snow = tape_snow(at, floor(t * 60.0), !lite);
 	// The band's own is the same snow drawn out along the lines, as the grain
 	// of the picture under it is: as fine across as down, it sat on the
 	// picture like a grid of dots.
 	if (band * vhs > 0.001) color += (tape_snow(vec2(at.x * 0.28, at.y), floor(t * 60.0), !lite) - 0.22) * band * 0.85 * vhs;
-	color = mix(color, snow, bar * 0.85);
 	// One field in a great many, the colour of the picture comes off the tape
 	// wrong: bands of it down the screen, or from some height down, over a
 	// luma that is still right. Worn tape does it more.
 	float tick = floor(t * 30.0);
 	float worn = clamp(vhs / 0.3, 0.0, 3.0);
 	float slip = max(chroma_slip, step(1.0 - 0.0013 * worn * worn, hash(vec2(tick, 71.0))));
-	slip = max(slip, 0.8 * smoothstep(0.42, 0.34, entry) * smoothstep(0.2, 0.28, entry));
-	if (slip > 0.0) {
+	if (slip > 0.0 && entry_step < 0) {
 		float from = step(0.5, hash(vec2(tick, 5.0))) * hash(vec2(tick, 9.0)) * 0.6;
 		float turn = (at.y * (16.0 + 16.0 * hash(vec2(tick, 13.0))) + noise1(at.y * 11.0 + tick) * 1.4 + hash(vec2(floor(at.y * 240.0), tick)) * 0.06) * 6.28318;
 		vec3 here = rgb_to_yiq(color);
@@ -281,7 +355,7 @@ void fragment() {
 	// hides by repeating the line above instead.
 	float field_row = floor(SCREEN_UV.y * 240.0);
 	float dropout_frame = floor(t * 30.0);
-	float chance = vhs * 0.0012 + tape_hit * 0.03 + tape_fray * 0.02;
+	float chance = vhs * 0.0012 + tape_hit * 0.03 + tape_fray * 0.02 + step(0.0, float(entry_step)) * 0.006;
 	float hit = step(1.0 - chance, hash(vec2(dropout_frame, field_row)));
 	// The line below a dropout often goes too.
 	hit = max(hit, step(1.0 - chance, hash(vec2(dropout_frame, field_row - 1.0))) * step(0.6, hash(vec2(field_row, dropout_frame + 5.0))));

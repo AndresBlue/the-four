@@ -25,6 +25,7 @@ const NEAR_CORNERS := 8
 const FAR_CORNERS := 40
 ## What the offices say when it is felt.
 const FELT := "Te sientes mejor..."
+const FELT_FOR := 3.5
 ## What it sounds like making it: for now the copier's hum, cut short.
 const SOUND := "res://assets/audio/sfx/office/copier.wav"
 ## Its back this far from the wall's line, and free this much to each side;
@@ -364,8 +365,10 @@ func tick(delta: float) -> void:
 		if brewing < 0.0:
 			easing = 0.0
 			eased_from = level.player.sanity
-			# Where it is the only way back, the cup says so (the author, 18 November 2026).
-			if FLOOR.palette(level.manifest).get_script_constant_map().has("BREAK_ROOM"): level.ui.flash(FELT, 3.0, true)
+			# The cup says so, at the foot of the picture where the hints go
+			# (the author, 19 November 2026: in the top corner, and only in the
+			# offices, he never saw it).
+			level.hints.notice(FELT, FELT_FOR)
 	if easing >= 0.0:
 		easing += delta
 		# A guest eases its own picture; the host's meter catches it up.

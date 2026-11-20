@@ -221,7 +221,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - no hay refugios que encontrar;
 - no se cuentan objetos;
 - no hay código;
-- al llegar a cada planta no hay tarjeta: el viaje va en negro y al volver la imagen no se escribe nada (el autor, 16 de noviembre de 2026); el encargo lo dice la pausa.
+- al llegar a cada planta sale su tarjeta sobre el negro del viaje (el nivel y su encargo) y, al volver la imagen, el aviso de lo que pide, seis segundos arriba a la izquierda (quitados el 16 de noviembre de 2026 y devueltos el 19, a petición del autor, con frases más cortas: caben en dos líneas); el encargo lo guarda también la pausa.
 
 ### Planta 1. Personal: el correo
 

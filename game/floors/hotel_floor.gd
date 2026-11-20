@@ -35,6 +35,8 @@ const PALETTE := preload("res://game/floors/palettes/hotel_palette.gd")
 ## (hotel_main.spawn_creature()), so what only reads the rules does not load it.
 const CREATURE := "res://game/enemies/locust/locust.tscn"
 const CREATURE_KEY := &"locust"
+## Who is after you, said in red over the first notice anybody gets (lifts.gd).
+const FIRST_LEAD := "The Locust va a por ti…"
 ## The set of papers its hints are drawn from: the hotel's is the only one
 ## (game/world/generation/hint_placement.gd) and has no constant of its own.
 const PAPERS := "hotel"

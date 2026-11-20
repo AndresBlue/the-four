@@ -1,11 +1,9 @@
 extends SceneTree
 ## The coffee machines (coffee.gd): three to five a floor, spread over its
 ## plantas, each against a wall with room in front; a cup brings the mind back
-## whole a few seconds on, without a word written about it, and a machine
+## whole a few seconds on, says so at the foot of the picture, and a machine
 ## serves each survivor once.
 var failed := 0
-## What the foot of the picture said until 16 November 2026.
-const FEEL := "Te sientes mejor..."
 
 func _initialize() -> void: run.call_deferred()
 
@@ -117,14 +115,14 @@ func run() -> void:
 	level.coffee.drink(machine)
 	check("Una vez por superviviente y máquina", not level.coffee.can_drink(machine))
 	for frame in int(level.coffee.BREW * 60.0) + 6: await physics_frame
-	check("A los segundos no se escribe «Te sientes mejor...»: lo dice la imagen", not card_words(level).has(FEEL), str(card_words(level)))
+	check("A los segundos: «Te sientes mejor...» abajo", card_words(level) == [level.coffee.FELT], str(card_words(level)))
 	check("Y la cordura sube a lo largo de un segundo", level.player.sanity > 20.0 and level.player.sanity < 100.0, "%.1f" % level.player.sanity)
 	for frame in int(level.coffee.EASE * 60.0) + 6: await physics_frame
 	check("Y vuelve entera", level.player.sanity >= 99.9, "%.1f" % level.player.sanity)
 	level.settings.values.control_hints = false
 	level.coffee.brewing = level.coffee.BREW
 	for frame in int(level.coffee.BREW * 60.0) + 6: await physics_frame
-	check("Ni con las sugerencias apagadas", not card_words(level).has(FEEL), str(card_words(level)))
+	check("El aviso sale aunque las sugerencias estén apagadas", card_words(level) == [level.coffee.FELT], str(card_words(level)))
 	level.settings.values.control_hints = true
 	# Seed 33: since the generator's version 7, seed 7 has two depots full of shelves
 	# for planta 2's two (2 of 6 in a corner; 4 or 5 of 6 in five other seeds measured).

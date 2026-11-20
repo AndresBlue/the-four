@@ -51,6 +51,7 @@ func build_environment() -> void:
 	lens_material = level.get_node("Presentation/Lens/Screen").material
 	lens_layer = level.get_node("Presentation/Lens")
 	level.camcorder = level.get_node("Presentation/Camcorder")
+	level.ui.foot_guest = level.camcorder.notice
 	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), level.settings.values.reduced))
 	authored_tone = {"mode": level.environment.tonemap_mode, "exposure": level.environment.tonemap_exposure, "glow": level.environment.glow_hdr_threshold, "fog_length": level.environment.volumetric_fog_length, "contrast": level.environment.adjustment_contrast, "saturation": level.environment.adjustment_saturation, "fog_density": level.environment.volumetric_fog_density, "fog_anisotropy": level.environment.volumetric_fog_anisotropy, "adjust": level.environment.adjustment_enabled}
 	# Only where there is a RenderingDevice to run it (not headless, not
@@ -385,14 +386,24 @@ var static_level := 0.0
 ## The deck finding the picture each time the camera's comes up, from a menu,
 ## a load or the end of a floor (analog.gdshader, entry): 1 as it starts, held
 ## after ENTRY_SECONDS. Not with reduced effects, and not for her thermal view.
-const ENTRY_SECONDS := 0.55
+## Nineteen steps of a thirtieth of a second, as the tape it is taken from
+## has them (analog.gdshader).
+const ENTRY_SECONDS := 19.0 / 30.0
 var entry := 0.0
 var filmed := false
+## The camera's picture has come up and the deck has not found it yet: it does
+## once the card a floor opens on is cut (hotel_ui.show_transit), not under it.
+var entering := false
 
 func update_screen_cues(delta: float) -> void:
 	var filming: bool = level.session.state in [level.session.State.PLAYING, level.session.State.CUTSCENE]
-	if filming and not filmed and not level.settings.values.reduced and not lurker_seat(): entry = 1.0
+	if filming and not filmed and not level.settings.values.reduced and not lurker_seat(): entering = true
 	filmed = filming or level.session.state == level.session.State.PAUSED
+	# (Left for a menu with the card still up, there is nothing to find.)
+	entering = entering and filmed
+	if entering and not is_instance_valid(level.ui.transit):
+		entering = false
+		entry = 1.0
 	entry = maxf(0.0, entry - delta / ENTRY_SECONDS)
 	level.post_material.set_shader_parameter("entry", entry)
 	var wanted_enclosure: float = (1.0 - level.player.peek * 0.8) if level.player.hidden and level.session.state == level.session.State.PLAYING else 0.0

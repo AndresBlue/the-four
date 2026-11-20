@@ -35,7 +35,7 @@ func run() -> void:
 	hints.aimed("door")
 	check("La puerta: E abre o cierra, mantenida va despacio", card_words(level) == ["Abrir o cerrar", "Despacio, sin ruido"], str(card_words(level)))
 	var first: Node = level.ui.controls_card.get_child(0)
-	check("Una al lado de la otra, cada tecla en su keycap", level.ui.controls_card is HBoxContainer and first.get_child(0) is PanelContainer)
+	check("Una al lado de la otra, cada tecla en su keycap", level.ui.controls_card is HFlowContainer and first.get_child(0) is PanelContainer)
 	hints.clear()
 	hints.aimed("door")
 	check("Una vez por partida", card_words(level).is_empty())

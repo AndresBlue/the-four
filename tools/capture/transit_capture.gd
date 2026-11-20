@@ -1,10 +1,14 @@
 extends SceneTree
-## The cut between one wing and the next, as it is played: the survivor steps
-## into the car, the picture goes to black, and it comes back somewhere else.
-## Nothing is written on the black or after it (the author, 16 November 2026).
-## Frames by the clock of the ride itself.
-##   godot --path . --script tools/capture/transit_capture.gd -- --silent
+## What a floor says of its sectors, as it is played: the card it opens on,
+## the picture found when the card is cut, the notice of what the sector wants
+## (the first anybody gets, with its warning in red; and the offices', which
+## are the longest); then the cut between one wing and the next, with its card
+## on the black, and the notice on arriving. At the author's own wear of the
+## tape (35 %), which is where they have to be read. Frames by the clock of
+## the ride itself. Without --automation: with it a floor has no card.
+##   godot --path . --script tools/capture/transit_capture.gd -- --test-profile --silent
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const OFFICE := preload("res://game/floors/office_floor.gd")
 var level
 
 func _initialize() -> void: run.call_deferred()
@@ -22,14 +26,62 @@ func seconds(span: float) -> void:
 	while Time.get_ticks_msec() < until: await process_frame
 
 func run() -> void:
-	DisplayServer.window_set_size(Vector2i(1280, 720))
+	# --large: a screen bigger than the layout, where what is drawn small and
+	# stretched shows.
+	DisplayServer.window_set_size(Vector2i(1920, 1080) if OS.get_cmdline_user_args().has("--large") else Vector2i(1280, 720))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.ui.finish_intro()
+	level.settings.values.vhs = 0.35
+	level.settings.values.first_game_done = false
 	await level.start_floor(81)
+	level.rig.apply_settings()
 	level.locust.set_physics_process(false)
 	level.locust.position = Vector3(0, -80, 0)
-	await frames(120)
+	await seconds(1.0)
+	await shot("opening")
+	while is_instance_valid(level.ui.transit): await process_frame
+	for step in ["a", "b", "c", "d"]:
+		await frames(4)
+		await shot("found_" + step)
+	await seconds(1.6)
+	await shot("notice_warning")
+	await seconds(2.6)
+	await shot("notice_first")
+	level.ui.show_brief(OFFICE.title_of(2), String(OFFICE.STAGES[1].brief))
+	await seconds(0.15)
+	await shot("notice_coming")
+	await seconds(1.0)
+	await shot("notice_office")
+	level.ui.show_brief(OFFICE.title_of(1), level.lifts.FIRST_BRIEF, OFFICE.FIRST_LEAD, level.lifts.FIRST_HOLD)
+	await seconds(3.2)
+	await shot("notice_office_first")
+	level.ui.hide_brief()
+	# All that the foot of the picture can have at once, each on its own line
+	# (the level's own loop stopped, which would take them away again), and
+	# the word under the brackets.
+	level.set_process(false)
+	level.set_physics_process(false)
+	level.ui.subtitle.visible = true
+	level.ui.show_controls([[["W"], "Asomarte", []], [["E"], "Salir", []], [["MANTÉN", "E"], "Salir sin ruido", []], [["F"], "Linterna", []]])
+	level.camcorder.notice.text = "LA CAZA EMPIEZA EN 12"
+	level.camcorder.notice.visible = true
+	level.camcorder.focus_label.text = "CERRAR"
+	level.camcorder.focus_label.modulate.a = 1.0
+	level.ui.subtitle.text = "[Pasos en el pasillo, cada vez más cerca de la puerta]"
+	level.ui.hint.text = "OBSERVANDO A CAMILA, E PARA CAMBIAR"
+	await seconds(0.8)
+	await shot("foot")
+	level.ui.hint.text = ""
+	level.ui.subtitle.text = ""
+	level.camcorder.notice.text = ""
+	level.hints.notice(level.coffee.FELT, level.coffee.FELT_FOR)
+	await seconds(0.8)
+	await shot("foot_coffee")
+	level.hints.clear()
+	level.set_process(true)
+	level.set_physics_process(true)
+	await frames(30)
 	# The stage is closed the way a team closes it, and the survivor steps into
 	# the car that is waiting behind the door.
 	level.session.goal["ready"] = true
@@ -44,9 +96,12 @@ func run() -> void:
 	for beat in beats:
 		await seconds(float(beats[beat]))
 		await shot(beat)
-	# Out of the car, and where what the sector asks for is kept: the pause.
+	# Out of the car, with the notice of the sector, and where what it asks
+	# for is kept: the pause.
 	await seconds(1.0)
 	await shot("arrived")
+	await seconds(1.2)
+	await shot("notice")
 	level.session.pause()
 	await frames(20)
 	await shot("pause")

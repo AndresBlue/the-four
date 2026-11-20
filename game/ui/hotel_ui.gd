@@ -271,6 +271,10 @@ func _ready() -> void:
 	$HUD.theme = style
 	hint = $HUD/InteractionHint
 	subtitle = $HUD/Subtitle
+	for line: Label in [hint, subtitle]:
+		line.offset_left = -FOOT_WIDE * 0.5
+		line.offset_right = FOOT_WIDE * 0.5
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	flash_label = $HUD/Flash
 	# Who is heard, one mark each, over the stamina meter's right end.
 	voice_marks = Control.new()
@@ -333,8 +337,8 @@ SP", true)
 	# What is outside the game -- the menus, the loading and end screens, the
 	# boot with its headphones notice and its PLAY -- is drawn above the tape
 	# and is not filmed by it. What happens inside the floor (the OSD, the
-	# black of a ride, the sheet, the keypad, a document being read) stays
-	# under it, recorded like the picture.
+	# objective, the sector card, the sheet, the keypad, a document being
+	# read) stays under it, recorded like the picture.
 	outside = CanvasLayer.new()
 	outside.name = "Outside"
 	outside.layer = OUTSIDE_LAYER
@@ -1284,11 +1288,34 @@ func keycap(words: String, size := 13) -> PanelContainer:
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return cap
 
+## What is written at the foot of the picture, in its middle, from the lowest
+## up: the word of what is in hand, the control hints (or a line said in their
+## place), the camcorder's own notice (`foot_guest`: presentation_rig gives
+## it) and the subtitles. Whatever of it is up takes a line of its own over
+## the one below, and what is not up takes none: all of it can come up at once
+## and nothing is written over anything else (the author, 19 November 2026).
+## The column is narrow enough to stand clear of the camcorder's clock on its
+## left and of the meter on its right, on the narrowest picture there is.
+const FOOT_WIDE := 520.0
+const FOOT_BASE := 108.0
+const FOOT_GAP := 8.0
+var foot_guest: Control
+
+func stack_foot() -> void:
+	var from := FOOT_BASE
+	for line: Control in [hint, controls_card, foot_guest, subtitle]:
+		if not is_instance_valid(line) or not line.is_visible_in_tree() or (line is Label and (line as Label).text.is_empty()): continue
+		var tall := line.get_combined_minimum_size().y
+		line.offset_top = -from - tall
+		line.offset_bottom = -from
+		from += tall + FOOT_GAP
+
 ## The control hints at the foot of the picture, in the middle (the author,
-## 16 November 2026), one beside the other and over nothing but the picture
-## (control_hints.gd): [keys, what they do], each key in its keycap and
-## "MANTÉN" before one in words. An empty card takes them away.
-var controls_card: HBoxContainer
+## 16 November 2026), one beside the other, on a second line what does not
+## fit the column, and over nothing but the picture (control_hints.gd): [keys,
+## what they do], each key in its keycap and "MANTÉN" before one in words. An
+## empty card takes them away.
+var controls_card: HFlowContainer
 ## Whether a card is up (not going), and the fade under way.
 var controls_up := false
 var controls_fade: Tween
@@ -1296,13 +1323,16 @@ var controls_fade: Tween
 const CONTROLS_FADE := 0.35
 func show_controls(card: Array) -> void:
 	if controls_card == null:
-		controls_card = HBoxContainer.new()
+		controls_card = HFlowContainer.new()
 		controls_card.name = "ControlHints"
 		controls_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		controls_card.alignment = BoxContainer.ALIGNMENT_CENTER
-		controls_card.add_theme_constant_override("separation", 36)
+		controls_card.alignment = FlowContainer.ALIGNMENT_CENTER
+		controls_card.add_theme_constant_override("h_separation", 36)
+		controls_card.add_theme_constant_override("v_separation", 6)
 		$HUD.add_child(controls_card)
-		controls_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		controls_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+		controls_card.offset_left = -FOOT_WIDE * 0.5
+		controls_card.offset_right = FOOT_WIDE * 0.5
 		controls_card.offset_top = -150
 		controls_card.offset_bottom = -112
 	if controls_fade != null: controls_fade.kill()
@@ -2306,35 +2336,194 @@ func hide_skip() -> void:
 	skip_label.text = ""
 
 ## The cut between one wing and the next. The car takes the picture with it,
-## and the tape runs on black until the doors open somewhere else. Nothing is
-## written on it (the author, 16 November 2026): what a stage wants is in the
-## pause screen and in the floor itself.
+## and on that black the tape puts up where this is and what the stage wants.
+## It is the only pause a floor has: the one moment an errand can be read
+## instead of glimpsed over a shoulder while something walks towards you.
+## (Taken off on 16 November 2026 and asked back by the author on the 19th.)
+## `opening`: the card a floor starts on. There is no car to ride into it, so
+## it is up at once, and it is cut, not faded: the deck finds the picture
+## after it (presentation_rig.gd waits for it to go).
 var transit: Control
 var transit_tween: Tween
 
-func show_transit(seconds: float) -> void:
+func show_transit(title: String, errand: String, seconds: float, opening := false) -> void:
 	hide_transit()
 	transit = ColorRect.new()
 	transit.name = "Transit"
 	transit.color = Color.BLACK
 	transit.set_anchors_preset(Control.PRESET_FULL_RECT)
 	transit.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	transit.modulate.a = 0.0
+	transit.modulate.a = 1.0 if opening else 0.0
 	add_child(transit)
-	# Up after the picture has gone, and down before it comes back, so the
-	# black is the whole of what there is to look at while it is up.
+	var column := VBoxContainer.new()
+	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 20)
+	transit.add_child(column)
+	var head := STYLE.text(title, 54)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(head)
+	var rule := ColorRect.new()
+	rule.color = STYLE.FAINT
+	rule.custom_minimum_size = Vector2(280, 2)
+	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(rule)
+	var line := STYLE.text(errand, 26, STYLE.AMBER)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(line)
 	var span := maxf(1.2, seconds)
 	transit_tween = create_tween()
-	transit_tween.tween_interval(span * 0.12)
-	transit_tween.tween_property(transit, "modulate:a", 1.0, span * 0.14)
-	transit_tween.tween_interval(span * 0.5)
-	transit_tween.tween_property(transit, "modulate:a", 0.0, span * 0.16)
+	if opening: transit_tween.tween_interval(span)
+	else:
+		# Up after the picture has gone, and down before it comes back, so the
+		# card is the whole of what there is to look at while it is up.
+		transit_tween.tween_interval(span * 0.12)
+		transit_tween.tween_property(transit, "modulate:a", 1.0, span * 0.14)
+		transit_tween.tween_interval(span * 0.5)
+		transit_tween.tween_property(transit, "modulate:a", 0.0, span * 0.16)
 	transit_tween.tween_callback(hide_transit)
 
-## What the pause screen keeps of the sector in hand: its name, what it asks
-## for, and how it is going, set by the level before the screen is built. The
-## only place a stage's errand is written while a floor is played.
+## The notice of a sector, once the card is gone and the picture is back: what
+## this one wants, small in the top left corner under the OSD line, for six
+## seconds. It comes in out of the snow and goes back into it the way a weak
+## analogue signal goes, which is why it is drawn into its own little picture
+## first: the shader works on that picture as a whole, not letter by letter.
+## Quick both ways: it is there to be read, not watched arriving.
+const BRIEF_HOLD := 6.0
+## Seconds the first floor's warning is up on its own before its objective.
+const BRIEF_LEAD := 2.2
+const BRIEF_IN := 0.3
+const BRIEF_OUT := 0.6
+## How wide the little picture is; it is as tall as its words need (a fixed
+## height cut the longer ones off).
+const BRIEF_WIDE := 760
+const WASH := preload("res://game/ui/shaders/signal_wash.gdshader")
+var brief: Control
+var brief_tween: Tween
+## What the pause screen keeps of it: the sector, what it asks for, and how it
+## is going, set by the level before the screen is built.
 var briefing := {"sector": "", "objective": "", "progress": []}
+
+## `lead`: a line said first, before the objective comes up under it (the
+## very first floor somebody plays); `hold`: how long it all stays.
+func show_brief(sector: String, words: String, lead := "", hold := BRIEF_HOLD) -> void:
+	hide_brief()
+	brief = Control.new()
+	brief.name = "Brief"
+	brief.set_anchors_preset(Control.PRESET_FULL_RECT)
+	brief.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(brief)
+	# Under the sheet: whoever opens it is looking at the sheet, and a notice
+	# on top of the page would be written over what they are drawing.
+	if is_instance_valid(sheet): move_child(brief, sheet.get_index())
+	# Room is left round the words so the swell has somewhere to roll to.
+	var face := STYLE.font()
+	var wide := BRIEF_WIDE - 36.0
+	var tall := 44.0 + face.get_height(22) + face.get_multiline_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, wide, 28).y
+	if not lead.is_empty(): tall += 12.0 + face.get_multiline_string_size(lead, HORIZONTAL_ALIGNMENT_LEFT, wide, 30).y
+	var extent := Vector2i(BRIEF_WIDE, ceili(tall))
+	var picture := SubViewport.new()
+	picture.size = Vector2i(Vector2(extent) * picture_scale())
+	picture.size_2d_override = extent
+	picture.size_2d_override_stretch = true
+	picture.transparent_bg = true
+	picture.disable_3d = true
+	picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	brief.add_child(picture)
+	# A smudge of shade behind the words, soft all round and darkest behind
+	# them, so they read over a lit wall as well as over a dark corridor.
+	var smudge := Gradient.new()
+	smudge.set_color(0, Color(0, 0, 0, 0.78))
+	smudge.set_color(1, Color(0, 0, 0, 0))
+	var soft := GradientTexture2D.new()
+	soft.gradient = smudge
+	soft.fill = GradientTexture2D.FILL_RADIAL
+	soft.fill_from = Vector2(0.28, 0.5)
+	soft.fill_to = Vector2(0.98, 0.5)
+	var shade := TextureRect.new()
+	shade.texture = soft
+	shade.size = Vector2(extent)
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.add_child(shade)
+	var column := VBoxContainer.new()
+	column.position = Vector2(18, 16)
+	column.size = Vector2(wide, extent.y - 32)
+	column.add_theme_constant_override("separation", 4)
+	picture.add_child(column)
+	var head := STYLE.text("OBJETIVO, %s" % sector, 22, STYLE.AMBER)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	column.add_child(head)
+	struck(head)
+	if not lead.is_empty():
+		# A lighter red than the alarms': a tape keeps the shape of a letter
+		# in its brightness and smears its colour, and a deep red has next to
+		# no brightness to keep (the author could not read it).
+		var warning := STYLE.text(lead, 30, STYLE.ALERT.lightened(0.25))
+		warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		warning.custom_minimum_size.x = wide
+		column.add_child(warning)
+		struck(warning)
+	var line := STYLE.text(words, 28)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.x = wide
+	column.add_child(line)
+	struck(line)
+	# After the warning has been read, the objective comes up under it.
+	if not lead.is_empty():
+		line.modulate.a = 0.0
+		var after := line.create_tween()
+		after.tween_interval(BRIEF_LEAD)
+		after.tween_property(line, "modulate:a", 1.0, 0.4)
+	var screen := TextureRect.new()
+	screen.texture = picture.get_texture()
+	screen.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	screen.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	# The words start where the OSD's own line starts.
+	screen.offset_left = 30
+	screen.offset_right = 30 + extent.x
+	screen.offset_top = 112
+	screen.offset_bottom = 112 + extent.y
+	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var look := ShaderMaterial.new()
+	look.shader = WASH
+	look.set_shader_parameter("wash", 1.0)
+	screen.material = look
+	brief.add_child(screen)
+	var wash := func(amount: float): look.set_shader_parameter("wash", amount)
+	brief_tween = create_tween()
+	brief_tween.tween_method(wash, 1.0, 0.0, BRIEF_IN).set_ease(Tween.EASE_OUT)
+	brief_tween.tween_interval(hold - BRIEF_IN - BRIEF_OUT)
+	brief_tween.tween_method(wash, 0.0, 1.0, BRIEF_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	brief_tween.tween_callback(hide_brief)
+
+## How many of the screen's pixels there are to one of the layout's: a little
+## picture of words (the notice, what a rule does) is drawn with that many, or
+## it is drawn small and stretched, and its words come out blurred on any
+## screen bigger than the layout (the author's: he never could read them).
+func picture_scale() -> float:
+	var window := get_tree().root
+	return maxf(1.0, float(window.size.x) / maxf(window.get_visible_rect().size.x, 1.0))
+
+## The same words struck a second time a little to the right, as a character
+## generator thickens its own: a thin stroke is the first thing the softness
+## of a tape takes.
+func struck(words: Label) -> void:
+	var twin: Label = words.duplicate()
+	twin.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
+	twin.custom_minimum_size = Vector2.ZERO
+	twin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	twin.offset_left = 1.5
+	twin.offset_right = 1.5
+	words.add_child(twin)
+
+func hide_brief() -> void:
+	if is_instance_valid(brief_tween): brief_tween.kill()
+	brief_tween = null
+	if is_instance_valid(brief): brief.queue_free()
+	brief = null
 
 func set_briefing(sector: String, objective: String, progress: Array) -> void:
 	briefing = {"sector": sector, "objective": objective, "progress": progress}
@@ -2346,7 +2535,7 @@ func hide_transit() -> void:
 	transit = null
 
 ## Words in the middle for a while: blinking out over their last second, or,
-## `steady`, fading (what is said calmly, the coffee's).
+## `steady`, fading (what is said calmly).
 func flash(words: String, seconds := 2.5, steady := false) -> void:
 	flash_label.text = words
 	flash_time = seconds
@@ -2393,6 +2582,7 @@ func lost_signal(seconds := 2.6) -> void:
 
 func _process(delta: float) -> void:
 	clock += delta
+	stack_foot()
 	update_snatches(delta)
 	voice_poll -= delta
 	if voice_poll <= 0.0:
@@ -2596,11 +2786,13 @@ func play_intro() -> void:
 		look.set_shader_parameter("signal_loss", snow))
 	intro_tween.tween_property(hiss, "volume_db", -16.0, 0.15)
 	intro_tween.tween_interval(0.75)
-	# Then the recording, which is the menu under all this: found and squared
-	# up, quick and rough, and the tape's wear leaving it.
-	if not reduced: intro_tween.tween_callback(set_look.bind(1.0, "entry"))
-	intro_tween.tween_method(set_look.bind("signal_loss"), snow, 0.0, 0.2)
-	intro_tween.tween_method(set_look.bind("entry"), 0.0 if reduced else 1.0, 0.0, 0.55)
+	# Then the recording, which is the menu under all this: the snow is cut,
+	# the deck finds the picture in its nineteen steps (analog.gdshader), and
+	# the tape's wear leaves it.
+	if reduced: intro_tween.tween_method(set_look.bind("signal_loss"), snow, 0.0, 0.2)
+	else:
+		intro_tween.tween_callback(set_look.bind(0.0, "signal_loss"))
+		intro_tween.tween_method(set_look.bind("entry"), 1.0, 0.0, 19.0 / 30.0)
 	intro_tween.parallel().tween_property(hiss, "volume_db", -60.0, 0.55)
 	intro_tween.tween_method(set_look.bind("vhs"), worn, 0.0, 0.45)
 	intro_tween.parallel().tween_method(set_look.bind("scanlines"), lines, 0.0, 0.45)

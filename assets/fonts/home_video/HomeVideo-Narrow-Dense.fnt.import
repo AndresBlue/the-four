@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://blqlt5o6ccf"
+path="res://.godot/imported/HomeVideo-Narrow-Dense.fnt-35e7a1e7b9a1be0302bb3386ca798e3b.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/home_video/HomeVideo-Narrow-Dense.fnt"
+dest_files=["res://.godot/imported/HomeVideo-Narrow-Dense.fnt-35e7a1e7b9a1be0302bb3386ca798e3b.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2

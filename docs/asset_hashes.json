@@ -2754,5 +2754,13 @@
   "assets/fonts/home_video/HomeVideo-Narrow-Soft.png": {
     "bytes": 438745,
     "sha256": "73f268d95a443170ce77692de1805192995cef7d361aa4bb51ea512d9cc7cffd"
+  },
+  "assets/fonts/home_video/HomeVideo-Narrow-Dense.fnt": {
+    "bytes": 17191,
+    "sha256": "a943a006d1ce696af1ed43758bcd9d0f7abed7eacaf5d4c25e537d3093cb9ec4"
+  },
+  "assets/fonts/home_video/HomeVideo-Narrow-Dense.png": {
+    "bytes": 155340,
+    "sha256": "725c464c0377f6a8fb76bf54f14493032479dc90d8ae9b6d85627ff85304e8ae"
   }
 }
